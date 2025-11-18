@@ -9,8 +9,9 @@ const { Server } = require('socket.io');
 
 const api = require('./routes/index.js'); // Rotas principais (index.js)
 const salasRouter = require('./routes/salas'); // 
+
 const { errorHandler } = require('./middleware/error');
-const { sequelize } = require('./models');
+const { sequelize } = require('./models').default;
 
 const app = express();
 
@@ -38,6 +39,15 @@ app.get('/api/teste-direto', (req, res) => {
 
 app.use('/api', api); // Rotas existentes
 app.use('/api', salasRouter); 
+
+const gamesRouter = require('./routes/games');
+const playersRouter = require('./routes/players');
+app.use('/api/games', gamesRouter);
+app.use('/api/players', playersRouter);
+
+const resultsRouter = require('./routes/results.routes');
+app.use('/api/results', resultsRouter);
+
 
 app.use(errorHandler);
 
