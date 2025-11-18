@@ -5,20 +5,20 @@ const router = express.Router();
 const gameController = require('../controllers/gameController');
 const auth = require('../middleware/auth');
 
-// Criar nova partida
-router.post('/novo-jogo', async (req, res, next) => {
+// Iniciar nova partida (frontend chama GET /api/novo-jogo)
+router.get('/novo-jogo', async (req, res, next) => {
   try {
-    const { player1Id, player2Id } = req.body;
+    const { player1Id, player2Id } = req.query; // pode vir via query string
     const estadoDoJogo = await gameController.iniciarNovoJogo(player1Id, player2Id);
-    res.status(201).json(estadoDoJogo);
+    res.status(200).json(estadoDoJogo);
   } catch (error) {
-    console.error("Erro em POST /novo-jogo:", error.message);
+    console.error("Erro em GET /novo-jogo:", error.message);
     next(error);
   }
 });
 
-// Jogar (chute de letra)
-router.post('/play', auth, async (req, res, next) => {
+// Jogar (frontend chama POST /api/chutar)
+router.post('/chutar', auth, async (req, res, next) => {
   try {
     const { letra } = req.body;
     const rodada = await gameController.lidarComChute(letra);
@@ -28,21 +28,11 @@ router.post('/play', auth, async (req, res, next) => {
   }
 });
 
-// Tempo esgotado
-router.post('/timeout', auth, async (req, res, next) => {
+// Usar poder (frontend chama POST /api/usar-poder)
+router.post('/usar-poder', auth, async (req, res, next) => {
   try {
-    const estado = await gameController.lidarComTempoEsgotado();
-    res.json(estado);
-  } catch (err) {
-    next(err);
-  }
-});
-
-// Usar poder
-router.post('/power', auth, async (req, res, next) => {
-  try {
-    const { poderId, jogadorQueUsou } = req.body;
-    const resultado = await gameController.lidarComPoder(poderId, jogadorQueUsou);
+    const { poderId, jogador } = req.body;
+    const resultado = await gameController.lidarComPoder(poderId, jogador);
     res.json(resultado);
   } catch (err) {
     next(err);
