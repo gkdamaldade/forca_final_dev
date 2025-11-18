@@ -1,0 +1,68 @@
+{
+  "info": {
+    "name": "Forca API",
+    "_postman_id": "c6b0f7f4-17bd-46c8-8c41-7f1b5e1fe001",
+    "description": "Cole\u00e7\u00e3o de requests para a Forca API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/health"
+      }
+    },
+    {
+      "name": "Listar categorias",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/categories"
+      }
+    },
+    {
+      "name": "Palavra aleat\u00f3ria (sem filtro)",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/words/random"
+      }
+    },
+    {
+      "name": "Palavra aleat\u00f3ria (por slug)",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/words/random?category=animais"
+      }
+    },
+    {
+      "name": "Registrar resultado",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"playerName\": \"Matheus\", \"wordId\": 1, \"won\": true, \"attempts\": 6, \"errors\": 2, \"durationMs\": 42000}"
+        },
+        "url": "{{baseUrl}}/api/results"
+      }
+    },
+    {
+      "name": "Leaderboard",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/results/leaderboard?limit=10&period=month"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    }
+  ]
+}

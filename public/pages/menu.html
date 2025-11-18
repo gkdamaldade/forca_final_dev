@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Menu - Jogo da Forca</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="public/src/styles/menu.css">
+  <style>
+
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap');
+
+  </style>
+</head>
+<body>
+
+  <!-- CABEÇALHO -->
+  <header>
+    <div class="icon-img">
+      <img src="public/assets/images/bob1.png" alt="">
+    </div>
+
+    <div class="fonte_titulo">MENU</div>
+
+    <div class="icon-img">
+      <img src="public/assets/images/patrick1.png" alt="">
+    </div>
+  </header>
+
+  <!-- MENU -->
+  <div class="menu-container">
+    <button class="menu-button">JOGAR</button> 
+    <div class="circle-buttons">
+        <button class="circle-button"><i class="fas fa-medal"></i></button>
+        <button class="circle-button"><i class="fas fa-shopping-cart"></i></button>
+        </div>
+</div>
+<!---->
+<script src="/socket.io/socket.io.js"></script>
+<script src="public/src/js/menu.js"></script>
+
+</body>
+</html>

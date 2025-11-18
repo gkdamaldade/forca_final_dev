@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Tela de Jogo - Jogo da Forca</title>
+    <link rel="stylesheet" href="/public/src/styles/game.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap');
+    </style>
+</head>
+<body>
+    <div class="jogo-container">
+        <!-- Linha superior: Jogadores e vidas -->
+        <div class="jogo-top">
+            <div class="jogador">
+                <h2>Jogador 1</h2>
+                <div class="vidas">
+                    <span class="vida"></span>
+                    <span class="vida"></span>
+                </div>
+            </div>
+            <div class="jogador">
+                <div class="vidas">
+                    <span class="vida"></span>
+                    <span class="vida"></span>
+                </div>
+                <h2>Jogador 2</h2>
+            </div>
+        </div>
+
+        <!-- Bonecos -->
+        <div class="bonecos">
+            <div class="boneco">
+                <!-- Suba imagem do boneco -->
+                <img src="/public/assets/images/bob1.png" alt="">
+            </div>
+            <div class="boneco">
+                <!-- Suba imagem do boneco -->
+                <img src="/public/assets/images/patrick1.png" alt="">
+            </div>
+        </div>
+
+        <!-- Categoria e tempo -->
+        <div class="info-central">
+            <div class="categoria">Categoria X</div>
+            <div class="tempo">15s</div>
+            <div class="versus">Vs</div>
+        </div>
+
+        <!-- Palavras -->
+        <div class="palavras">
+            <div class="palavra">_ _ _ _ _ _ _</div>
+            <div class="palavra">_ _ _ _ _ _ _</div>
+        </div>
+
+        <!-- Poderes + Teclado -->
+        <div class="area-inferior">
+            <div class="poderes-jogador">
+                <button class="poder"><img src="/public/assets/images/ocultar_dica.png" alt="Dica"></button>
+                <button class="poder"><img src="/public/assets/images/ocultar_letra.png" alt="Tempo"></button>
+                <button class="poder"><img src="/public/assets/images/palpite.png" alt="Pular"></button>
+            </div>
+            
+            <div class="teclado">
+                <div class="linha-teclado">
+                <button class="tecla">A</button>
+                <button class="tecla">B</button>
+                <button class="tecla">C</button>
+                <button class="tecla">D</button>
+                <button class="tecla">E</button>
+                <button class="tecla">F</button>
+                <button class="tecla">G</button>
+                <button class="tecla">H</button>
+                <button class="tecla">I</button>
+                <button class="tecla">J</button>
+                </div>
+                <div class="linha-teclado">
+                <button class="tecla">K</button>
+                <button class="tecla">L</button>
+                <button class="tecla">M</button>
+                <button class="tecla">N</button>
+                <button class="tecla">O</button>
+                <button class="tecla">P</button>
+                <button class="tecla">Q</button>
+                <button class="tecla">R</button>
+                <button class="tecla">S</button>
+                <button class="tecla">T</button>
+                </div>
+                <div class="linha-teclado">
+                <button class="tecla">U</button>
+                <button class="tecla">V</button>
+                <button class="tecla">W</button>
+                <button class="tecla">X</button>
+                <button class="tecla">Y</button>
+                <button class="tecla">Z</button>
+                </div>
+            </div>
+            
+
+            <div class="poderes-jogador">
+                <button class="poder"><img src="/public/assets/images/vida_extra.png" alt="Dica"></button>
+                <button class="poder"><img src="/public/assets/images/Tirar_vida.png" alt="Tempo"></button>
+                <button class="poder"><img src="/public/assets/images/liberar_letra.png" alt="Pular"></button>
+            </div>
+        </div>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="/public/src/js/socket.js"></script>
+    <script type="module" src="/public/src/js/game.js"></script>
+</body>
+
+</html>
+

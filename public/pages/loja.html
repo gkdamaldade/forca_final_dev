@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Loja — Jogo da Forca</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="public/src/styles/loja.css" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap');
+  </style>
+</head>
+<body>
+
+  <!-- ===== Header ===== -->
+  <header>
+    <div class="header-left">
+      <a href="menu.html" class="btn-voltar">
+        <i class="fa-solid fa-angle-left" aria-hidden="true"></i>
+      </a>
+    </div>
+
+    <div class="header-center">
+      <span class="icon-img">
+        <img src="public/assets/images/bob1.png" alt="Ícone esquerdo" />
+      </span>
+      <h1 class="fonte_titulo">LOJA</h1>
+      <span class="icon-img">
+        <img src="public/assets/images/patrick1.png" alt="Ícone direito" />
+      </span>
+    </div>
+
+    <div class="header-right">
+      <div class="moedas" aria-label="Moedas do jogador">
+        <i class="fa-solid fa-coins moeda-icon" aria-hidden="true"></i>
+        <span id="moedas-atual">0</span>
+      </div>
+      <a href="#comprar-moedas" class="btn-comprar-moedas">Comprar moedas</a>
+    </div>
+  </header>
+
+  <!-- ===== Painel da Loja + Cards ===== -->
+  <main class="loja-container" role="main">
+    <section class="card-area">
+      <button class="arrow-btn left" aria-label="Anterior"><i class="fa-solid fa-angle-left"></i></button>
+
+      <article class="card">
+        <header class="card-header">
+          <img src="" alt="Ícone do poder" />
+          <h2 class="habilidade-nome"></h2>
+        </header>
+        <p class="habilidade-desc"></p>
+        <p class="preco"></p>
+        <button class="btn-comprar" type="button">Comprar</button>
+      </article>
+
+      <button class="arrow-btn right" aria-label="Próximo"><i class="fa-solid fa-angle-right"></i></button>
+    </section>
+
+    <div class="indicadores" aria-hidden="true"></div>
+  </main>
+
+  <!-- ===== Modal de Compra de Moedas ===== -->
+  <div id="comprar-moedas" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-titulo" aria-describedby="modal-desc">
+    <div class="modal-backdrop" aria-hidden="true"></div>
+    <div class="modal-dialog" role="document">
+      <header class="modal-header">
+        <h2 id="modal-titulo" class="modal-title">Comprar moedas</h2>
+        <a href="#" class="btn-fechar-modal">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </a>
+      </header>
+
+      <p id="modal-desc" class="modal-subtitle">Escolha um pacote para turbinar seu jogo. (Simulação)</p>
+
+      <div class="pacotes-grid">
+        <!-- Pacotes -->
+        <label class="pacote">
+          <input type="radio" name="pacote" checked />
+          <div class="pacote-box destaque">
+            <div class="pacote-top"><i class="fa-solid fa-bolt"></i><span class="pacote-nome">Start</span></div>
+            <div class="pacote-conteudo">
+              <div class="pacote-moedas"><i class="fa-solid fa-coins"></i> 1.000</div>
+              <div class="pacote-preco">R$ 4,90</div>
+            </div>
+          </div>
+        </label>
+
+        <label class="pacote">
+          <input type="radio" name="pacote" />
+          <div class="pacote-box">
+            <div class="pacote-top"><i class="fa-solid fa-fire"></i><span class="pacote-nome">Turbo</span></div>
+            <div class="pacote-conteudo">
+              <div class="pacote-moedas"><i class="fa-solid fa-coins"></i> 2.500</div>
+              <div class="pacote-preco">R$ 9,90</div>
+            </div>
+          </div>
+        </label>
+
+        <label class="pacote">
+          <input type="radio" name="pacote" />
+          <div class="pacote-box">
+            <div class="pacote-top"><i class="fa-solid fa-gem"></i><span class="pacote-nome">Pro</span></div>
+            <div class="pacote-conteudo">
+              <div class="pacote-moedas"><i class="fa-solid fa-coins"></i> 5.000</div>
+              <div class="pacote-preco">R$ 19,90</div>
+            </div>
+          </div>
+        </label>
+
+        <label class="pacote">
+          <input type="radio" name="pacote" />
+          <div class="pacote-box">
+            <div class="pacote-top"><i class="fa-solid fa-crown"></i><span class="pacote-nome">Ultra</span></div>
+            <div class="pacote-conteudo">
+              <div class="pacote-moedas"><i class="fa-solid fa-coins"></i> 10.000</div>
+              <div class="pacote-preco">R$ 49,90</div>
+            </div>
+          </div>
+        </label>
+      </div>
+
+      <div class="pagamento">
+        <span class="metodo-label">Método:</span>
+        <div class="metodo-opcoes" role="group" aria-label="Método de pagamento">
+          <label class="metodo"><input type="radio" name="metodo" checked /><span class="metodo-chip"><i class="fa-brands fa-cc-visa"></i> Cartão</span></label>
+          <label class="metodo"><input type="radio" name="metodo" /><span class="metodo-chip"><i class="fa-solid fa-barcode"></i> Boleto</span></label>
+          <label class="metodo"><input type="radio" name="metodo" /><span class="metodo-chip"><i class="fa-brands fa-pix"></i> Pix</span></label>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <a href="#" class="btn-confirmar">Confirmar compra</a>
+        <a href="#" class="btn-cancelar">Cancelar</a>
+      </div>
+    </div>
+  </div>
+  <script src="public/src/js/loja.js"></script>
+  </body>
+</html>

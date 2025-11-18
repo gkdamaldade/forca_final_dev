@@ -1,0 +1,66 @@
+
+openapi: 3.0.3
+info:
+  title: Forca API
+  version: 1.0.0
+  description: API para jogo da Forca por categorias.
+servers:
+  - url: http://localhost:3000
+paths:
+  /health:
+    get:
+      summary: Healthcheck
+      responses:
+        '200': { description: OK }
+  /api/categories:
+    get:
+      summary: Listar categorias ativas
+      responses:
+        '200':
+          description: Lista de categorias
+  /api/words/random:
+    get:
+      summary: Obter palavra aleatória
+      parameters:
+        - in: query
+          name: categoryId
+          schema: { type: integer }
+        - in: query
+          name: category
+          schema: { type: string }
+      responses:
+        '200': { description: Palavra retornada }
+        '404': { description: Nenhuma palavra }
+  /api/results:
+    post:
+      summary: Registrar resultado
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                playerName: { type: string }
+                playerEmail: { type: string }
+                wordId: { type: integer }
+                won: { type: boolean }
+                attempts: { type: integer }
+                errors: { type: integer }
+                durationMs: { type: integer }
+              required: [ wordId, won ]
+      responses:
+        '201': { description: Criado }
+        '400': { description: Erro de validação }
+  /api/results/leaderboard:
+    get:
+      summary: Ranking
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, default: 10 }
+        - in: query
+          name: period
+          schema: { type: string, enum: [all, week, month], default: all }
+      responses:
+        '200': { description: OK }

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sessão - Sala de Espera</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap">
+    <link rel="stylesheet" href="/public/src/styles/sessao_preparacao.css">
+    <style>
+       
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="icon-img">
+            <img src="/public/assets/images/bob1.png" alt="Ícone Jogo da Forca">
+        </div>
+        
+        <div class="titulo-sessao">EM SESSÃO</div>
+
+        <div class="icon-img">
+            <img src="/public/assets/images/patrick1.png" alt="Ícone Jogo da Forca">
+        </div>
+    </header>
+
+    <div class="sessao-container">
+        <div class="jogadores">
+            <!-- Jogador 1 -->
+            <div class="jogador">
+                <h2>Jogador 1</h2>
+                <div class="poderes-container">
+                    <button class="poder" type="button" aria-label="Dica">
+                        <img src="/public/assets/images/liberar_letra.png" alt="">
+                    </button>
+                    <button class="poder" type="button" aria-label="Tempo +">
+                        <img src="/public/assets/images/ocultar_dica.png" alt="">
+                    </button>
+                    <button class="poder" type="button" aria-label="Pular">
+                        <img src="/public/assets/images/ocultar_letra.png" alt="">
+                    </button>
+                    <button class="poder" type="button" aria-label="Revelar Letra">
+                        <img src="/public/assets/images/Tirar_vida.png" alt="">
+                    </button>
+                    <button class="poder" type="button" aria-label="Congelar">
+                        <img src="/public/assets/images/vida_extra.png" alt="">
+                    </button>
+                    <button class="poder" type="button" aria-label="Barreira">
+                        <img src="/public/assets/images/palpite.png" alt="">
+                    </button>
+                </div>
+            </div>
+
+            <!-- Jogador 2 -->
+            <div class="jogador">
+                <h2>Jogador 2</h2>
+                <div class="poderes-container">
+                    <button class="poder" type="button" aria-label="Dica">
+                        <img src="/public/assets/images/liberar_letra.png" alt="">
+                    </button>
+                    <button class="poder" type="button" aria-label="Tempo +">
+                        <img src="/public/assets/images/ocultar_dica.png" alt="">
+                    </button>
+                    <button class="poder" type="button" aria-label="Pular">
+                        <img src="/public/assets/images/ocultar_letra.png" alt="">
+                    </button>
+                    <button class="poder" type="button" aria-label="Revelar Letra">
+                        <img src="/public/assets/images/Tirar_vida.png" alt="">
+                    </button>
+                    <button class="poder" type="button" aria-label="Congelar">
+                        <img src="/public/assets/images/vida_extra.png" alt="">
+                    </button>
+                    <button class="poder" type="button" aria-label="Barreira">
+                        <img src="/public/assets/images/palpite.png" alt="">
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Código -->
+        <div class="codigo-container">
+            Código:
+            <span>CDVDFHG</span>
+        </div>
+
+        <!-- Contador -->
+        <div class="contador">( 0 / 2 )</div>
+
+        <!-- Botão -->
+        <button class="botao-pronto">Pronto</button>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="/public/src/js/socket.js"></script>
+    <script type="module" src="/public/src/js/sessao_preparacao.js"></script>
+</body>
+</html>
