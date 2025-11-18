@@ -1,5 +1,5 @@
 
-const { sequelize, models } = require('../models').default;
+const { sequelize, models } = require('../models');
 
 async function getRandomWord({ categoryId, category, onlyActive = true }) {
   const where = {};
