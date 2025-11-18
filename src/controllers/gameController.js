@@ -10,6 +10,20 @@ function iniciarNovoJogo(player1Id, player2Id) {
     console.log("Controller: Criando novo jogo...");
     const { palavra, categoria } = getNovaPalavra();
     jogoAtual = new Game(palavra, categoria, player1Id, player2Id); // se o construtor aceitar
+    try {
+        await models.GameM.create({
+            word: palavra,
+            player1_id: player1Id,
+            player2_id: player2Id,    
+            turno_atual: 1,
+            estado: jogoAtual.getEstado(),
+            status_final: null,
+            vencedor_id: null
+        });
+    } catch (err) {
+        console.error("Erro ao salvar novo jogo no banco:", err);
+    }
+
     return jogoAtual.getEstado();
 }
 
@@ -18,28 +32,23 @@ function iniciarNovoJogo(player1Id, player2Id) {
 // Certifique-se de que este controller tenha:
 // const { models } = require('../models'); // ajuste o caminho conforme sua estrutura
 async function lidarComChute(letra) {
-  // Processa o chute no jogo em memória
-  jogoAtual.chutarLetra(letra);
+    jogoAtual.chutarLetra(letra);
 
-  // Se a partida terminou, persiste no banco
-  if (jogoAtual.status === "vitoria" || jogoAtual.status === "derrota") {
-    try {
-      await models.Partida.create({
-        palavra: jogoAtual.palavraSecreta,
-        categoria: jogoAtual.categoria,
-        status: jogoAtual.status,
-        erros: jogoAtual.erros,
-        vencedor: jogoAtual.status === "vitoria" ? jogoAtual.turn : null
-      });
-    } catch (err) {
-      console.error("Erro ao salvar Partida no banco:", err);
-      // opcional: lançar o erro para ser tratado por middleware
-      // throw err;
+    if (jogoAtual.status === "vitoria" || jogoAtual.status === "derrota") {
+        try {
+            await models.GameM.update({
+                estado: jogoAtual.getEstado(),
+                status_final: jogoAtual.status,
+                vencedor_id: jogoAtual.status === "vitoria" ? jogoAtual.turn : null
+            }, {
+                where: { word: jogoAtual.palavraSecreta }
+            });
+        } catch (err) {
+            console.error("Erro ao atualizar GameM no banco:", err);
+        }
     }
-  }
 
-  // Retorna o estado atualizado
-  return jogoAtual.getEstado();
+    return jogoAtual.getEstado();
 }
 
 // function lidarComChute(letra) {
@@ -49,12 +58,23 @@ async function lidarComChute(letra) {
 //     return jogoAtual.getEstado();
 // }
 
-function lidarComTempoEsgotado() {
+async function lidarComTempoEsgotado() {
     if (!jogoAtual || jogoAtual.status !== "jogando") {
         throw new Error("Jogo não iniciado.");
     }
-    console.log("Tempo esgotado! Trocando turno...");
     jogoAtual.trocarTurno();
+
+    try {
+        await models.GameM.update({
+            turno_atual: jogoAtual.turn,
+            estado: jogoAtual.getEstado()
+        }, {
+            where: { word: jogoAtual.palavraSecreta }
+        });
+    } catch (err) {
+        console.error("Erro ao atualizar turno no banco:", err);
+    }
+
     return jogoAtual.getEstado();
 }
 
