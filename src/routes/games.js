@@ -1,4 +1,4 @@
-
+// routes/games.js
 const express = require('express');
 const router = express.Router();
 
@@ -20,7 +20,8 @@ router.post('/novo-jogo', async (req, res, next) => {
 // Jogar (chute de letra)
 router.post('/play', auth, async (req, res, next) => {
   try {
-    const rodada = await gameController.lidarComChute(req.body.letra);
+    const { letra } = req.body;
+    const rodada = await gameController.lidarComChute(letra);
     res.json(rodada);
   } catch (err) {
     next(err);
