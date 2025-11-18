@@ -11,7 +11,7 @@ const api = require('./routes/index.js'); // Rotas principais (index.js)
 const salasRouter = require('./routes/salas'); // 
 
 const { errorHandler } = require('./middleware/error');
-const { sequelize } = require('./models').default;
+const { sequelize } = require('./models');
 
 const app = express();
 
