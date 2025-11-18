@@ -5,16 +5,17 @@ const auth = require('../middleware/auth');
 
 // Criar nova partida
 // routes/games.js
-router.post('/novo-jogo', (req, res) => {
+router.post('/novo-jogo', async (req, res, next) => {
     try {
-        const { player1Id, player2Id } = req.body; // IDs enviados pelo cliente
+        const { player1Id, player2Id } = req.body;
         const estadoDoJogo = await gameController.iniciarNovoJogo(player1Id, player2Id);
-        res.status(201).json(estadoDoJogo); // 201 Created
+        res.status(201).json(estadoDoJogo);
     } catch (error) {
         console.error("Erro em POST /novo-jogo:", error.message);
-        res.status(500).json({ message: error.message });
+        next(error);
     }
 });
+
 
 
 // Jogar (chute de letra)
