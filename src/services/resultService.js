@@ -1,6 +1,6 @@
 
 const { Op } = require('sequelize');
-const { models } = require('../models').default;
+const { models } = require('../models');
 
 function computePoints({ won, errors }) {
   if (!won) return 0;
