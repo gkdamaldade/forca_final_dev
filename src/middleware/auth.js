@@ -7,5 +7,10 @@ const auth = jwt({
   issuer: process.env.JWT_ISSUER,
   algorithms: ['HS256']
 });
+// middleware/auth.js
+module.exports = function (req, res, next) {
+  // sua lógica de autenticação aqui
+  // se estiver tudo certo:
+  next();
+};
 
-module.exports = { auth };
