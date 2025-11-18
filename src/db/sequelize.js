@@ -1,30 +1,38 @@
-const { Sequelize } = require("sequelize");
+// src/db/sequelize.js
+const { Sequelize } = require('sequelize');
+require('.env').config();
 
-const sequelize = new Sequelize(
-  process.env.DB_NAME,
-  process.env.DB_USER,
-  process.env.DB_PASSWORD,
-  {
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    dialect: "postgres",
+const {
+  DB_HOST,
+  DB_PORT,
+  DB_NAME,
+  DB_USER,
+  DB_PASS,
+  DB_DIALECT
+} = process.env;
 
-    dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false,
-      },
+const sequelize = new Sequelize(DB_NAME, DB_USER, DB_PASS, {
+  host: DB_HOST,
+  port: DB_PORT,
+  dialect: DB_DIALECT,
+
+  // 🔥 Supabase + pgBouncer
+  dialectOptions: {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false
     },
+    keepAlive: true
+  },
 
-    pool: {
-      max: 5,   // Importante! Free tier tem limite baixo
-      min: 0,
-      acquire: 30000,
-      idle: 10000,
-    },
+  // 🔥 Importante! pgBouncer NÃO aceita muitos connections
+  pool: {
+    max: 1,
+    min: 0,
+    idle: 10000
+  },
 
-    logging: console.log,
-  }
-);
+  logging: false
+});
 
-module.exports = sequelize;
+module.exports = { sequelize };
