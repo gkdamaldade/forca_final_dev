@@ -1,20 +1,28 @@
 // src/services.js
 
-const listaDePalavras = [
-    { palavra: "JAVASCRIPT", categoria: "PROGRAMAÇÃO" },
-    { palavra: "BACKEND", categoria: "PROGRAMAÇÃO" },
-    { palavra: "SEQUELIZE", categoria: "BANCO DE DADOS" },
-    { palavra: "FORCA", categoria: "JOGOS" }
-];
+const { models } = require('./models');
+const { Op } = require("sequelize");
 
-/**
- * Pega uma palavra aleatória da nossa lista.
- */
-function getNovaPalavra() {
-    console.log("Serviço: Fornecendo uma nova palavra (mock)...");
-    const indiceAleatorio = Math.floor(Math.random() * listaDePalavras.length);
-    return listaDePalavras[indiceAleatorio];
+async function getNovaPalavra() {
+
+    // 1. Buscar uma palavra aleatória que ainda não foi usada
+    const palavra = await models.Palavra.findOne({
+        where: { usada: false },
+        order: [models.sequelize.random()] // ORDER BY RANDOM()
+    });
+
+    if (!palavra) {
+        throw new Error("Não há mais palavras disponíveis no banco.");
+    }
+
+    // 2. Marcar como usada (opcional)
+    await palavra.update({ usada: true });
+
+    // 3. Retornar no formato que o Game espera
+    return {
+        palavra: palavra.palavra,
+        categoria: palavra.categoria
+    };
 }
 
-// Use CommonJS (module.exports)
 module.exports = { getNovaPalavra };
