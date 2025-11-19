@@ -92,14 +92,25 @@ function iniciarJogo(dados) {
     console.log('Tipo de dados.jogador:', typeof dados.jogador, dados.jogador);
     console.log('Tipo de dados.turno:', typeof dados.turno, dados.turno);
     
-    meuNumeroJogador = parseInt(dados.jogador); // Garante que é um número
+    meuNumeroJogador = parseInt(dados.jogador) || null; // Garante que é um número
     meuSocketId = dados.meuSocketId || getMeuSocketId(); // Usa socketId do servidor ou busca localmente
     adversarioNome = dados.adversario;
     adversarioSocketId = dados.adversarioSocketId;
     palavraSecreta = dados.palavraSecreta || dados.palavra; // Usa palavraSecreta se disponível
-    palavraExibida = dados.palavra; // Palavra oculta para exibição
+    palavraExibida = dados.palavra || ''; // Palavra oculta para exibição
     turnoAtual = parseInt(dados.turno) || 1; // Garante que sempre tenha um turno inicial e seja um número
-    categoria = dados.categoria;
+    categoria = dados.categoria || 'Geral';
+    
+    // Validação crítica: se meuNumeroJogador não foi definido, tenta usar o socketId para identificar
+    if (!meuNumeroJogador || meuNumeroJogador === 0) {
+        console.error('❌ meuNumeroJogador inválido! Dados recebidos:', dados);
+        // Tenta inferir pelo socketId
+        if (dados.meuSocketId && dados.adversarioSocketId) {
+            // Se meuSocketId está na primeira posição, sou jogador 1
+            // Isso é uma tentativa de fallback, mas o ideal é que o servidor sempre envie o número correto
+            console.warn('⚠️ Tentando inferir número do jogador pelo socketId (fallback)');
+        }
+    }
     
     console.log(`👤 Jogador ${meuNumeroJogador} (tipo: ${typeof meuNumeroJogador}) - Socket ID: ${meuSocketId}`);
     console.log(`🔄 Turno atual: ${turnoAtual} (tipo: ${typeof turnoAtual}), Meu número: ${meuNumeroJogador} (tipo: ${typeof meuNumeroJogador})`);
@@ -138,13 +149,24 @@ function iniciarJogo(dados) {
     atualizarTecladoDesabilitado(); // Desabilita letras já chutadas E bloqueia se não for o turno
     
     // Sempre inicia o timer se for o turno do jogador
-    if (turnoAtual === meuNumeroJogador) {
+    const turnoAtualNum = Number(turnoAtual) || 0;
+    const meuNumeroNum = Number(meuNumeroJogador) || 0;
+    
+    console.log(`🔄 Verificando turno para timer: turnoAtual=${turnoAtualNum}, meuNumero=${meuNumeroNum}, são iguais? ${turnoAtualNum === meuNumeroNum}`);
+    
+    if (turnoAtualNum === meuNumeroNum && meuNumeroNum > 0) {
         console.log(`✓ É meu turno! Iniciando timer...`);
-        iniciarTimer();
+        if (timerEl) {
+            iniciarTimer();
+        } else {
+            console.error('❌ timerEl não encontrado!');
+        }
     } else {
-        console.log(`✗ Não é meu turno. Turno atual: ${turnoAtual}, Meu número: ${meuNumeroJogador}`);
-        timerEl.textContent = 'Aguardando...';
-        timerEl.style.color = '#888';
+        console.log(`✗ Não é meu turno. Turno atual: ${turnoAtualNum}, Meu número: ${meuNumeroNum}`);
+        if (timerEl) {
+            timerEl.textContent = 'Aguardando...';
+            timerEl.style.color = '#888';
+        }
         // Garante que o teclado está desabilitado quando não é o turno
         atualizarTecladoDesabilitado();
     }
@@ -175,7 +197,9 @@ function processarJogada(dados) {
     letrasChutadas = new Set(dados.letrasChutadas || []);
     palavraExibida = dados.palavra;
     erros = dados.erros || 0;
-    turnoAtual = dados.turno || turnoAtual;
+    turnoAtual = parseInt(dados.turno) || turnoAtual; // Garante que seja um número
+    
+    console.log(`🔄 Turno atualizado após jogada: ${turnoAtual} (tipo: ${typeof turnoAtual})`);
     
     atualizarPalavraExibida();
     atualizarBonecosUI();
@@ -192,14 +216,19 @@ function processarJogada(dados) {
     // Limpa o timer anterior
     clearInterval(timerInterval);
     
-    // Se é meu turno, inicia o timer
-    if (turnoAtual === meuNumeroJogador && jogoEstaAtivo) {
-        console.log(`É meu turno agora (jogador ${meuNumeroJogador}), iniciando timer`);
+    // Se é meu turno, inicia o timer (usando comparação numérica)
+    const turnoAtualNum = Number(turnoAtual) || 0;
+    const meuNumeroNum = Number(meuNumeroJogador) || 0;
+    
+    if (turnoAtualNum === meuNumeroNum && meuNumeroNum > 0 && jogoEstaAtivo) {
+        console.log(`✓ É meu turno agora (jogador ${meuNumeroNum}), iniciando timer`);
         iniciarTimer();
     } else {
-        console.log(`Não é meu turno (jogador ${meuNumeroJogador}, turno atual: ${turnoAtual})`);
-        timerEl.textContent = 'Aguardando...';
-        timerEl.style.color = '#888';
+        console.log(`✗ Não é meu turno (jogador ${meuNumeroNum}, turno atual: ${turnoAtualNum})`);
+        if (timerEl) {
+            timerEl.textContent = 'Aguardando...';
+            timerEl.style.color = '#888';
+        }
         // Garante que o teclado está desabilitado quando não é o turno
         atualizarTecladoDesabilitado();
     }
@@ -212,16 +241,25 @@ function processarJogada(dados) {
 
 // --- 5. LÓGICA DE TEMPO E TURNO ---
 function iniciarTimer() {
+    if (!timerEl) {
+        console.error('❌ timerEl não encontrado! Não é possível iniciar o timer.');
+        return;
+    }
+    
     clearInterval(timerInterval);
     let segundos = 15;
     timerEl.textContent = `${segundos}s`;
     timerEl.style.color = 'white';
     
+    console.log(`⏱️ Timer iniciado: ${segundos}s`);
+    
     timerInterval = setInterval(() => {
         segundos--;
-        timerEl.textContent = `${segundos}s`;
+        if (timerEl) {
+            timerEl.textContent = `${segundos}s`;
+        }
         
-        if (segundos <= 5) {
+        if (segundos <= 5 && timerEl) {
             timerEl.style.color = '#ff5555';
         }
         
@@ -229,7 +267,11 @@ function iniciarTimer() {
             clearInterval(timerInterval);
             // Tempo esgotado - passa o turno automaticamente
             // O servidor não precisa ser notificado, apenas passa visualmente
-            console.log('Tempo esgotado!');
+            console.log('⏱️ Tempo esgotado!');
+            if (timerEl) {
+                timerEl.textContent = 'Tempo esgotado!';
+                timerEl.style.color = '#ff5555';
+            }
         }
     }, 1000);
 }
@@ -275,8 +317,14 @@ async function processarChute(letra) {
         return;
     }
     
-    // Verifica se é o turno do jogador
-    if (turnoAtual !== meuNumeroJogador) {
+    // Verifica se é o turno do jogador (usando comparação numérica)
+    const turnoAtualNum = Number(turnoAtual) || 0;
+    const meuNumeroNum = Number(meuNumeroJogador) || 0;
+    
+    console.log(`🎯 Verificando turno antes de chutar: turnoAtual=${turnoAtualNum}, meuNumero=${meuNumeroNum}, são iguais? ${turnoAtualNum === meuNumeroNum}`);
+    
+    if (turnoAtualNum !== meuNumeroNum || meuNumeroNum === 0) {
+        console.warn(`⚠️ Não é o turno do jogador! turnoAtual=${turnoAtualNum}, meuNumero=${meuNumeroNum}`);
         mostrarFeedback('Não é seu turno!', 'orange');
         return;
     }
@@ -303,8 +351,19 @@ async function processarChute(letra) {
 // --- 7. ATUALIZAÇÃO DE UI ---
 function atualizarPalavraExibida() {
     const palavraFormatada = palavraExibida || gerarPalavraOculta();
-    palavraP1_El.textContent = palavraFormatada;
-    palavraP2_El.textContent = palavraFormatada;
+    console.log(`📝 Atualizando palavra exibida: "${palavraFormatada}" (palavraExibida: "${palavraExibida}", palavraSecreta: "${palavraSecreta}")`);
+    
+    if (palavraP1_El) {
+        palavraP1_El.textContent = palavraFormatada;
+    } else {
+        console.error('❌ palavraP1_El não encontrado!');
+    }
+    
+    if (palavraP2_El) {
+        palavraP2_El.textContent = palavraFormatada;
+    } else {
+        console.error('❌ palavraP2_El não encontrado!');
+    }
 }
 
 function gerarPalavraOculta() {
@@ -336,11 +395,22 @@ function desabilitarTeclaVisual(letra) {
 
 function atualizarTecladoDesabilitado() {
     // Desabilita todas as letras já chutadas E quando não é o turno do jogador
-    if (!tecladoContainer) return;
+    if (!tecladoContainer) {
+        console.warn('⚠️ tecladoContainer não encontrado!');
+        return;
+    }
     
-    const eMeuTurno = turnoAtual === meuNumeroJogador && jogoEstaAtivo;
+    // Garante que os valores são números válidos
+    const turnoAtualNum = Number(turnoAtual) || 0;
+    const meuNumeroNum = Number(meuNumeroJogador) || 0;
     
-    console.log(`🔒 Atualizando teclado: eMeuTurno=${eMeuTurno}, turnoAtual=${turnoAtual}, meuNumero=${meuNumeroJogador}, jogoAtivo=${jogoEstaAtivo}`);
+    const eMeuTurno = turnoAtualNum === meuNumeroNum && jogoEstaAtivo && meuNumeroNum > 0;
+    
+    console.log(`🔒 Atualizando teclado: eMeuTurno=${eMeuTurno}, turnoAtual=${turnoAtualNum} (${typeof turnoAtual}), meuNumero=${meuNumeroNum} (${typeof meuNumeroJogador}), jogoAtivo=${jogoEstaAtivo}`);
+    
+    if (!eMeuTurno) {
+        console.log(`🔒 Bloqueando teclado: não é meu turno ou jogo não está ativo`);
+    }
     
     tecladoContainer.querySelectorAll('.tecla').forEach(btn => {
         const letra = btn.textContent;
@@ -427,10 +497,14 @@ function configurarTecladoVirtual() {
             return false;
         }
         
-        // Verifica se é o turno do jogador
-        if (turnoAtual !== meuNumeroJogador) {
+        // Verifica se é o turno do jogador (usando comparação numérica)
+        const turnoAtualNum = Number(turnoAtual) || 0;
+        const meuNumeroNum = Number(meuNumeroJogador) || 0;
+        
+        if (turnoAtualNum !== meuNumeroNum || meuNumeroNum === 0) {
             e.preventDefault();
             e.stopPropagation();
+            console.warn(`⚠️ Tentativa de chute fora do turno: turnoAtual=${turnoAtualNum}, meuNumero=${meuNumeroNum}`);
             mostrarFeedback('Não é seu turno!', 'orange');
             return false;
         }
@@ -465,9 +539,13 @@ function lidarComChuteDeTecladoFisico(e) {
             return false;
         }
         
-        // Verifica se é o turno do jogador
-        if (turnoAtual !== meuNumeroJogador) {
+        // Verifica se é o turno do jogador (usando comparação numérica)
+        const turnoAtualNum = Number(turnoAtual) || 0;
+        const meuNumeroNum = Number(meuNumeroJogador) || 0;
+        
+        if (turnoAtualNum !== meuNumeroNum || meuNumeroNum === 0) {
             e.preventDefault();
+            console.warn(`⚠️ Tentativa de chute (teclado físico) fora do turno: turnoAtual=${turnoAtualNum}, meuNumero=${meuNumeroNum}`);
             mostrarFeedback('Não é seu turno!', 'orange');
             return false;
         }
