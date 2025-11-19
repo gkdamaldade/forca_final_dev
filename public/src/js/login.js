@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       // SAME-ORIGIN: sem BACKEND_URL
-      const response = await fetch('/login', {
+      const response = await fetch('api/players/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         // Se a sua API usar cookie HttpOnly, descomente:
