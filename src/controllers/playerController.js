@@ -17,7 +17,8 @@ async function lidarCadastro(dados) {
     });
     return {
         id: novoPlayer.id,
-        username: novoPlayer.name,
+        // alterado aqui
+        username: novoPlayer.nome,
         email: novoPlayer.email
     };
 }
