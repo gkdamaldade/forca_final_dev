@@ -1,23 +1,38 @@
-
-const { DataTypes, Model } = require('sequelize');
+const { Model, DataTypes } = require('sequelize');
 
 class Word extends Model {
   static initModel(sequelize) {
-    Word.init(
-      {
-        id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-        text: { type: DataTypes.STRING(120), allowNull: false },
-        hint: { type: DataTypes.STRING(255), allowNull: true },
-        active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
-        category_id: { type: DataTypes.INTEGER, allowNull: false }
+    Word.init({
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
       },
-      { sequelize, modelName: 'Word', tableName: 'words' }
-    );
+      palavra: {
+        type: DataTypes.STRING,
+        allowNull: false
+      },
+      categoria: {
+        type: DataTypes.STRING,
+        allowNull: false
+      },
+      dificuldade: {
+        type: DataTypes.STRING,
+        allowNull: false
+      },
+      usada: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+      }
+    }, {
+      sequelize,
+      tableName: "palavra",
+      modelName: "Palavra",
+      timestamps: false
+    });
+
     return Word;
   }
-  static associate(models) {
-    this.belongsTo(models.Category, { foreignKey: 'category_id', as: 'category' });
-    this.hasMany(models.Result, { foreignKey: 'word_id', as: 'results' });
-  }
 }
+
 module.exports = Word;
