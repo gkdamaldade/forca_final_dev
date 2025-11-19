@@ -16,7 +16,7 @@ const h2Jogador2 = document.querySelector('.jogador:nth-child(2) h2');
 const poderesP1Container = document.querySelector('.area-inferior .poderes-jogador:nth-child(1)');
 const poderesP2Container = document.querySelector('.area-inferior .poderes-jogador:nth-child(3)');
 
-
+const BACKEND_URL = "/api";
 
 // Simulação de Poderes Equipados (Isso viria do banco futuramente)
 const poderP1 = 'orochimaru'; // P1: Vida Extra
