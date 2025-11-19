@@ -6,6 +6,9 @@ const categoria = urlParams.get('categoria') || 'Geral';
 const token = localStorage.getItem('token');
 const nome = JSON.parse(atob(token.split('.')[1])).nome;
 
+// Identificador único para esta instância da página (útil para debug e garantir unicidade)
+const instanceId = `${nome}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
 document.querySelector('.codigo-container span').textContent = sala;
 
 let jogadoresProntos = new Set();
@@ -26,8 +29,10 @@ aoReceberEvento((evento) => {
     const totalProntos = evento.total || jogadoresProntos.size;
     document.querySelector('.contador').textContent = `( ${totalProntos} / 2 )`;
     
-    // Se o evento é do próprio usuário, desabilita o botão
-    if (evento.nome === nome) {
+    // Se o evento é do próprio usuário E o usuário ainda não está marcado como pronto localmente
+    // Isso evita que múltiplas abas com o mesmo nome afetem umas às outras
+    if (evento.nome === nome && !usuarioPronto) {
+      console.log(`[${instanceId}] Usuário ${nome} marcado como pronto via evento do servidor`);
       usuarioPronto = true;
       botaoPronto.disabled = true;
       botaoPronto.textContent = 'Pronto!';
@@ -49,8 +54,12 @@ aoReceberEvento((evento) => {
 
 // Envia evento de "pronto" ao clicar no botão
 botaoPronto.addEventListener('click', () => {
-  if (usuarioPronto) return; // Evita múltiplos cliques
+  if (usuarioPronto) {
+    console.log(`[${instanceId}] Tentativa de clicar novamente no botão pronto - ignorado`);
+    return; // Evita múltiplos cliques
+  }
   
+  console.log(`[${instanceId}] Usuário ${nome} clicou em pronto`);
   usuarioPronto = true;
   botaoPronto.disabled = true;
   botaoPronto.textContent = 'Pronto!';
