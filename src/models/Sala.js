@@ -18,7 +18,6 @@ class Sala extends Model {
   }
 
   static associate(models) {
-    this.hasMany(models.Player, { foreignKey: 'sala_id', as: 'players' });
     this.hasMany(models.Result, { foreignKey: 'sala_id', as: 'results' });
     this.hasMany(models.GameM, { foreignKey: 'sala_id', as: 'games' }); // se quiser vincular jogos à sala
   }
