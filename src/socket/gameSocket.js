@@ -96,7 +96,9 @@ module.exports = function(io) {
             palavra: estado.palavra, // Palavra oculta para exibição
             palavraSecreta: game.word, // Palavra completa (para lógica)
             turno: game.turno,
-            categoria: game.categoria
+            categoria: game.categoria,
+            meuSocketId: j1.id, // Socket ID deste jogador para identificação única
+            adversarioSocketId: j2.id // Socket ID do adversário
           });
 
           io.to(j2.id).emit('eventoJogo', {
@@ -106,7 +108,9 @@ module.exports = function(io) {
             palavra: estado.palavra, // Palavra oculta para exibição
             palavraSecreta: game.word, // Palavra completa (para lógica)
             turno: game.turno,
-            categoria: game.categoria
+            categoria: game.categoria,
+            meuSocketId: j2.id, // Socket ID deste jogador para identificação única
+            adversarioSocketId: j1.id // Socket ID do adversário
           });
         }
       }
@@ -114,6 +118,14 @@ module.exports = function(io) {
       if (msg.tipo === 'jogada') {
         // Verifica se é o turno do jogador
         const jogadorAtual = game.players.find(p => p.id === socket.id);
+        if (!jogadorAtual) {
+          socket.emit('eventoJogo', {
+            tipo: 'erro',
+            mensagem: 'Jogador não encontrado na sala!'
+          });
+          return;
+        }
+        
         const numeroJogador = game.players.indexOf(jogadorAtual) + 1;
         
         if (numeroJogador !== game.turno) {
@@ -129,9 +141,12 @@ module.exports = function(io) {
         const resultado = game.gameInstance.chutarLetra(msg.letra);
         const estado = game.gameInstance.getEstado();
         
-        // Se a jogada foi válida, troca o turno
+        console.log(`Jogada processada: letra=${msg.letra}, resultado=${resultado}, turno atual=${game.turno}`);
+        
+        // Se a jogada foi válida (não repetida) e o jogo continua, troca o turno
         if (resultado !== 'repetida' && game.gameInstance.status === 'jogando') {
           game.turno = game.turno === 1 ? 2 : 1;
+          console.log(`Turno trocado para: ${game.turno}`);
         }
 
         // Envia o resultado para todos na sala

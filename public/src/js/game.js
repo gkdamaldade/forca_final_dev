@@ -17,7 +17,9 @@ const h2Jogador2 = document.querySelector('.jogador:nth-child(2) h2');
 
 // --- 2. ESTADO DO JOGO ---
 let meuNumeroJogador = null; // 1 ou 2
+let meuSocketId = null; // Socket ID deste jogador (para identificação única)
 let adversarioNome = '';
+let adversarioSocketId = null; // Socket ID do adversário
 let palavraSecreta = '';
 let palavraExibida = '';
 let turnoAtual = 1;
@@ -78,12 +80,17 @@ function configurarListenersSocket() {
 }
 
 function iniciarJogo(dados) {
+    console.log('Iniciando jogo com dados:', dados);
     meuNumeroJogador = dados.jogador;
+    meuSocketId = dados.meuSocketId || getMeuSocketId(); // Usa socketId do servidor ou busca localmente
     adversarioNome = dados.adversario;
+    adversarioSocketId = dados.adversarioSocketId;
     palavraSecreta = dados.palavraSecreta || dados.palavra; // Usa palavraSecreta se disponível
     palavraExibida = dados.palavra; // Palavra oculta para exibição
-    turnoAtual = dados.turno;
+    turnoAtual = dados.turno || 1; // Garante que sempre tenha um turno inicial
     categoria = dados.categoria;
+    
+    console.log(`Jogador ${meuNumeroJogador} - Socket ID: ${meuSocketId}, Adversário Socket ID: ${adversarioSocketId}`);
     
     // Atualiza nomes dos jogadores
     if (meuNumeroJogador === 1) {
@@ -102,21 +109,50 @@ function iniciarJogo(dados) {
     atualizarPalavraExibida();
     atualizarBonecosUI();
     atualizarTurnoUI();
+    atualizarTecladoDesabilitado(); // Desabilita letras já chutadas
     
+    // Sempre inicia o timer se for o turno do jogador
     if (turnoAtual === meuNumeroJogador) {
+        console.log(`É meu turno (jogador ${meuNumeroJogador}), iniciando timer`);
         iniciarTimer();
+    } else {
+        console.log(`Não é meu turno (jogador ${meuNumeroJogador}, turno atual: ${turnoAtual})`);
+        timerEl.textContent = 'Aguardando...';
+        timerEl.style.color = '#888';
     }
 }
 
 function processarJogada(dados) {
-    letrasChutadas = new Set(dados.letrasChutadas);
+    console.log('Processando jogada:', dados);
+    
+    // Se a letra foi repetida, reabilita a tecla (não foi processada)
+    if (dados.resultado === 'repetida') {
+        const btn = [...tecladoContainer.querySelectorAll('.tecla')]
+            .find(b => b.textContent === dados.letra);
+        if (btn) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+        }
+        mostrarFeedback('Letra já foi chutada!', 'orange');
+        
+        // Se ainda é meu turno, reinicia o timer
+        if (turnoAtual === meuNumeroJogador && jogoEstaAtivo) {
+            iniciarTimer();
+        }
+        return;
+    }
+    
+    // Atualiza estado apenas se a jogada foi válida
+    letrasChutadas = new Set(dados.letrasChutadas || []);
     palavraExibida = dados.palavra;
-    erros = dados.erros;
-    turnoAtual = dados.turno;
+    erros = dados.erros || 0;
+    turnoAtual = dados.turno || turnoAtual;
     
     atualizarPalavraExibida();
     atualizarBonecosUI();
     atualizarTurnoUI();
+    atualizarTecladoDesabilitado(); // Atualiza teclado com letras já chutadas
     
     // Mostra feedback visual da jogada
     if (dados.resultado === 'acerto') {
@@ -125,11 +161,17 @@ function processarJogada(dados) {
         mostrarFeedback('✗ Letra incorreta!', 'red');
     }
     
+    // Limpa o timer anterior
+    clearInterval(timerInterval);
+    
     // Se é meu turno, inicia o timer
     if (turnoAtual === meuNumeroJogador && jogoEstaAtivo) {
+        console.log(`É meu turno agora (jogador ${meuNumeroJogador}), iniciando timer`);
         iniciarTimer();
     } else {
-        clearInterval(timerInterval);
+        console.log(`Não é meu turno (jogador ${meuNumeroJogador}, turno atual: ${turnoAtual})`);
+        timerEl.textContent = 'Aguardando...';
+        timerEl.style.color = '#888';
     }
     
     // Verifica fim de jogo
@@ -174,18 +216,36 @@ function atualizarTurnoUI() {
 
 // --- 6. PROCESSAMENTO DE JOGADAS ---
 async function processarChute(letra) {
-    if (!jogoEstaAtivo || letrasChutadas.has(letra)) return;
+    if (!jogoEstaAtivo) {
+        mostrarFeedback('Jogo não está ativo!', 'orange');
+        return;
+    }
+    
+    letra = letra.toUpperCase();
+    
+    // Verifica se a letra já foi chutada (verificação local para feedback rápido)
+    if (letrasChutadas.has(letra)) {
+        mostrarFeedback('Letra já foi chutada!', 'orange');
+        return;
+    }
+    
+    // Verifica se é o turno do jogador
     if (turnoAtual !== meuNumeroJogador) {
         mostrarFeedback('Não é seu turno!', 'orange');
         return;
     }
     
-    letra = letra.toUpperCase();
-    letrasChutadas.add(letra);
+    // Desabilita a tecla visualmente imediatamente (feedback instantâneo)
+    // Mas não adiciona ao set ainda - o servidor vai confirmar
     desabilitarTeclaVisual(letra);
+    
+    // Pausa o timer enquanto processa
     clearInterval(timerInterval);
+    timerEl.textContent = 'Processando...';
+    timerEl.style.color = '#888';
     
     // Envia jogada para o servidor
+    console.log(`Enviando jogada: ${letra} (turno: ${turnoAtual}, meu número: ${meuNumeroJogador})`);
     enviarEvento({
         tipo: 'jogada',
         letra: letra
@@ -219,7 +279,33 @@ function atualizarBonecosUI() {
 function desabilitarTeclaVisual(letra) {
     const btn = [...tecladoContainer.querySelectorAll('.tecla')]
         .find(b => b.textContent === letra);
-    if (btn) btn.disabled = true;
+    if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+        btn.style.cursor = 'not-allowed';
+    }
+}
+
+function atualizarTecladoDesabilitado() {
+    // Desabilita todas as letras já chutadas e impede cliques
+    if (!tecladoContainer) return;
+    
+    tecladoContainer.querySelectorAll('.tecla').forEach(btn => {
+        const letra = btn.textContent;
+        if (letrasChutadas.has(letra)) {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'not-allowed';
+            btn.style.pointerEvents = 'none'; // Impede completamente qualquer interação
+            // Remove event listeners se houver
+            btn.onclick = null;
+        } else {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+            btn.style.pointerEvents = 'auto'; // Permite interação
+        }
+    });
 }
 
 function mostrarFeedback(mensagem, cor) {
@@ -266,9 +352,42 @@ function finalizarJogo(status) {
 function configurarTecladoVirtual() {
     if (!tecladoContainer) return;
     tecladoContainer.addEventListener('click', e => {
-        if (e.target.classList.contains('tecla') && !e.target.disabled) {
-            processarChute(e.target.textContent);
+        const btn = e.target.closest('.tecla');
+        if (!btn) return;
+        
+        // Verifica múltiplas condições antes de processar
+        if (btn.disabled) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
         }
+        
+        const letra = btn.textContent;
+        
+        // Verifica se a letra já foi chutada (dupla verificação)
+        if (letrasChutadas.has(letra)) {
+            e.preventDefault();
+            e.stopPropagation();
+            mostrarFeedback('Letra já foi chutada!', 'orange');
+            return false;
+        }
+        
+        // Verifica se é o turno do jogador
+        if (turnoAtual !== meuNumeroJogador) {
+            e.preventDefault();
+            e.stopPropagation();
+            mostrarFeedback('Não é seu turno!', 'orange');
+            return false;
+        }
+        
+        // Verifica se o jogo está ativo
+        if (!jogoEstaAtivo) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }
+        
+        processarChute(letra);
     });
 }
 
@@ -277,8 +396,33 @@ function lidarComChuteDeTecladoFisico(e) {
     if (letra.length === 1 && letra >= 'A' && letra <= 'Z') {
         const btn = [...tecladoContainer.querySelectorAll('.tecla')]
             .find(b => b.textContent === letra);
-        if (btn && !btn.disabled) {
-            processarChute(letra);
+        
+        // Verifica múltiplas condições antes de processar
+        if (!btn || btn.disabled) {
+            e.preventDefault();
+            return false;
         }
+        
+        // Verifica se a letra já foi chutada
+        if (letrasChutadas.has(letra)) {
+            e.preventDefault();
+            mostrarFeedback('Letra já foi chutada!', 'orange');
+            return false;
+        }
+        
+        // Verifica se é o turno do jogador
+        if (turnoAtual !== meuNumeroJogador) {
+            e.preventDefault();
+            mostrarFeedback('Não é seu turno!', 'orange');
+            return false;
+        }
+        
+        // Verifica se o jogo está ativo
+        if (!jogoEstaAtivo) {
+            e.preventDefault();
+            return false;
+        }
+        
+        processarChute(letra);
     }
 }
