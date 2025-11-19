@@ -1,28 +1,29 @@
+const { models, sequelize } = require('../models');
 
-const { sequelize, models } = require('../models');
+/**
+ * Busca uma palavra aleatória da tabela "palavra",
+ * filtrando pela categoria vinda do front-end.
+ */
+async function getRandomWord({ categoria }) {
 
-async function getRandomWord({ categoryId, category, onlyActive = true }) {
   const where = {};
-  if (onlyActive) where.active = true;
 
-  const include = [];
-  if (categoryId || category) {
-    include.push({
-      model: models.Category,
-      as: 'category',
-      required: true,
-      where: {
-        ...(categoryId ? { id: Number(categoryId) } : {}),
-        ...(category ? { slug: category } : {})
-      },
-      attributes: ['id', 'name', 'slug']
-    });
-  } else {
-    include.push({ model: models.Category, as: 'category', required: false, attributes: ['id', 'name', 'slug'] });
+  // Se veio categoria do input, filtra
+  if (categoria) {
+    where.categoria = categoria;
   }
 
-  const word = await models.Word.findOne({ where, include, order: [[sequelize.random()]] });
-  return word;
+  // Busca palavra aleatória
+  const palavra = await models.Palavra.findOne({
+    where,
+    order: [sequelize.random()] // ORDER BY RANDOM()
+  });
+
+  if (!palavra) {
+    throw new Error(`Nenhuma palavra encontrada para a categoria: ${categoria}`);
+  }
+
+  return palavra;
 }
 
 module.exports = { getRandomWord };
