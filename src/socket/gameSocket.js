@@ -131,6 +131,7 @@ module.exports = function(io) {
           const estado = game.gameInstance.getEstado();
           game.turno = 1; // Garante que o turno inicial seja sempre 1
           
+          console.log(`📤 Enviando evento 'inicio' para J1 (${j1.id}): jogador=1, turno=${game.turno}`);
           io.to(j1.id).emit('eventoJogo', { 
             tipo: 'inicio', 
             jogador: 1, 
@@ -142,6 +143,8 @@ module.exports = function(io) {
             meuSocketId: j1.id,
             adversarioSocketId: j2.id
           });
+          
+          console.log(`📤 Enviando evento 'inicio' para J2 (${j2.id}): jogador=2, turno=${game.turno}`);
           io.to(j2.id).emit('eventoJogo', { 
             tipo: 'inicio', 
             jogador: 2, 
@@ -223,6 +226,7 @@ module.exports = function(io) {
           console.log(`Jogador 1: ${j1.name} (${j1.id}, numero: ${j1.numero}), Jogador 2: ${j2.name} (${j2.id}, numero: ${j2.numero})`);
           console.log(`Turno inicial: ${game.turno}`);
 
+          console.log(`📤 Enviando evento 'inicio' para J1 (${j1.id}): jogador=1, turno=${game.turno}`);
           io.to(j1.id).emit('eventoJogo', {
             tipo: 'inicio',
             jogador: 1,
@@ -235,6 +239,7 @@ module.exports = function(io) {
             adversarioSocketId: j2.id // Socket ID do adversário
           });
 
+          console.log(`📤 Enviando evento 'inicio' para J2 (${j2.id}): jogador=2, turno=${game.turno}`);
           io.to(j2.id).emit('eventoJogo', {
             tipo: 'inicio',
             jogador: 2,

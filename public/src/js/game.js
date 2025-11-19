@@ -54,14 +54,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Conecta ao socket (pode já estar conectado, mas garante a conexão)
     conectarSocket(sala, nome, categoria);
     
+    // Configura listeners ANTES de qualquer coisa
+    configurarListenersSocket();
+    
     // Aguarda um pouco para garantir que o socket está conectado
     setTimeout(() => {
         // Se o jogo já iniciou (evento 'inicio' já foi recebido), não faz nada
         // Caso contrário, o listener vai receber quando ambos estiverem prontos
+        console.log('⏳ Aguardando evento de início do jogo...');
     }, 500);
     
-    // Configura listeners
-    configurarListenersSocket();
+    // Configura teclado virtual e físico
     configurarTecladoVirtual();
     document.addEventListener('keydown', lidarComChuteDeTecladoFisico);
 });
@@ -86,25 +89,33 @@ function configurarListenersSocket() {
 function iniciarJogo(dados) {
     console.log('=== INICIANDO JOGO ===');
     console.log('Dados recebidos:', dados);
+    console.log('Tipo de dados.jogador:', typeof dados.jogador, dados.jogador);
+    console.log('Tipo de dados.turno:', typeof dados.turno, dados.turno);
     
-    meuNumeroJogador = dados.jogador;
+    meuNumeroJogador = parseInt(dados.jogador); // Garante que é um número
     meuSocketId = dados.meuSocketId || getMeuSocketId(); // Usa socketId do servidor ou busca localmente
     adversarioNome = dados.adversario;
     adversarioSocketId = dados.adversarioSocketId;
     palavraSecreta = dados.palavraSecreta || dados.palavra; // Usa palavraSecreta se disponível
     palavraExibida = dados.palavra; // Palavra oculta para exibição
-    turnoAtual = dados.turno !== undefined ? dados.turno : 1; // Garante que sempre tenha um turno inicial
+    turnoAtual = parseInt(dados.turno) || 1; // Garante que sempre tenha um turno inicial e seja um número
     categoria = dados.categoria;
     
-    console.log(`👤 Jogador ${meuNumeroJogador} - Socket ID: ${meuSocketId}`);
-    console.log(`🔄 Turno atual: ${turnoAtual}, Meu número: ${meuNumeroJogador}`);
-    console.log(`✅ É meu turno? ${turnoAtual === meuNumeroJogador}`);
+    console.log(`👤 Jogador ${meuNumeroJogador} (tipo: ${typeof meuNumeroJogador}) - Socket ID: ${meuSocketId}`);
+    console.log(`🔄 Turno atual: ${turnoAtual} (tipo: ${typeof turnoAtual}), Meu número: ${meuNumeroJogador} (tipo: ${typeof meuNumeroJogador})`);
+    console.log(`✅ É meu turno? ${turnoAtual === meuNumeroJogador} (comparação: ${turnoAtual} === ${meuNumeroJogador})`);
     
     // Validação: garante que o número do jogador está correto
     if (!meuNumeroJogador || (meuNumeroJogador !== 1 && meuNumeroJogador !== 2)) {
         console.error('❌ Número de jogador inválido:', meuNumeroJogador);
         mostrarFeedback('Erro: número de jogador inválido', 'red');
         return;
+    }
+    
+    // Validação adicional do turno
+    if (turnoAtual !== 1 && turnoAtual !== 2) {
+        console.warn('⚠️ Turno inválido recebido:', turnoAtual, '- Corrigindo para 1');
+        turnoAtual = 1;
     }
     
     // Atualiza nomes dos jogadores
@@ -124,7 +135,7 @@ function iniciarJogo(dados) {
     atualizarPalavraExibida();
     atualizarBonecosUI();
     atualizarTurnoUI();
-    atualizarTecladoDesabilitado(); // Desabilita letras já chutadas
+    atualizarTecladoDesabilitado(); // Desabilita letras já chutadas E bloqueia se não for o turno
     
     // Sempre inicia o timer se for o turno do jogador
     if (turnoAtual === meuNumeroJogador) {
@@ -134,6 +145,8 @@ function iniciarJogo(dados) {
         console.log(`✗ Não é meu turno. Turno atual: ${turnoAtual}, Meu número: ${meuNumeroJogador}`);
         timerEl.textContent = 'Aguardando...';
         timerEl.style.color = '#888';
+        // Garante que o teclado está desabilitado quando não é o turno
+        atualizarTecladoDesabilitado();
     }
 }
 
@@ -167,7 +180,7 @@ function processarJogada(dados) {
     atualizarPalavraExibida();
     atualizarBonecosUI();
     atualizarTurnoUI();
-    atualizarTecladoDesabilitado(); // Atualiza teclado com letras já chutadas
+    atualizarTecladoDesabilitado(); // Atualiza teclado com letras já chutadas E bloqueia se não for o turno
     
     // Mostra feedback visual da jogada
     if (dados.resultado === 'acerto') {
@@ -187,6 +200,8 @@ function processarJogada(dados) {
         console.log(`Não é meu turno (jogador ${meuNumeroJogador}, turno atual: ${turnoAtual})`);
         timerEl.textContent = 'Aguardando...';
         timerEl.style.color = '#888';
+        // Garante que o teclado está desabilitado quando não é o turno
+        atualizarTecladoDesabilitado();
     }
     
     // Verifica fim de jogo
@@ -320,12 +335,19 @@ function desabilitarTeclaVisual(letra) {
 }
 
 function atualizarTecladoDesabilitado() {
-    // Desabilita todas as letras já chutadas e impede cliques
+    // Desabilita todas as letras já chutadas E quando não é o turno do jogador
     if (!tecladoContainer) return;
+    
+    const eMeuTurno = turnoAtual === meuNumeroJogador && jogoEstaAtivo;
+    
+    console.log(`🔒 Atualizando teclado: eMeuTurno=${eMeuTurno}, turnoAtual=${turnoAtual}, meuNumero=${meuNumeroJogador}, jogoAtivo=${jogoEstaAtivo}`);
     
     tecladoContainer.querySelectorAll('.tecla').forEach(btn => {
         const letra = btn.textContent;
-        if (letrasChutadas.has(letra)) {
+        const letraJaChutada = letrasChutadas.has(letra);
+        
+        // Desabilita se: letra já foi chutada OU não é o turno do jogador
+        if (letraJaChutada || !eMeuTurno) {
             btn.disabled = true;
             btn.style.opacity = '0.5';
             btn.style.cursor = 'not-allowed';
