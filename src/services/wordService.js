@@ -16,11 +16,14 @@ async function getRandomWord({ categoria }) {
   // Busca palavra aleatória
   const palavra = await models.Word.findOne({
     where,
-    order: [sequelize.random()] // ORDER BY RANDOM()
+    order: [sequelize.literal('RANDOM()')] // ORDER BY RANDOM() para PostgreSQL
   });
 
   if (!palavra) {
-    throw new Error(`Nenhuma palavra encontrada para a categoria: ${categoria}`);
+    const mensagem = categoria 
+      ? `Nenhuma palavra encontrada para a categoria: ${categoria}`
+      : 'Nenhuma palavra encontrada no banco de dados';
+    throw new Error(mensagem);
   }
 
   return palavra;

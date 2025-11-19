@@ -11,21 +11,30 @@ module.exports = function(io) {
       socket.data = { nome: playerName, sala: roomId };
       
       if (!activeGames.has(roomId)) {
-        const wordObj = await getRandomWord({ onlyActive: true, category: categoria });
-        let palavra = (wordObj?.text || '').toUpperCase();
-        let categoriaUsada = categoria;
-        if (!palavra) {
-          const fallback = await getRandomWord({ onlyActive: true });
-          palavra = (fallback?.text || 'FORCA').toUpperCase();
-          categoriaUsada = fallback?.category?.slug || categoria;
+        try {
+          // Busca palavra aleatória do banco filtrando por categoria
+          const wordObj = await getRandomWord({ categoria: categoria });
+          const palavra = (wordObj?.palavra || 'FORCA').toUpperCase();
+          const categoriaUsada = wordObj?.categoria || categoria;
+          
+          activeGames.set(roomId, {
+            players: [],
+            word: palavra,
+            turno: 1,
+            categoria: categoriaUsada,
+            prontos: new Set()
+          });
+        } catch (error) {
+          console.error('Erro ao buscar palavra:', error);
+          // Fallback caso não encontre palavra
+          activeGames.set(roomId, {
+            players: [],
+            word: 'FORCA',
+            turno: 1,
+            categoria: categoria || 'Geral',
+            prontos: new Set()
+          });
         }
-        activeGames.set(roomId, {
-          players: [],
-          word: palavra,
-          turno: 1,
-          categoria: categoriaUsada,
-          prontos: new Set()
-        });
       }
 
       const game = activeGames.get(roomId);

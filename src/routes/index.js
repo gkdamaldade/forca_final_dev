@@ -5,9 +5,11 @@ const router = express.Router();
 const { iniciarNovoJogo, lidarComChute, lidarComPoder,lidarCadastro, lidarLogin, listarRanking, registrarVitoria, lidarComTempoEsgotado } = require('../controller.js'); 
 
 /* --- ROTA PARA INICIAR O JOGO --- */
-router.get('/novo-jogo', (req, res) => {
+router.get('/novo-jogo', async (req, res) => {
     try {
-        const estadoDoJogo = iniciarNovoJogo();
+        // Pega a categoria da query string (ex: /api/novo-jogo?categoria=Animais)
+        const categoria = req.query.categoria || null;
+        const estadoDoJogo = await iniciarNovoJogo(categoria);
         res.status(200).json(estadoDoJogo);
     } catch (error) {
         console.error("Erro em GET /novo-jogo:", error.message);

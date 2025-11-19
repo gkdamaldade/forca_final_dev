@@ -1,4 +1,4 @@
-const { getNovaPalavra } = require('./services.js');
+const { getRandomWord } = require('./services/wordService.js');
 const { Game } = require('./game.js');
 const { models } = require('./models');
 const bcrypt = require('bcrypt');
@@ -7,10 +7,15 @@ const jwt = require('jsonwebtoken');
 // Esta variável vai "segurar" o jogo entre as requisições
 let jogoAtual = null;
 
-async function iniciarNovoJogo() {
+async function iniciarNovoJogo(categoriaEscolhida) {
     console.log("Controller: Criando novo jogo...");
+    console.log(`Categoria escolhida: ${categoriaEscolhida || 'Nenhuma (aleatória)'}`);
 
-    const { palavra, categoria } = await getNovaPalavra();
+    // Busca palavra aleatória do banco filtrando por categoria
+    const palavraDB = await getRandomWord({ categoria: categoriaEscolhida });
+
+    const palavra = palavraDB.palavra;
+    const categoria = palavraDB.categoria;
 
     jogoAtual = new Game(palavra, categoria);
     

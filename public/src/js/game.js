@@ -117,7 +117,17 @@ async function iniciarNovaRodada() {
     iniciarTimer();
     
     try {
-        const response = await fetch(`${BACKEND_URL}/api/novo-jogo`);
+        // Pega a categoria da URL (ex: game.html?categoria=Animais)
+        const urlParams = new URLSearchParams(window.location.search);
+        const categoria = urlParams.get('categoria');
+        
+        // Monta a URL da API com a categoria como query parameter
+        let apiUrl = `${BACKEND_URL}/api/novo-jogo`;
+        if (categoria) {
+            apiUrl += `?categoria=${encodeURIComponent(categoria)}`;
+        }
+        
+        const response = await fetch(apiUrl);
         if (!response.ok) throw new Error('Erro na API');
         const dados = await response.json();
         atualizarTela(dados);
