@@ -90,8 +90,14 @@ document.addEventListener('DOMContentLoaded', () => {
 function configurarListenersSocket() {
     aoReceberEvento((evento) => {
         console.log('📨 Evento recebido:', evento);
+        console.log('📋 Tipo do evento:', evento.tipo);
+        console.log('📊 Estado ANTES do evento: meuNumeroJogador=', meuNumeroJogador, ', jogoEstaAtivo=', jogoEstaAtivo);
+        
         if (evento.tipo === 'inicio') {
+            console.log('🎮 Evento INICIO recebido! Iniciando jogo...');
+            console.log('📦 Dados do evento inicio:', JSON.stringify(evento, null, 2));
             iniciarJogo(evento);
+            console.log('✅ Jogo iniciado! meuNumeroJogador agora é:', meuNumeroJogador);
         } else if (evento.tipo === 'jogada') {
             processarJogada(evento);
         } else if (evento.tipo === 'erro') {
@@ -99,6 +105,8 @@ function configurarListenersSocket() {
             mostrarFeedback(evento.mensagem || 'Erro no servidor', 'red');
             // Se o erro for "não é seu turno", não faz nada além de mostrar feedback
             // O turno será atualizado quando o servidor enviar o próximo evento 'jogada'
+        } else {
+            console.log('ℹ️ Evento não tratado:', evento.tipo);
         }
     });
 }
@@ -109,36 +117,35 @@ function iniciarJogo(dados) {
     console.log('Tipo de dados.jogador:', typeof dados.jogador, dados.jogador);
     console.log('Tipo de dados.turno:', typeof dados.turno, dados.turno);
     
-    meuNumeroJogador = parseInt(dados.jogador) || null; // Garante que é um número
+    // Validação crítica: verifica se dados.jogador existe e é válido
+    if (dados.jogador === undefined || dados.jogador === null) {
+        console.error('❌ ERRO CRÍTICO: dados.jogador não foi enviado pelo servidor!');
+        console.error('Dados completos recebidos:', JSON.stringify(dados, null, 2));
+        mostrarFeedback('Erro: dados do jogo incompletos. Recarregue a página.', 'red');
+        return;
+    }
+    
+    // Converte para número de forma mais robusta
+    const jogadorNum = Number(dados.jogador);
+    if (isNaN(jogadorNum) || (jogadorNum !== 1 && jogadorNum !== 2)) {
+        console.error('❌ ERRO CRÍTICO: dados.jogador inválido! Valor:', dados.jogador, 'Tipo:', typeof dados.jogador);
+        console.error('Dados completos recebidos:', JSON.stringify(dados, null, 2));
+        mostrarFeedback('Erro: número de jogador inválido. Recarregue a página.', 'red');
+        return;
+    }
+    
+    meuNumeroJogador = jogadorNum; // Agora sabemos que é 1 ou 2
     meuSocketId = dados.meuSocketId || getMeuSocketId(); // Usa socketId do servidor ou busca localmente
     adversarioNome = dados.adversario;
     adversarioSocketId = dados.adversarioSocketId;
     palavraSecreta = dados.palavraSecreta || dados.palavra; // Usa palavraSecreta se disponível
     palavraExibida = dados.palavra || ''; // Palavra oculta para exibição
-    turnoAtual = parseInt(dados.turno) || 1; // Garante que sempre tenha um turno inicial e seja um número
+    turnoAtual = Number(dados.turno) || 1; // Garante que sempre tenha um turno inicial e seja um número
     categoria = dados.categoria || 'Geral';
     
-    // Validação crítica: se meuNumeroJogador não foi definido, tenta usar o socketId para identificar
-    if (!meuNumeroJogador || meuNumeroJogador === 0) {
-        console.error('❌ meuNumeroJogador inválido! Dados recebidos:', dados);
-        // Tenta inferir pelo socketId
-        if (dados.meuSocketId && dados.adversarioSocketId) {
-            // Se meuSocketId está na primeira posição, sou jogador 1
-            // Isso é uma tentativa de fallback, mas o ideal é que o servidor sempre envie o número correto
-            console.warn('⚠️ Tentando inferir número do jogador pelo socketId (fallback)');
-        }
-    }
-    
-    console.log(`👤 Jogador ${meuNumeroJogador} (tipo: ${typeof meuNumeroJogador}) - Socket ID: ${meuSocketId}`);
+    console.log(`✅ Jogador ${meuNumeroJogador} (tipo: ${typeof meuNumeroJogador}) - Socket ID: ${meuSocketId}`);
     console.log(`🔄 Turno atual: ${turnoAtual} (tipo: ${typeof turnoAtual}), Meu número: ${meuNumeroJogador} (tipo: ${typeof meuNumeroJogador})`);
     console.log(`✅ É meu turno? ${turnoAtual === meuNumeroJogador} (comparação: ${turnoAtual} === ${meuNumeroJogador})`);
-    
-    // Validação: garante que o número do jogador está correto
-    if (!meuNumeroJogador || (meuNumeroJogador !== 1 && meuNumeroJogador !== 2)) {
-        console.error('❌ Número de jogador inválido:', meuNumeroJogador);
-        mostrarFeedback('Erro: número de jogador inválido', 'red');
-        return;
-    }
     
     // Validação adicional do turno
     if (turnoAtual !== 1 && turnoAtual !== 2) {
@@ -321,27 +328,35 @@ function atualizarTurnoUI() {
 
 // --- 6. PROCESSAMENTO DE JOGADAS ---
 async function processarChute(letra) {
+    // Validação crítica: verifica se o jogo foi inicializado corretamente
+    if (!meuNumeroJogador || meuNumeroJogador === 0 || (meuNumeroJogador !== 1 && meuNumeroJogador !== 2)) {
+        console.error('❌ ERRO CRÍTICO: meuNumeroJogador não foi definido corretamente! Valor:', meuNumeroJogador);
+        console.error('📊 Estado atual: jogoEstaAtivo=', jogoEstaAtivo, ', turnoAtual=', turnoAtual);
+        mostrarFeedback('Erro: jogo não inicializado. Aguarde o evento de início.', 'red');
+        return;
+    }
+
     if (!jogoEstaAtivo) {
         mostrarFeedback('Jogo não está ativo!', 'orange');
         return;
     }
-    
+
     letra = letra.toUpperCase();
-    
+
     // Verifica se a letra já foi chutada (verificação local para feedback rápido)
     if (letrasChutadas.has(letra)) {
         mostrarFeedback('Letra já foi chutada!', 'orange');
         return;
     }
-    
+
     // Verifica se é o turno do jogador (usando comparação numérica)
     const turnoAtualNum = Number(turnoAtual) || 0;
     const meuNumeroNum = Number(meuNumeroJogador) || 0;
-    
+
     console.log(`🎯 Verificando turno antes de chutar: turnoAtual=${turnoAtualNum}, meuNumero=${meuNumeroNum}, são iguais? ${turnoAtualNum === meuNumeroNum}`);
-    
+
     if (turnoAtualNum !== meuNumeroNum || meuNumeroNum === 0) {
-        console.warn(`⚠️ Não é o turno do jogador! turnoAtual=${turnoAtualNum}, meuNumero=${meuNumeroNum}`);
+        console.warn(`⚠️ Tentativa de chute fora do turno: turnoAtual=${turnoAtualNum}, meuNumero=${meuNumeroNum}`);
         mostrarFeedback('Não é seu turno!', 'orange');
         return;
     }
@@ -352,8 +367,10 @@ async function processarChute(letra) {
     
     // Pausa o timer enquanto processa
     clearInterval(timerInterval);
-    timerEl.textContent = 'Processando...';
-    timerEl.style.color = '#888';
+    if (timerEl) {
+        timerEl.textContent = 'Processando...';
+        timerEl.style.color = '#888';
+    }
     
     // Envia jogada para o servidor
     console.log(`📤 Enviando jogada: ${letra} (turno: ${turnoAtual}, meu número: ${meuNumeroJogador})`);
@@ -496,7 +513,16 @@ function configurarTecladoVirtual() {
     tecladoContainer.addEventListener('click', e => {
         const btn = e.target.closest('.tecla');
         if (!btn) return;
-        
+
+        // Verificação crítica: jogo foi inicializado?
+        if (!meuNumeroJogador || meuNumeroJogador === 0 || (meuNumeroJogador !== 1 && meuNumeroJogador !== 2)) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.warn('⚠️ Tentativa de chute antes do jogo ser inicializado! meuNumeroJogador:', meuNumeroJogador);
+            mostrarFeedback('Aguarde o jogo iniciar...', 'orange');
+            return false;
+        }
+
         // Verifica múltiplas condições antes de processar
         if (btn.disabled) {
             e.preventDefault();
@@ -538,6 +564,19 @@ function configurarTecladoVirtual() {
 }
 
 function lidarComChuteDeTecladoFisico(e) {
+    // Verificação crítica: jogo foi inicializado?
+    if (!meuNumeroJogador || meuNumeroJogador === 0 || (meuNumeroJogador !== 1 && meuNumeroJogador !== 2)) {
+        e.preventDefault();
+        console.warn('⚠️ Tentativa de chute (teclado físico) antes do jogo ser inicializado! meuNumeroJogador:', meuNumeroJogador);
+        mostrarFeedback('Aguarde o jogo iniciar...', 'orange');
+        return false;
+    }
+
+    if (!tecladoContainer) {
+        e.preventDefault();
+        return false;
+    }
+
     const letra = e.key.toUpperCase();
     if (letra.length === 1 && letra >= 'A' && letra <= 'Z') {
         const btn = [...tecladoContainer.querySelectorAll('.tecla')]
