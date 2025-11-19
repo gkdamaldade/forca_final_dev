@@ -1,4 +1,5 @@
 const { getRandomWord } = require('../services/wordService');
+const { Game } = require('../game');
 
 const activeGames = new Map();
 
@@ -17,22 +18,26 @@ module.exports = function(io) {
           const palavra = (wordObj?.palavra || 'FORCA').toUpperCase();
           const categoriaUsada = wordObj?.categoria || categoria;
           
+          const gameInstance = new Game(palavra, categoriaUsada);
           activeGames.set(roomId, {
             players: [],
             word: palavra,
             turno: 1,
             categoria: categoriaUsada,
-            prontos: new Set() // Armazena socket.id dos jogadores prontos
+            prontos: new Set(), // Armazena socket.id dos jogadores prontos
+            gameInstance: gameInstance // Instância da classe Game para lógica do jogo
           });
         } catch (error) {
           console.error('Erro ao buscar palavra:', error);
           // Fallback caso não encontre palavra
+          const gameInstance = new Game('FORCA', categoria || 'Geral');
           activeGames.set(roomId, {
             players: [],
             word: 'FORCA',
             turno: 1,
             categoria: categoria || 'Geral',
-            prontos: new Set() // Armazena socket.id dos jogadores prontos
+            prontos: new Set(), // Armazena socket.id dos jogadores prontos
+            gameInstance: gameInstance
           });
         }
       }
@@ -82,12 +87,14 @@ module.exports = function(io) {
         // Quando ambos estiverem prontos, iniciar o jogo
         if (game.prontos.size === 2) {
           const [j1, j2] = game.players;
+          const estado = game.gameInstance.getEstado();
 
           io.to(j1.id).emit('eventoJogo', {
             tipo: 'inicio',
             jogador: 1,
             adversario: j2.name,
-            palavra: game.word,
+            palavra: estado.palavra, // Palavra oculta para exibição
+            palavraSecreta: game.word, // Palavra completa (para lógica)
             turno: game.turno,
             categoria: game.categoria
           });
@@ -96,7 +103,8 @@ module.exports = function(io) {
             tipo: 'inicio',
             jogador: 2,
             adversario: j1.name,
-            palavra: game.word,
+            palavra: estado.palavra, // Palavra oculta para exibição
+            palavraSecreta: game.word, // Palavra completa (para lógica)
             turno: game.turno,
             categoria: game.categoria
           });
@@ -104,13 +112,46 @@ module.exports = function(io) {
       }
 
       if (msg.tipo === 'jogada') {
-        game.turno = game.turno === 1 ? 2 : 1;
+        // Verifica se é o turno do jogador
+        const jogadorAtual = game.players.find(p => p.id === socket.id);
+        const numeroJogador = game.players.indexOf(jogadorAtual) + 1;
+        
+        if (numeroJogador !== game.turno) {
+          // Não é o turno deste jogador
+          socket.emit('eventoJogo', {
+            tipo: 'erro',
+            mensagem: 'Não é seu turno!'
+          });
+          return;
+        }
 
+        // Processa a jogada usando a classe Game
+        const resultado = game.gameInstance.chutarLetra(msg.letra);
+        const estado = game.gameInstance.getEstado();
+        
+        // Se a jogada foi válida, troca o turno
+        if (resultado !== 'repetida' && game.gameInstance.status === 'jogando') {
+          game.turno = game.turno === 1 ? 2 : 1;
+        }
+
+        // Envia o resultado para todos na sala
         io.to(roomId).emit('eventoJogo', {
           tipo: 'jogada',
           letra: msg.letra,
-          turno: game.turno
+          resultado: resultado, // 'acerto', 'erro', 'vitoria', 'derrota', 'repetida'
+          palavra: estado.palavra,
+          erros: estado.erros,
+          letrasChutadas: estado.letrasChutadas,
+          turno: game.turno,
+          status: estado.status
         });
+
+        // Se o jogo acabou, limpa a sala
+        if (estado.status === 'vitoria' || estado.status === 'derrota') {
+          setTimeout(() => {
+            activeGames.delete(roomId);
+          }, 5000);
+        }
       }
 
       if (msg.tipo === 'poder') {
