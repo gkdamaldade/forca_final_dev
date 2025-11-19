@@ -152,19 +152,47 @@ header {
   font-weight: bold;
   margin-bottom: 30px;
   cursor: pointer;
-  transition: transform .06s ease, filter .2s ease, box-shadow .2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow:
     0 10px 22px rgba(0, 229, 255, .28),
     0 8px 0 rgba(0,0,0,.25);
+  position: relative;
+  overflow: hidden;
 }
+
+.menu-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
 .menu-button:hover{
-  filter: brightness(1.06) saturate(1.04);
-}
-.menu-button:active{
-  transform: translateY(3px);
+  filter: brightness(1.1) saturate(1.05);
+  transform: translateY(-2px) scale(1.02);
   box-shadow:
-    0 5px 16px rgba(0, 229, 255, .28),
-    0 4px 0 rgba(0,0,0,.28);
+    0 14px 28px rgba(0, 229, 255, .35),
+    0 8px 0 rgba(0,0,0,.3);
+}
+
+.menu-button:hover::before {
+  left: 100%;
+}
+
+.menu-button:active{
+  transform: translateY(4px) scale(0.98);
+  box-shadow:
+    0 6px 16px rgba(0, 229, 255, .25),
+    0 3px 0 rgba(0,0,0,.3);
 }
 
 /* Botões circulares */
@@ -188,12 +216,25 @@ header {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform .06s ease, filter .2s ease, box-shadow .2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow:
     0 8px 18px rgba(0, 229, 255, .26),
     0 6px 0 rgba(0,0,0,.25);
   position: relative;
   overflow: hidden;
+}
+
+.circle-button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.4s, height 0.4s;
 }
 
 .circle-button::after{
@@ -205,15 +246,44 @@ header {
   background: radial-gradient(70% 70% at 50% 50%, rgba(255,255,255,.45), transparent 70%);
   transform: rotate(20deg);
   pointer-events: none;
+  transition: transform 0.3s ease;
 }
 
 .circle-button i {
   font-size: 40px;
   filter: drop-shadow(0 2px 6px rgba(0,0,0,.35));
+  position: relative;
+  z-index: 1;
+  transition: transform 0.3s ease;
 }
 
-.circle-button:hover{ filter: brightness(1.06) saturate(1.02); }
-.circle-button:active{ transform: translateY(2px); }
+.circle-button:hover {
+  filter: brightness(1.1) saturate(1.05);
+  transform: translateY(-3px) scale(1.05);
+  box-shadow:
+    0 12px 24px rgba(0, 229, 255, .32),
+    0 8px 0 rgba(0,0,0,.3);
+}
+
+.circle-button:hover::before {
+  width: 200%;
+  height: 200%;
+}
+
+.circle-button:hover::after {
+  transform: rotate(40deg);
+}
+
+.circle-button:hover i {
+  transform: scale(1.1);
+}
+
+.circle-button:active {
+  transform: translateY(2px) scale(0.95);
+  box-shadow:
+    0 4px 12px rgba(0, 229, 255, .25),
+    0 3px 0 rgba(0,0,0,.3);
+}
 
 /* Foco acessível */
 .menu-button:focus,

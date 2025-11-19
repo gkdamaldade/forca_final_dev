@@ -80,17 +80,21 @@ function configurarListenersSocket() {
 }
 
 function iniciarJogo(dados) {
-    console.log('Iniciando jogo com dados:', dados);
+    console.log('=== INICIANDO JOGO ===');
+    console.log('Dados recebidos:', dados);
+    
     meuNumeroJogador = dados.jogador;
     meuSocketId = dados.meuSocketId || getMeuSocketId(); // Usa socketId do servidor ou busca localmente
     adversarioNome = dados.adversario;
     adversarioSocketId = dados.adversarioSocketId;
     palavraSecreta = dados.palavraSecreta || dados.palavra; // Usa palavraSecreta se disponível
     palavraExibida = dados.palavra; // Palavra oculta para exibição
-    turnoAtual = dados.turno || 1; // Garante que sempre tenha um turno inicial
+    turnoAtual = dados.turno !== undefined ? dados.turno : 1; // Garante que sempre tenha um turno inicial
     categoria = dados.categoria;
     
-    console.log(`Jogador ${meuNumeroJogador} - Socket ID: ${meuSocketId}, Adversário Socket ID: ${adversarioSocketId}`);
+    console.log(`Jogador ${meuNumeroJogador} - Socket ID: ${meuSocketId}`);
+    console.log(`Turno atual: ${turnoAtual}, Meu número: ${meuNumeroJogador}`);
+    console.log(`É meu turno? ${turnoAtual === meuNumeroJogador}`);
     
     // Atualiza nomes dos jogadores
     if (meuNumeroJogador === 1) {
@@ -113,10 +117,10 @@ function iniciarJogo(dados) {
     
     // Sempre inicia o timer se for o turno do jogador
     if (turnoAtual === meuNumeroJogador) {
-        console.log(`É meu turno (jogador ${meuNumeroJogador}), iniciando timer`);
+        console.log(`✓ É meu turno! Iniciando timer...`);
         iniciarTimer();
     } else {
-        console.log(`Não é meu turno (jogador ${meuNumeroJogador}, turno atual: ${turnoAtual})`);
+        console.log(`✗ Não é meu turno. Turno atual: ${turnoAtual}, Meu número: ${meuNumeroJogador}`);
         timerEl.textContent = 'Aguardando...';
         timerEl.style.color = '#888';
     }
@@ -205,12 +209,28 @@ function iniciarTimer() {
 }
 
 function atualizarTurnoUI() {
+    console.log(`Atualizando UI do turno: turnoAtual=${turnoAtual}, meuNumeroJogador=${meuNumeroJogador}`);
+    
+    // Remove a classe de todos primeiro
+    h2Jogador1.classList.remove('active-turn');
+    h2Jogador2.classList.remove('active-turn');
+    
+    // Adiciona a classe no jogador do turno
     if (turnoAtual === 1) {
         h2Jogador1.classList.add('active-turn');
-        h2Jogador2.classList.remove('active-turn');
-    } else {
-        h2Jogador1.classList.remove('active-turn');
+        console.log('✓ Jogador 1 está no turno (adicionado active-turn)');
+    } else if (turnoAtual === 2) {
         h2Jogador2.classList.add('active-turn');
+        console.log('✓ Jogador 2 está no turno (adicionado active-turn)');
+    } else {
+        console.warn('⚠ Turno inválido:', turnoAtual);
+    }
+    
+    // Atualiza visualmente qual jogador pode jogar
+    if (turnoAtual === meuNumeroJogador) {
+        console.log('✓ É meu turno - posso jogar!');
+    } else {
+        console.log('✗ Não é meu turno - aguardando...');
     }
 }
 

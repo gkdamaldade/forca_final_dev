@@ -88,6 +88,13 @@ module.exports = function(io) {
         if (game.prontos.size === 2) {
           const [j1, j2] = game.players;
           const estado = game.gameInstance.getEstado();
+          
+          // Garante que o turno inicial seja sempre 1 (jogador 1 começa)
+          game.turno = 1;
+          
+          console.log(`🎮 Iniciando jogo na sala ${roomId}`);
+          console.log(`Jogador 1: ${j1.name} (${j1.id}), Jogador 2: ${j2.name} (${j2.id})`);
+          console.log(`Turno inicial: ${game.turno}`);
 
           io.to(j1.id).emit('eventoJogo', {
             tipo: 'inicio',
@@ -95,7 +102,7 @@ module.exports = function(io) {
             adversario: j2.name,
             palavra: estado.palavra, // Palavra oculta para exibição
             palavraSecreta: game.word, // Palavra completa (para lógica)
-            turno: game.turno,
+            turno: game.turno, // Sempre 1 no início
             categoria: game.categoria,
             meuSocketId: j1.id, // Socket ID deste jogador para identificação única
             adversarioSocketId: j2.id // Socket ID do adversário
@@ -107,7 +114,7 @@ module.exports = function(io) {
             adversario: j1.name,
             palavra: estado.palavra, // Palavra oculta para exibição
             palavraSecreta: game.word, // Palavra completa (para lógica)
-            turno: game.turno,
+            turno: game.turno, // Sempre 1 no início
             categoria: game.categoria,
             meuSocketId: j2.id, // Socket ID deste jogador para identificação única
             adversarioSocketId: j1.id // Socket ID do adversário
