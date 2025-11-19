@@ -22,7 +22,7 @@ module.exports = function(io) {
             word: palavra,
             turno: 1,
             categoria: categoriaUsada,
-            prontos: new Set()
+            prontos: new Set() // Armazena socket.id dos jogadores prontos
           });
         } catch (error) {
           console.error('Erro ao buscar palavra:', error);
@@ -32,7 +32,7 @@ module.exports = function(io) {
             word: 'FORCA',
             turno: 1,
             categoria: categoria || 'Geral',
-            prontos: new Set()
+            prontos: new Set() // Armazena socket.id dos jogadores prontos
           });
         }
       }
@@ -61,11 +61,21 @@ module.exports = function(io) {
       if (!game) return;
 
       if (msg.tipo === 'pronto') {
-        game.prontos.add(msg.nome);
+        // Usa o nome do socket.data (mais confiável que msg.nome do cliente)
+        const nomeJogador = socket.data?.nome || msg.nome;
+        
+        // Adiciona o socket.id ao set de prontos (identificador único)
+        // Isso evita problemas se dois jogadores tiverem o mesmo nome
+        const jogadorAtual = game.players.find(p => p.id === socket.id);
+        if (jogadorAtual && !game.prontos.has(socket.id)) {
+          game.prontos.add(socket.id);
+        }
 
+        // Envia evento para TODOS na sala informando quem está pronto
         io.to(roomId).emit('eventoJogo', {
           tipo: 'pronto',
-          nome: msg.nome,
+          nome: nomeJogador,
+          socketId: socket.id, // Inclui o socket.id para identificação única
           total: game.prontos.size
         });
 
@@ -122,8 +132,8 @@ module.exports = function(io) {
 
     socket.on('disconnect', () => {
       for (const [roomId, game] of activeGames.entries()) {
-        const nomeDesconectado = socket.data?.nome;
-        if (nomeDesconectado) game.prontos.delete(nomeDesconectado);
+        // Remove o socket.id do set de prontos (não mais o nome)
+        game.prontos.delete(socket.id);
         game.players = game.players.filter(p => p.id !== socket.id);
         if (game.players.length === 0) {
           activeGames.delete(roomId);

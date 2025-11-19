@@ -1,4 +1,5 @@
 let socket;
+let meuSocketId = null; // Armazena o ID do socket desta instância
 
 /**
  * Conecta ao servidor WebSocket e entra na sala informada.
@@ -17,15 +18,25 @@ export function conectarSocket(sala, nome, categoria) {
   
   const categoriaSlug = (categoria || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, '-');
   
-  // Aguarda a conexão estar pronta antes de entrar na sala
+  // Armazena o socket.id e entra na sala quando a conexão for estabelecida
   socket.on('connect', () => {
+    meuSocketId = socket.id;
+    console.log('Socket conectado com ID:', meuSocketId);
     socket.emit('joinRoom', { roomId: sala, playerName: nome, categoria: categoriaSlug || null });
   });
   
   // Se já estiver conectado, envia imediatamente
   if (socket.connected) {
+    meuSocketId = socket.id;
     socket.emit('joinRoom', { roomId: sala, playerName: nome, categoria: categoriaSlug || null });
   }
+}
+
+/**
+ * Retorna o ID do socket desta instância
+ */
+export function getMeuSocketId() {
+  return meuSocketId;
 }
 
 /**

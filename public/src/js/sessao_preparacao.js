@@ -1,4 +1,4 @@
-import { conectarSocket, aoReceberEvento, enviarEvento } from './socket.js';
+import { conectarSocket, aoReceberEvento, enviarEvento, getMeuSocketId } from './socket.js';
 
 const urlParams = new URLSearchParams(window.location.search);
 const sala = urlParams.get('sala');
@@ -29,10 +29,16 @@ aoReceberEvento((evento) => {
     const totalProntos = evento.total || jogadoresProntos.size;
     document.querySelector('.contador').textContent = `( ${totalProntos} / 2 )`;
     
-    // Se o evento é do próprio usuário E o usuário ainda não está marcado como pronto localmente
-    // Isso evita que múltiplas abas com o mesmo nome afetem umas às outras
-    if (evento.nome === nome && !usuarioPronto) {
-      console.log(`[${instanceId}] Usuário ${nome} marcado como pronto via evento do servidor`);
+    // Verifica se o evento é do próprio usuário usando socket.id (mais confiável que nome)
+    // Isso evita problemas quando dois usuários têm o mesmo nome
+    const meuSocketId = getMeuSocketId();
+    const eventoEDoMeuSocket = evento.socketId && evento.socketId === meuSocketId;
+    const eventoEDoMeuNome = evento.nome === nome;
+    
+    // Se o evento é do próprio socket OU (do próprio nome E ainda não está pronto)
+    // Usa socket.id como prioridade, mas fallback para nome se socket.id não estiver disponível
+    if ((eventoEDoMeuSocket || (eventoEDoMeuNome && !evento.socketId)) && !usuarioPronto) {
+      console.log(`[${instanceId}] Usuário ${nome} (socket: ${meuSocketId}) marcado como pronto via evento do servidor`);
       usuarioPronto = true;
       botaoPronto.disabled = true;
       botaoPronto.textContent = 'Pronto!';
