@@ -100,6 +100,9 @@ function configurarListenersSocket() {
             console.log('✅ Jogo iniciado! meuNumeroJogador agora é:', meuNumeroJogador);
         } else if (evento.tipo === 'jogada') {
             processarJogada(evento);
+        } else if (evento.tipo === 'preparacao') {
+            console.log('⏳ Evento PREPARACAO recebido - aguardando ambos estarem prontos...');
+            console.log('📦 Dados do evento preparacao:', JSON.stringify(evento, null, 2));
         } else if (evento.tipo === 'erro') {
             console.warn('❌ Erro do servidor:', evento.mensagem);
             mostrarFeedback(evento.mensagem || 'Erro no servidor', 'red');

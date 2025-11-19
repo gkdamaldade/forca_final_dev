@@ -213,7 +213,9 @@ module.exports = function(io) {
         const j1Pronto = game.prontos.has(j1.id);
         const j2Pronto = game.prontos.has(j2.id);
         
-        console.log(`🔍 Verificação de prontos: ambosProntos=${ambosProntos}, j1Pronto=${j1Pronto}, j2Pronto=${j2Pronto}`);
+        console.log(`🔍 Verificação de prontos (joinRoom): ambosProntos=${ambosProntos}, j1Pronto=${j1Pronto}, j2Pronto=${j2Pronto}`);
+        console.log(`📋 IDs dos prontos (joinRoom):`, Array.from(game.prontos));
+        console.log(`📋 IDs dos jogadores (joinRoom):`, game.players.map(p => `${p.name} (${p.id})`));
         
         if (ambosProntos && j1Pronto && j2Pronto) {
           // Ambos estão prontos, inicia o jogo imediatamente
@@ -295,9 +297,13 @@ module.exports = function(io) {
         });
 
         console.log(`📊 Estado da sala ${roomId}: ${game.players.length} jogadores, ${game.prontos.size} prontos`);
+        console.log(`📋 IDs dos jogadores:`, game.players.map(p => `${p.name} (${p.id}, numero=${p.numero})`));
+        console.log(`📋 IDs dos prontos:`, Array.from(game.prontos));
+        console.log(`🔍 Verificando condição para iniciar: players.length=${game.players.length} === 2? ${game.players.length === 2}, prontos.size=${game.prontos.size} === 2? ${game.prontos.size === 2}`);
 
         // Quando ambos estiverem prontos, iniciar o jogo
         if (game.players.length === 2 && game.prontos.size === 2) {
+          console.log(`✅ CONDIÇÃO SATISFEITA! Iniciando jogo...`);
           // Validação e correção dos números antes de iniciar
           const nums = game.players.map(p => p.numero).sort();
           if (nums[0] !== 1 || nums[1] !== 2) {
@@ -404,6 +410,9 @@ module.exports = function(io) {
           
           // Verifica se os eventos foram enviados corretamente
           console.log(`✅ Eventos 'inicio' enviados para ambos os jogadores`);
+        } else {
+          console.log(`⏳ Condição NÃO satisfeita: players.length=${game.players.length}, prontos.size=${game.prontos.size}`);
+          console.log(`📋 Esperando mais jogadores ou prontos...`);
         }
       }
 
