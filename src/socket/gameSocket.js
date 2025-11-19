@@ -71,8 +71,9 @@ module.exports = function(io) {
           return;
         }
         
-        if (game.prontos.size === 2) {
+        if (game.players.length === 2 && game.prontos.size === 2) {
           // Ambos estão prontos, inicia o jogo imediatamente
+          console.log(`🎮 Ambos os jogadores estão prontos! Iniciando jogo...`);
           const estado = game.gameInstance.getEstado();
           game.turno = 1; // Garante que o turno inicial seja sempre 1
           
@@ -99,6 +100,7 @@ module.exports = function(io) {
             adversarioSocketId: j1.id
           });
         } else {
+          console.log(`⏳ Aguardando: ${game.players.length} jogadores, ${game.prontos.size} prontos`);
           io.to(j1.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
           io.to(j2.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
         }
@@ -117,8 +119,21 @@ module.exports = function(io) {
         // Adiciona o socket.id ao set de prontos (identificador único)
         // Isso evita problemas se dois jogadores tiverem o mesmo nome
         const jogadorAtual = game.players.find(p => p.id === socket.id);
-        if (jogadorAtual && !game.prontos.has(socket.id)) {
+        
+        if (!jogadorAtual) {
+          console.log(`⚠️ Jogador não encontrado ao marcar como pronto: ${socket.id}`);
+          socket.emit('eventoJogo', {
+            tipo: 'erro',
+            mensagem: 'Jogador não encontrado na sala!'
+          });
+          return;
+        }
+        
+        if (!game.prontos.has(socket.id)) {
           game.prontos.add(socket.id);
+          console.log(`✅ Jogador ${jogadorAtual.numero} (${nomeJogador}, ${socket.id}) marcado como pronto. Total prontos: ${game.prontos.size}`);
+        } else {
+          console.log(`ℹ️ Jogador ${jogadorAtual.numero} (${nomeJogador}, ${socket.id}) já estava pronto. Total prontos: ${game.prontos.size}`);
         }
 
         // Envia evento para TODOS na sala informando quem está pronto
@@ -129,8 +144,10 @@ module.exports = function(io) {
           total: game.prontos.size
         });
 
+        console.log(`📊 Estado da sala ${roomId}: ${game.players.length} jogadores, ${game.prontos.size} prontos`);
+
         // Quando ambos estiverem prontos, iniciar o jogo
-        if (game.prontos.size === 2) {
+        if (game.players.length === 2 && game.prontos.size === 2) {
           // Garante que j1 é sempre o jogador 1 e j2 é sempre o jogador 2
           const j1 = game.players.find(p => p.numero === 1);
           const j2 = game.players.find(p => p.numero === 2);

@@ -23,11 +23,15 @@ conectarSocket(sala, nome, categoria);
 
 // Atualiza contador de jogadores prontos
 aoReceberEvento((evento) => {
+  console.log(`[${instanceId}] 📨 Evento recebido:`, evento);
+  
   if (evento.tipo === 'pronto') {
+    console.log(`[${instanceId}] ✅ Evento 'pronto' recebido:`, evento);
     jogadoresProntos.add(evento.nome);
     // Atualiza contador com o total de prontos recebido do servidor (mais confiável)
     const totalProntos = evento.total || jogadoresProntos.size;
     document.querySelector('.contador').textContent = `( ${totalProntos} / 2 )`;
+    console.log(`[${instanceId}] 📊 Total de prontos: ${totalProntos}/2`);
     
     // Verifica se o evento é do próprio usuário usando socket.id (mais confiável que nome)
     // Isso evita problemas quando dois usuários têm o mesmo nome
@@ -35,10 +39,12 @@ aoReceberEvento((evento) => {
     const eventoEDoMeuSocket = evento.socketId && evento.socketId === meuSocketId;
     const eventoEDoMeuNome = evento.nome === nome;
     
+    console.log(`[${instanceId}] 🔍 Verificação: meuSocketId=${meuSocketId}, eventoSocketId=${evento.socketId}, eventoEDoMeuSocket=${eventoEDoMeuSocket}, eventoEDoMeuNome=${eventoEDoMeuNome}, usuarioPronto=${usuarioPronto}`);
+    
     // Se o evento é do próprio socket OU (do próprio nome E ainda não está pronto)
     // Usa socket.id como prioridade, mas fallback para nome se socket.id não estiver disponível
     if ((eventoEDoMeuSocket || (eventoEDoMeuNome && !evento.socketId)) && !usuarioPronto) {
-      console.log(`[${instanceId}] Usuário ${nome} (socket: ${meuSocketId}) marcado como pronto via evento do servidor`);
+      console.log(`[${instanceId}] ✅ Usuário ${nome} (socket: ${meuSocketId}) marcado como pronto via evento do servidor`);
       usuarioPronto = true;
       botaoPronto.disabled = true;
       botaoPronto.textContent = 'Pronto!';
@@ -48,30 +54,44 @@ aoReceberEvento((evento) => {
     
     // Quando ambos estiverem prontos (usando o total do servidor), redireciona
     if (totalProntos === 2) {
-      window.location.href = `game.html?sala=${sala}&categoria=${categoria}`;
+      console.log(`[${instanceId}] 🎮 Ambos os jogadores estão prontos! Redirecionando para o jogo...`);
+      setTimeout(() => {
+        window.location.href = `game.html?sala=${sala}&categoria=${categoria}`;
+      }, 500);
     }
   }
   
   // Também escuta o evento 'inicio' do servidor como fallback
   if (evento.tipo === 'inicio') {
+    console.log(`[${instanceId}] 🎮 Evento 'inicio' recebido! Redirecionando para o jogo...`);
     window.location.href = `game.html?sala=${sala}&categoria=${categoria}`;
+  }
+  
+  if (evento.tipo === 'preparacao') {
+    console.log(`[${instanceId}] ⏳ Modo preparação ativado`);
+  }
+  
+  if (evento.tipo === 'erro') {
+    console.error(`[${instanceId}] ❌ Erro do servidor:`, evento.mensagem);
+    alert(`Erro: ${evento.mensagem}`);
   }
 });
 
 // Envia evento de "pronto" ao clicar no botão
 botaoPronto.addEventListener('click', () => {
   if (usuarioPronto) {
-    console.log(`[${instanceId}] Tentativa de clicar novamente no botão pronto - ignorado`);
+    console.log(`[${instanceId}] ⚠️ Tentativa de clicar novamente no botão pronto - ignorado`);
     return; // Evita múltiplos cliques
   }
   
-  console.log(`[${instanceId}] Usuário ${nome} clicou em pronto`);
+  console.log(`[${instanceId}] 🖱️ Usuário ${nome} clicou em pronto`);
   usuarioPronto = true;
   botaoPronto.disabled = true;
   botaoPronto.textContent = 'Pronto!';
   botaoPronto.style.opacity = '0.6';
   botaoPronto.style.cursor = 'not-allowed';
   
+  console.log(`[${instanceId}] 📤 Enviando evento 'pronto' para o servidor...`);
   enviarEvento({
     tipo: 'pronto',
     nome
