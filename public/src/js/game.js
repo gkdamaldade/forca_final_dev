@@ -14,6 +14,11 @@ const bonecoP1_El = document.querySelector('.bonecos .boneco:nth-child(1) img');
 const bonecoP2_El = document.querySelector('.bonecos .boneco:nth-child(2) img');
 const h2Jogador1 = document.querySelector('.jogador:nth-child(1) h2');
 const h2Jogador2 = document.querySelector('.jogador:nth-child(2) h2');
+const preGameWrapper = document.querySelector('.pre-game-wrapper');
+const jogoContainer = document.querySelector('.jogo-container');
+const botaoPronto = document.querySelector('.botao-pronto');
+const contadorProntosEl = document.querySelector('.contador');
+const codigoSalaEl = document.querySelector('[data-codigo-sala]');
 
 // --- 2. ESTADO DO JOGO ---
 let meuNumeroJogador = null; // 1 ou 2
@@ -29,6 +34,11 @@ let jogoEstaAtivo = false;
 let timerInterval = null;
 let sala = '';
 let categoria = '';
+let nomeJogador = '';
+let instanceId = '';
+let estaNoModoPreparacao = true;
+let usuarioPronto = false;
+const jogadoresProntos = new Set();
 
 // --- 3. INICIALIZAÇÃO ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -56,22 +66,29 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
     
-    let nome;
     try {
-        nome = JSON.parse(atob(token.split('.')[1])).nome;
-        console.log(`👤 Nome do jogador: ${nome}`);
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        nomeJogador = payload.nome || payload.name || '';
+        console.log(`👤 Nome do jogador: ${nomeJogador}`);
+        instanceId = `${nomeJogador}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     } catch (e) {
         console.error('❌ Erro ao decodificar token:', e);
         window.location.href = 'login.html';
         return;
     }
+
+    if (codigoSalaEl) {
+        codigoSalaEl.textContent = sala;
+    }
+
+    configurarInterfacePreparacao();
     
     // Configura listeners ANTES de conectar
     configurarListenersSocket();
     
     // Conecta ao socket (pode já estar conectado, mas garante a conexão)
-    console.log(`🔌 Conectando ao socket: sala=${sala}, nome=${nome}, categoria=${categoria}`);
-    conectarSocket(sala, nome, categoria);
+    console.log(`🔌 Conectando ao socket: sala=${sala}, nome=${nomeJogador}, categoria=${categoria}`);
+    conectarSocket(sala, nomeJogador, categoria);
     
     // Aguarda um pouco para garantir que o socket está conectado
     setTimeout(() => {
@@ -86,6 +103,110 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('✅ Inicialização completa');
 });
 
+function configurarInterfacePreparacao() {
+    estaNoModoPreparacao = true;
+    if (preGameWrapper) {
+        preGameWrapper.classList.remove('hidden');
+    }
+    if (jogoContainer) {
+        jogoContainer.classList.add('hidden');
+    }
+
+    atualizarContadorProntos(0);
+
+    if (botaoPronto) {
+        botaoPronto.disabled = false;
+        botaoPronto.textContent = 'Pronto';
+        botaoPronto.style.opacity = '1';
+        botaoPronto.style.cursor = 'pointer';
+        botaoPronto.addEventListener('click', aoClicarBotaoPronto);
+    }
+}
+
+function aoClicarBotaoPronto() {
+    if (usuarioPronto) {
+        console.log(`[${instanceId}] ⚠️ Botão pronto já foi clicado. Ignorando novo clique.`);
+        return;
+    }
+
+    usuarioPronto = true;
+    travarBotaoPronto();
+
+    console.log(`[${instanceId}] 📤 Enviando evento 'pronto' para o servidor...`);
+    enviarEvento({
+        tipo: 'pronto',
+        nome: nomeJogador
+    });
+}
+
+function travarBotaoPronto() {
+    if (!botaoPronto) return;
+    botaoPronto.disabled = true;
+    botaoPronto.textContent = 'Pronto!';
+    botaoPronto.style.opacity = '0.6';
+    botaoPronto.style.cursor = 'not-allowed';
+}
+
+function desbloquearBotaoPronto() {
+    if (!botaoPronto) return;
+    botaoPronto.disabled = false;
+    botaoPronto.textContent = 'Pronto';
+    botaoPronto.style.opacity = '1';
+    botaoPronto.style.cursor = 'pointer';
+}
+
+function atualizarContadorProntos(total) {
+    if (!contadorProntosEl) return;
+    const valorSeguro = Math.max(0, Math.min(2, total || 0));
+    contadorProntosEl.textContent = `( ${valorSeguro} / 2 )`;
+}
+
+function ativarModoPreparacao(evento = {}) {
+    estaNoModoPreparacao = true;
+    jogoEstaAtivo = false;
+
+    if (preGameWrapper) preGameWrapper.classList.remove('hidden');
+    if (jogoContainer) jogoContainer.classList.add('hidden');
+
+    if (!usuarioPronto) {
+        desbloquearBotaoPronto();
+    }
+
+    if (evento.total !== undefined) {
+        atualizarContadorProntos(evento.total);
+    }
+}
+
+function registrarEventoPronto(evento) {
+    ativarModoPreparacao(evento);
+
+    if (evento.socketId) {
+        jogadoresProntos.add(evento.socketId);
+    } else if (evento.nome) {
+        jogadoresProntos.add(evento.nome);
+    }
+
+    const totalProntos = evento.total || jogadoresProntos.size;
+    atualizarContadorProntos(totalProntos);
+
+    const meuSocketAtual = getMeuSocketId();
+    const eventoEDoMeuSocket = evento.socketId && evento.socketId === meuSocketAtual;
+    const eventoEDoMeuNome = evento.nome === nomeJogador;
+
+    if ((eventoEDoMeuSocket || (eventoEDoMeuNome && !evento.socketId)) && !usuarioPronto) {
+        usuarioPronto = true;
+        travarBotaoPronto();
+    }
+}
+
+function ocultarModoPreparacao() {
+    if (!estaNoModoPreparacao) return;
+    estaNoModoPreparacao = false;
+    jogadoresProntos.clear();
+    if (preGameWrapper) preGameWrapper.classList.add('hidden');
+    if (jogoContainer) jogoContainer.classList.remove('hidden');
+}
+
 // --- 4. SOCKET LISTENERS ---
 function configurarListenersSocket() {
     aoReceberEvento((evento) => {
@@ -96,6 +217,7 @@ function configurarListenersSocket() {
         if (evento.tipo === 'inicio') {
             console.log('🎮 Evento INICIO recebido! Iniciando jogo...');
             console.log('📦 Dados do evento inicio:', JSON.stringify(evento, null, 2));
+            ocultarModoPreparacao();
             iniciarJogo(evento);
             console.log('✅ Jogo iniciado! meuNumeroJogador agora é:', meuNumeroJogador);
         } else if (evento.tipo === 'jogada') {
@@ -103,6 +225,10 @@ function configurarListenersSocket() {
         } else if (evento.tipo === 'preparacao') {
             console.log('⏳ Evento PREPARACAO recebido - aguardando ambos estarem prontos...');
             console.log('📦 Dados do evento preparacao:', JSON.stringify(evento, null, 2));
+            ativarModoPreparacao(evento);
+        } else if (evento.tipo === 'pronto') {
+            console.log('✅ Evento PRONTO recebido na tela unificada:', evento);
+            registrarEventoPronto(evento);
         } else if (evento.tipo === 'erro') {
             console.warn('❌ Erro do servidor:', evento.mensagem);
             mostrarFeedback(evento.mensagem || 'Erro no servidor', 'red');

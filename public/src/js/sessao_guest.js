@@ -101,9 +101,9 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('📨 Evento recebido na sessão guest:', evento);
         
         if (evento.tipo === 'preparacao') {
-          console.log('✅ Redirecionando para sessão de preparação...');
+          console.log('✅ Redirecionando para tela unificada do jogo...');
           window.location.href =
-            `sessao_preparacao.html?sala=${encodeURIComponent(sala)}&categoria=${encodeURIComponent(categoria)}`;
+            `game.html?sala=${encodeURIComponent(sala)}&categoria=${encodeURIComponent(categoria)}`;
         }
         
         if (evento.tipo === 'erro') {

@@ -55,9 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Escuta o evento de preparação (quando o segundo jogador entra)
     aoReceberEvento((evento) => {
         if (evento.tipo === 'preparacao') {
-            console.log('Oponente entrou. Redirecionando para sessão de preparação...');
+            console.log('Oponente entrou. Redirecionando para tela unificada do jogo...');
             // Redireciona para a próxima tela, passando os parâmetros da sala
-            window.location.href = `sessao_preparacao.html?sala=${sala}&categoria=${categoria}`;
+            window.location.href = `game.html?sala=${sala}&categoria=${categoria}`;
         }
         // Você pode adicionar mais listeners aqui (ex: 'erro', 'oponenteDesconectou', etc.)
     });

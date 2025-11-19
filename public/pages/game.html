@@ -11,7 +11,80 @@
     </style>
 </head>
 <body>
-    <div class="jogo-container">
+    <div class="pre-game-wrapper">
+        <header class="pre-header">
+            <div class="icon-img">
+                <img src="/public/assets/images/bob1.png" alt="Ícone Jogo da Forca">
+            </div>
+            <div class="titulo-sessao">EM SESSÃO</div>
+            <div class="icon-img">
+                <img src="/public/assets/images/patrick1.png" alt="Ícone Jogo da Forca">
+            </div>
+        </header>
+
+        <div class="sessao-container">
+            <div class="jogadores-prep">
+                <div class="jogador-prep">
+                    <h2>Jogador 1</h2>
+                    <div class="poderes-container">
+                        <button class="poder" type="button" aria-label="Dica">
+                            <img src="/public/assets/images/liberar_letra.png" alt="">
+                        </button>
+                        <button class="poder" type="button" aria-label="Tempo +">
+                            <img src="/public/assets/images/ocultar_dica.png" alt="">
+                        </button>
+                        <button class="poder" type="button" aria-label="Pular">
+                            <img src="/public/assets/images/ocultar_letra.png" alt="">
+                        </button>
+                        <button class="poder" type="button" aria-label="Revelar Letra">
+                            <img src="/public/assets/images/Tirar_vida.png" alt="">
+                        </button>
+                        <button class="poder" type="button" aria-label="Congelar">
+                            <img src="/public/assets/images/vida_extra.png" alt="">
+                        </button>
+                        <button class="poder" type="button" aria-label="Barreira">
+                            <img src="/public/assets/images/palpite.png" alt="">
+                        </button>
+                    </div>
+                </div>
+
+                <div class="jogador-prep">
+                    <h2>Jogador 2</h2>
+                    <div class="poderes-container">
+                        <button class="poder" type="button" aria-label="Dica">
+                            <img src="/public/assets/images/liberar_letra.png" alt="">
+                        </button>
+                        <button class="poder" type="button" aria-label="Tempo +">
+                            <img src="/public/assets/images/ocultar_dica.png" alt="">
+                        </button>
+                        <button class="poder" type="button" aria-label="Pular">
+                            <img src="/public/assets/images/ocultar_letra.png" alt="">
+                        </button>
+                        <button class="poder" type="button" aria-label="Revelar Letra">
+                            <img src="/public/assets/images/Tirar_vida.png" alt="">
+                        </button>
+                        <button class="poder" type="button" aria-label="Congelar">
+                            <img src="/public/assets/images/vida_extra.png" alt="">
+                        </button>
+                        <button class="poder" type="button" aria-label="Barreira">
+                            <img src="/public/assets/images/palpite.png" alt="">
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="codigo-container">
+                Código:
+                <span data-codigo-sala>-----</span>
+            </div>
+
+            <div class="contador">( 0 / 2 )</div>
+
+            <button class="botao-pronto" type="button">Pronto</button>
+        </div>
+    </div>
+
+    <div class="jogo-container hidden">
         <!-- Linha superior: Jogadores e vidas -->
         <div class="jogo-top">
             <div class="jogador">

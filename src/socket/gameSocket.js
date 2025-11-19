@@ -1,6 +1,7 @@
 const { getRandomWord } = require('../services/wordService');
 const { Game } = require('../game');
 
+const RECONNECT_GRACE_MS = 15000;
 const activeGames = new Map();
 
 module.exports = function(io) {
@@ -54,6 +55,11 @@ module.exports = function(io) {
         console.log(`🔄 Jogador ${jogadorExistentePorSocket.numero} (${playerName}, ${socket.id}) reconectou na sala ${roomId}`);
         // Atualiza o nome caso tenha mudado
         jogadorExistentePorSocket.name = playerName;
+        jogadorExistentePorSocket.desconectado = false;
+        if (jogadorExistentePorSocket.remocaoTimeout) {
+          clearTimeout(jogadorExistentePorSocket.remocaoTimeout);
+          jogadorExistentePorSocket.remocaoTimeout = null;
+        }
         // Envia evento de preparação se necessário
         if (game.players.length === 2) {
           const j1 = game.players.find(p => p.numero === 1);
@@ -70,29 +76,38 @@ module.exports = function(io) {
       const jogadorExistentePorNome = game.players.find(p => p.name === playerName);
       if (jogadorExistentePorNome && jogadorExistentePorNome.id !== socket.id) {
         const socketIdAntigo = jogadorExistentePorNome.id;
-              console.log(`🔄 Jogador ${jogadorExistentePorNome.numero} (${playerName}) reconectou com novo socket: ${socketIdAntigo} -> ${socket.id}`);
+        console.log(`🔄 Jogador ${jogadorExistentePorNome.numero} (${playerName}) reconectou com novo socket: ${socketIdAntigo} -> ${socket.id}`);
 
-              const estavaPronto = game.prontos.has(socketIdAntigo);
-              // Remove o socket.id antigo do set de prontos
-              game.prontos.delete(socketIdAntigo);
-        
+        const estavaProntoAntes = jogadorExistentePorNome.wasReady || game.prontos.has(socketIdAntigo);
+
+        // Remove o socket.id antigo do set de prontos
+        game.prontos.delete(socketIdAntigo);
+
         // Desconecta o socket antigo para evitar conflitos
         const socketAntigo = io.sockets.sockets.get(socketIdAntigo);
         if (socketAntigo) {
           socketAntigo.leave(roomId);
           console.log(`🔌 Socket antigo ${socketIdAntigo} removido da sala`);
         }
-        
-              // Atualiza o socket.id do jogador
-              jogadorExistentePorNome.id = socket.id;
 
-              // Se o jogador já estava marcado como pronto, atualiza o set com o novo socket.id
-              if (estavaPronto) {
-                game.prontos.add(socket.id);
-                console.log(`✅ Jogador ${jogadorExistentePorNome.numero} (${playerName}) manteve estado de pronto após reconexão.`);
-                console.log(`📊 Prontos atualizados: ${game.prontos.size}/2 -> IDs:`, Array.from(game.prontos));
-              }
-        
+        // Atualiza o socket.id do jogador
+        jogadorExistentePorNome.id = socket.id;
+        jogadorExistentePorNome.desconectado = false;
+        jogadorExistentePorNome.wasReady = estavaProntoAntes;
+        if (jogadorExistentePorNome.remocaoTimeout) {
+          clearTimeout(jogadorExistentePorNome.remocaoTimeout);
+          jogadorExistentePorNome.remocaoTimeout = null;
+        }
+
+        // Se o jogador já estava marcado como pronto, atualiza o set com o novo socket.id
+        if (estavaProntoAntes) {
+          game.prontos.add(socket.id);
+          console.log(`✅ Jogador ${jogadorExistentePorNome.numero} (${playerName}) manteve estado de pronto após reconexão.`);
+          console.log(`📊 Prontos atualizados: ${game.prontos.size}/2 -> IDs:`, Array.from(game.prontos));
+        } else {
+          console.log(`ℹ️ Jogador ${playerName} reconectou ainda não pronto.`);
+        }
+
         // Envia evento de preparação se necessário
         if (game.players.length === 2) {
           const j1 = game.players.find(p => p.numero === 1);
@@ -129,7 +144,14 @@ module.exports = function(io) {
         console.log(`✅ Números corrigidos:`, game.players.map(p => `${p.name} (${p.id}) = ${p.numero}`));
       }
       
-      game.players.push({ id: socket.id, name: playerName, numero: numeroJogador });
+      game.players.push({ 
+        id: socket.id, 
+        name: playerName, 
+        numero: numeroJogador,
+        wasReady: false,
+        desconectado: false,
+        remocaoTimeout: null
+      });
       console.log(`👤 Jogador ${numeroJogador} (${playerName}, ${socket.id}) entrou na sala ${roomId}. Total: ${game.players.length}`);
       
       // Validação final: garante que os números estão corretos
@@ -291,6 +313,12 @@ module.exports = function(io) {
         
         if (!game.prontos.has(socket.id)) {
           game.prontos.add(socket.id);
+          jogadorAtual.wasReady = true;
+          jogadorAtual.desconectado = false;
+          if (jogadorAtual.remocaoTimeout) {
+            clearTimeout(jogadorAtual.remocaoTimeout);
+            jogadorAtual.remocaoTimeout = null;
+          }
           console.log(`✅ Jogador ${jogadorAtual.numero} (${nomeJogador}, ${socket.id}) marcado como pronto. Total prontos: ${game.prontos.size}`);
         } else {
           console.log(`ℹ️ Jogador ${jogadorAtual.numero} (${nomeJogador}, ${socket.id}) já estava pronto. Total prontos: ${game.prontos.size}`);
@@ -503,18 +531,47 @@ module.exports = function(io) {
     });
 
     socket.on('disconnect', () => {
-      for (const [roomId, game] of activeGames.entries()) {
-        // Remove o socket.id do set de prontos (não mais o nome)
-        game.prontos.delete(socket.id);
-        game.players = game.players.filter(p => p.id !== socket.id);
-        if (game.players.length === 0) {
-          activeGames.delete(roomId);
-        } else {
-          const total = io.sockets.adapter.rooms.get(roomId)?.size || 0;
-          io.to(roomId).emit('eventoJogo', { tipo: 'conectado', total });
-        }
-      }
       console.log('🚪 Desconectado:', socket.id);
+      for (const [roomId, game] of activeGames.entries()) {
+        const jogador = game.players.find(p => p.id === socket.id);
+        if (!jogador) {
+          continue;
+        }
+
+        const estavaPronto = game.prontos.has(socket.id) || jogador.wasReady;
+        game.prontos.delete(socket.id);
+        jogador.wasReady = estavaPronto;
+        jogador.desconectado = true;
+        jogador.desconectadoEm = Date.now();
+
+        if (jogador.remocaoTimeout) {
+          clearTimeout(jogador.remocaoTimeout);
+        }
+
+        const socketIdParaRemocao = socket.id;
+        jogador.remocaoTimeout = setTimeout(() => {
+          const aindaExiste = game.players.find(p => p.name === jogador.name);
+          if (!aindaExiste || !aindaExiste.desconectado || aindaExiste.id !== socketIdParaRemocao) {
+            return; // Jogador já reconectou ou foi removido
+          }
+
+          console.log(`🗑️ Removendo jogador ${jogador.name} da sala ${roomId} após ${RECONNECT_GRACE_MS / 1000}s desconectado`);
+          game.players = game.players.filter(p => p.name !== jogador.name);
+
+          if (game.players.length === 0) {
+            console.log(`🧹 Nenhum jogador restante na sala ${roomId}. Removendo jogo ativo.`);
+            activeGames.delete(roomId);
+          } else {
+            const totalAtual = io.sockets.adapter.rooms.get(roomId)?.size || 0;
+            io.to(roomId).emit('eventoJogo', { tipo: 'conectado', total: totalAtual });
+          }
+        }, RECONNECT_GRACE_MS);
+
+        const total = io.sockets.adapter.rooms.get(roomId)?.size || 0;
+        io.to(roomId).emit('eventoJogo', { tipo: 'conectado', total });
+
+        console.log(`⚠️ Jogador ${jogador.name} (${socket.id}) desconectou. Aguardando reconexão por ${RECONNECT_GRACE_MS / 1000}s`);
+      }
     });
   });
 };

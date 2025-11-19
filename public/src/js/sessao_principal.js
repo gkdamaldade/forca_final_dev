@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // teste aprovado?
       const params = new URLSearchParams({ sala, categoria });
-      window.location.href = `/pages/sessao_preparacao.html?${params.toString()}`;
+      window.location.href = `/pages/game.html?${params.toString()}`;
     });
   } else {
     console.warn("Botão #btnEntrar não encontrado na página.");
