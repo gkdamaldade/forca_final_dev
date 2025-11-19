@@ -43,11 +43,28 @@ module.exports = function(io) {
       }
 
       const game = activeGames.get(roomId);
-      const numeroJogador = game.players.length + 1; // 1 ou 2
       
-      // Garante que o número do jogador seja sempre 1 ou 2
-      if (numeroJogador > 2) {
-        console.warn(`⚠️ Mais de 2 jogadores tentando entrar na sala ${roomId}. Ignorando...`);
+      // Verifica se o jogador já está na lista (reconexão)
+      const jogadorExistente = game.players.find(p => p.id === socket.id);
+      if (jogadorExistente) {
+        console.log(`🔄 Jogador ${jogadorExistente.numero} (${playerName}, ${socket.id}) reconectou na sala ${roomId}`);
+        // Atualiza o nome caso tenha mudado
+        jogadorExistente.name = playerName;
+        // Envia evento de preparação se necessário
+        if (game.players.length === 2) {
+          const j1 = game.players.find(p => p.numero === 1);
+          const j2 = game.players.find(p => p.numero === 2);
+          if (j1 && j2) {
+            io.to(j1.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
+            io.to(j2.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
+          }
+        }
+        return;
+      }
+      
+      // Verifica se a sala já está cheia
+      if (game.players.length >= 2) {
+        console.warn(`⚠️ Sala ${roomId} já está cheia (${game.players.length} jogadores). Ignorando entrada de ${playerName} (${socket.id})`);
         socket.emit('eventoJogo', {
           tipo: 'erro',
           mensagem: 'Sala cheia! Apenas 2 jogadores podem jogar.'
@@ -55,11 +72,14 @@ module.exports = function(io) {
         return;
       }
       
+      const numeroJogador = game.players.length + 1; // 1 ou 2
       game.players.push({ id: socket.id, name: playerName, numero: numeroJogador });
-      console.log(`👤 Jogador ${numeroJogador} (${playerName}) entrou na sala ${roomId}. Total: ${game.players.length}`);
+      console.log(`👤 Jogador ${numeroJogador} (${playerName}, ${socket.id}) entrou na sala ${roomId}. Total: ${game.players.length}`);
 
       const total = io.sockets.adapter.rooms.get(roomId)?.size || 0;
       io.to(roomId).emit('eventoJogo', { tipo: 'conectado', total });
+
+      console.log(`📊 Estado após entrada: ${game.players.length} jogadores na sala ${roomId}`);
 
       if (game.players.length === 2) {
         // Garante que j1 é sempre o jogador 1 e j2 é sempre o jogador 2
@@ -70,6 +90,9 @@ module.exports = function(io) {
           console.error('❌ Erro: jogadores não encontrados corretamente', game.players);
           return;
         }
+        
+        console.log(`👥 Dois jogadores na sala: J1=${j1.name} (${j1.id}), J2=${j2.name} (${j2.id})`);
+        console.log(`📊 Prontos: ${game.prontos.size}/2`);
         
         if (game.players.length === 2 && game.prontos.size === 2) {
           // Ambos estão prontos, inicia o jogo imediatamente
@@ -100,10 +123,13 @@ module.exports = function(io) {
             adversarioSocketId: j1.id
           });
         } else {
-          console.log(`⏳ Aguardando: ${game.players.length} jogadores, ${game.prontos.size} prontos`);
+          console.log(`⏳ Aguardando prontos: ${game.players.length} jogadores, ${game.prontos.size} prontos`);
+          console.log(`📤 Enviando evento 'preparacao' para J1 (${j1.id}) e J2 (${j2.id})`);
           io.to(j1.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
           io.to(j2.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
         }
+      } else if (game.players.length === 1) {
+        console.log(`⏳ Aguardando segundo jogador na sala ${roomId}`);
       }
     });
 

@@ -98,9 +98,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // --- Escuta eventos ---
       aoReceberEvento((evento) => {
+        console.log('📨 Evento recebido na sessão guest:', evento);
+        
         if (evento.tipo === 'preparacao') {
+          console.log('✅ Redirecionando para sessão de preparação...');
           window.location.href =
             `sessao_preparacao.html?sala=${encodeURIComponent(sala)}&categoria=${encodeURIComponent(categoria)}`;
+        }
+        
+        if (evento.tipo === 'erro') {
+          console.error('❌ Erro do servidor:', evento.mensagem);
+          alert(`Erro: ${evento.mensagem || 'Erro desconhecido'}`);
+          // Não redireciona, deixa o usuário tentar novamente
         }
       });
 
