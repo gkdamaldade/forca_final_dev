@@ -70,10 +70,11 @@ module.exports = function(io) {
       const jogadorExistentePorNome = game.players.find(p => p.name === playerName);
       if (jogadorExistentePorNome && jogadorExistentePorNome.id !== socket.id) {
         const socketIdAntigo = jogadorExistentePorNome.id;
-        console.log(`🔄 Jogador ${jogadorExistentePorNome.numero} (${playerName}) reconectou com novo socket: ${socketIdAntigo} -> ${socket.id}`);
-        
-        // Remove o socket.id antigo do set de prontos
-        game.prontos.delete(socketIdAntigo);
+              console.log(`🔄 Jogador ${jogadorExistentePorNome.numero} (${playerName}) reconectou com novo socket: ${socketIdAntigo} -> ${socket.id}`);
+
+              const estavaPronto = game.prontos.has(socketIdAntigo);
+              // Remove o socket.id antigo do set de prontos
+              game.prontos.delete(socketIdAntigo);
         
         // Desconecta o socket antigo para evitar conflitos
         const socketAntigo = io.sockets.sockets.get(socketIdAntigo);
@@ -82,8 +83,15 @@ module.exports = function(io) {
           console.log(`🔌 Socket antigo ${socketIdAntigo} removido da sala`);
         }
         
-        // Atualiza o socket.id do jogador
-        jogadorExistentePorNome.id = socket.id;
+              // Atualiza o socket.id do jogador
+              jogadorExistentePorNome.id = socket.id;
+
+              // Se o jogador já estava marcado como pronto, atualiza o set com o novo socket.id
+              if (estavaPronto) {
+                game.prontos.add(socket.id);
+                console.log(`✅ Jogador ${jogadorExistentePorNome.numero} (${playerName}) manteve estado de pronto após reconexão.`);
+                console.log(`📊 Prontos atualizados: ${game.prontos.size}/2 -> IDs:`, Array.from(game.prontos));
+              }
         
         // Envia evento de preparação se necessário
         if (game.players.length === 2) {
