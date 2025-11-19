@@ -8,8 +8,12 @@ module.exports = function(io) {
     console.log('🎮 Conectado:', socket.id);
 
     socket.on('joinRoom', async ({ roomId, playerName, categoria }) => {
+      console.log(`🚪 joinRoom recebido: roomId=${roomId}, playerName=${playerName}, categoria=${categoria}, socket.id=${socket.id}`);
+      
       socket.join(roomId);
       socket.data = { nome: playerName, sala: roomId };
+      
+      console.log(`✅ Socket ${socket.id} entrou na sala ${roomId}`);
       
       if (!activeGames.has(roomId)) {
         try {
@@ -135,6 +139,7 @@ module.exports = function(io) {
       io.to(roomId).emit('eventoJogo', { tipo: 'conectado', total });
 
       console.log(`📊 Estado após entrada: ${game.players.length} jogadores na sala ${roomId}`);
+      console.log(`📋 Lista de jogadores:`, game.players.map(p => `${p.name} (${p.id}) = ${p.numero}`));
 
       if (game.players.length === 2) {
         // Validação e correção dos números antes de continuar
@@ -198,16 +203,25 @@ module.exports = function(io) {
           return;
         }
         
-        console.log(`👥 Dois jogadores na sala: J1=${j1.name} (${j1.id}), J2=${j2.name} (${j2.id})`);
+        console.log(`👥 Dois jogadores na sala: J1=${j1.name} (${j1.id}, numero=${j1.numero}), J2=${j2.name} (${j2.id}, numero=${j2.numero})`);
         console.log(`📊 Prontos: ${game.prontos.size}/2`);
+        console.log(`📋 IDs dos prontos:`, Array.from(game.prontos));
+        console.log(`📋 IDs dos jogadores:`, game.players.map(p => p.id));
         
-        if (game.players.length === 2 && game.prontos.size === 2) {
+        // Verifica se ambos estão prontos ANTES de enviar eventos
+        const ambosProntos = game.players.length === 2 && game.prontos.size === 2;
+        const j1Pronto = game.prontos.has(j1.id);
+        const j2Pronto = game.prontos.has(j2.id);
+        
+        console.log(`🔍 Verificação de prontos: ambosProntos=${ambosProntos}, j1Pronto=${j1Pronto}, j2Pronto=${j2Pronto}`);
+        
+        if (ambosProntos && j1Pronto && j2Pronto) {
           // Ambos estão prontos, inicia o jogo imediatamente
           console.log(`🎮 Ambos os jogadores estão prontos! Iniciando jogo...`);
           const estado = game.gameInstance.getEstado();
           game.turno = 1; // Garante que o turno inicial seja sempre 1
           
-          console.log(`📤 Enviando evento 'inicio' para J1 (${j1.id}): jogador=1, turno=${game.turno}`);
+          console.log(`📤 Enviando evento 'inicio' para J1 (${j1.id}): jogador=1, turno=${game.turno}, palavra="${estado.palavra}"`);
           io.to(j1.id).emit('eventoJogo', { 
             tipo: 'inicio', 
             jogador: 1, 
@@ -220,7 +234,7 @@ module.exports = function(io) {
             adversarioSocketId: j2.id
           });
           
-          console.log(`📤 Enviando evento 'inicio' para J2 (${j2.id}): jogador=2, turno=${game.turno}`);
+          console.log(`📤 Enviando evento 'inicio' para J2 (${j2.id}): jogador=2, turno=${game.turno}, palavra="${estado.palavra}"`);
           io.to(j2.id).emit('eventoJogo', { 
             tipo: 'inicio', 
             jogador: 2, 
@@ -345,9 +359,20 @@ module.exports = function(io) {
           console.log(`🎮 Iniciando jogo na sala ${roomId}`);
           console.log(`Jogador 1: ${j1.name} (${j1.id}, numero: ${j1.numero}), Jogador 2: ${j2.name} (${j2.id}, numero: ${j2.numero})`);
           console.log(`Turno inicial: ${game.turno}`);
+          console.log(`Palavra secreta: ${game.word}, Palavra exibida: ${estado.palavra}`);
 
-          console.log(`📤 Enviando evento 'inicio' para J1 (${j1.id}): jogador=1, turno=${game.turno}`);
-          io.to(j1.id).emit('eventoJogo', {
+          // Verifica se os sockets ainda estão conectados
+          const j1Socket = io.sockets.sockets.get(j1.id);
+          const j2Socket = io.sockets.sockets.get(j2.id);
+          
+          if (!j1Socket) {
+            console.error(`❌ Socket J1 (${j1.id}) não está mais conectado!`);
+          }
+          if (!j2Socket) {
+            console.error(`❌ Socket J2 (${j2.id}) não está mais conectado!`);
+          }
+
+          const eventoInicioJ1 = {
             tipo: 'inicio',
             jogador: 1,
             adversario: j2.name,
@@ -357,10 +382,9 @@ module.exports = function(io) {
             categoria: game.categoria,
             meuSocketId: j1.id, // Socket ID deste jogador para identificação única
             adversarioSocketId: j2.id // Socket ID do adversário
-          });
-
-          console.log(`📤 Enviando evento 'inicio' para J2 (${j2.id}): jogador=2, turno=${game.turno}`);
-          io.to(j2.id).emit('eventoJogo', {
+          };
+          
+          const eventoInicioJ2 = {
             tipo: 'inicio',
             jogador: 2,
             adversario: j1.name,
@@ -370,7 +394,16 @@ module.exports = function(io) {
             categoria: game.categoria,
             meuSocketId: j2.id, // Socket ID deste jogador para identificação única
             adversarioSocketId: j1.id // Socket ID do adversário
-          });
+          };
+
+          console.log(`📤 Enviando evento 'inicio' para J1 (${j1.id}):`, eventoInicioJ1);
+          io.to(j1.id).emit('eventoJogo', eventoInicioJ1);
+
+          console.log(`📤 Enviando evento 'inicio' para J2 (${j2.id}):`, eventoInicioJ2);
+          io.to(j2.id).emit('eventoJogo', eventoInicioJ2);
+          
+          // Verifica se os eventos foram enviados corretamente
+          console.log(`✅ Eventos 'inicio' enviados para ambos os jogadores`);
         }
       }
 

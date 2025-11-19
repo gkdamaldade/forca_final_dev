@@ -8,9 +8,12 @@ let meuSocketId = null; // Armazena o ID do socket desta instância
  * @param {string} categoria - Categoria da palavra (opcional)
  */
 export function conectarSocket(sala, nome, categoria) {
+  console.log(`🔌 conectarSocket chamado: sala=${sala}, nome=${nome}, categoria=${categoria}`);
+  
   // Sempre cria uma nova conexão para garantir isolamento entre abas/instâncias
   // Isso é importante quando testando na mesma máquina
   if (socket && socket.connected) {
+    console.log(`🔌 Desconectando socket anterior: ${socket.id}`);
     // Se já existe uma conexão ativa, desconecta antes de criar nova
     socket.disconnect();
   }
@@ -21,13 +24,24 @@ export function conectarSocket(sala, nome, categoria) {
   // Armazena o socket.id e entra na sala quando a conexão for estabelecida
   socket.on('connect', () => {
     meuSocketId = socket.id;
-    console.log('Socket conectado com ID:', meuSocketId);
+    console.log(`✅ Socket conectado com ID: ${meuSocketId}`);
+    console.log(`📤 Enviando joinRoom: roomId=${sala}, playerName=${nome}, categoria=${categoriaSlug || null}`);
     socket.emit('joinRoom', { roomId: sala, playerName: nome, categoria: categoriaSlug || null });
+  });
+  
+  socket.on('disconnect', () => {
+    console.log(`❌ Socket desconectado: ${socket.id}`);
+    meuSocketId = null;
+  });
+  
+  socket.on('connect_error', (error) => {
+    console.error(`❌ Erro ao conectar socket:`, error);
   });
   
   // Se já estiver conectado, envia imediatamente
   if (socket.connected) {
     meuSocketId = socket.id;
+    console.log(`📤 Socket já conectado, enviando joinRoom imediatamente`);
     socket.emit('joinRoom', { roomId: sala, playerName: nome, categoria: categoriaSlug || null });
   }
 }

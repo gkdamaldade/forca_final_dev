@@ -32,41 +32,58 @@ let categoria = '';
 
 // --- 3. INICIALIZAÇÃO ---
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('🎮 DOMContentLoaded - Inicializando jogo...');
+    
     const urlParams = new URLSearchParams(window.location.search);
     sala = urlParams.get('sala');
     categoria = urlParams.get('categoria') || 'Geral';
     
+    console.log(`📋 Parâmetros da URL: sala=${sala}, categoria=${categoria}`);
+    
     if (!sala) {
-        console.error('Sala não encontrada na URL');
-        categoriaEl.textContent = 'Erro: Sala não encontrada';
+        console.error('❌ Sala não encontrada na URL');
+        if (categoriaEl) {
+            categoriaEl.textContent = 'Erro: Sala não encontrada';
+        }
         return;
     }
 
     // Obtém o nome do token
     const token = localStorage.getItem('token');
     if (!token) {
+        console.error('❌ Token não encontrado');
         window.location.href = 'login.html';
         return;
     }
     
-    const nome = JSON.parse(atob(token.split('.')[1])).nome;
+    let nome;
+    try {
+        nome = JSON.parse(atob(token.split('.')[1])).nome;
+        console.log(`👤 Nome do jogador: ${nome}`);
+    } catch (e) {
+        console.error('❌ Erro ao decodificar token:', e);
+        window.location.href = 'login.html';
+        return;
+    }
+    
+    // Configura listeners ANTES de conectar
+    configurarListenersSocket();
     
     // Conecta ao socket (pode já estar conectado, mas garante a conexão)
+    console.log(`🔌 Conectando ao socket: sala=${sala}, nome=${nome}, categoria=${categoria}`);
     conectarSocket(sala, nome, categoria);
-    
-    // Configura listeners ANTES de qualquer coisa
-    configurarListenersSocket();
     
     // Aguarda um pouco para garantir que o socket está conectado
     setTimeout(() => {
-        // Se o jogo já iniciou (evento 'inicio' já foi recebido), não faz nada
-        // Caso contrário, o listener vai receber quando ambos estiverem prontos
         console.log('⏳ Aguardando evento de início do jogo...');
+        console.log(`📊 Estado atual: meuNumeroJogador=${meuNumeroJogador}, turnoAtual=${turnoAtual}, jogoEstaAtivo=${jogoEstaAtivo}`);
     }, 500);
     
     // Configura teclado virtual e físico
     configurarTecladoVirtual();
     document.addEventListener('keydown', lidarComChuteDeTecladoFisico);
+    
+    console.log('✅ Inicialização completa');
 });
 
 // --- 4. SOCKET LISTENERS ---
