@@ -43,16 +43,61 @@ module.exports = function(io) {
       }
 
       const game = activeGames.get(roomId);
-      game.players.push({ id: socket.id, name: playerName });
+      const numeroJogador = game.players.length + 1; // 1 ou 2
+      
+      // Garante que o número do jogador seja sempre 1 ou 2
+      if (numeroJogador > 2) {
+        console.warn(`⚠️ Mais de 2 jogadores tentando entrar na sala ${roomId}. Ignorando...`);
+        socket.emit('eventoJogo', {
+          tipo: 'erro',
+          mensagem: 'Sala cheia! Apenas 2 jogadores podem jogar.'
+        });
+        return;
+      }
+      
+      game.players.push({ id: socket.id, name: playerName, numero: numeroJogador });
+      console.log(`👤 Jogador ${numeroJogador} (${playerName}) entrou na sala ${roomId}. Total: ${game.players.length}`);
 
       const total = io.sockets.adapter.rooms.get(roomId)?.size || 0;
       io.to(roomId).emit('eventoJogo', { tipo: 'conectado', total });
 
       if (game.players.length === 2) {
-        const [j1, j2] = game.players;
+        // Garante que j1 é sempre o jogador 1 e j2 é sempre o jogador 2
+        const j1 = game.players.find(p => p.numero === 1);
+        const j2 = game.players.find(p => p.numero === 2);
+        
+        if (!j1 || !j2) {
+          console.error('❌ Erro: jogadores não encontrados corretamente', game.players);
+          return;
+        }
+        
         if (game.prontos.size === 2) {
-          io.to(j1.id).emit('eventoJogo', { tipo: 'inicio', jogador: 1, adversario: j2.name, palavra: game.word, turno: game.turno, categoria: game.categoria });
-          io.to(j2.id).emit('eventoJogo', { tipo: 'inicio', jogador: 2, adversario: j1.name, palavra: game.word, turno: game.turno, categoria: game.categoria });
+          // Ambos estão prontos, inicia o jogo imediatamente
+          const estado = game.gameInstance.getEstado();
+          game.turno = 1; // Garante que o turno inicial seja sempre 1
+          
+          io.to(j1.id).emit('eventoJogo', { 
+            tipo: 'inicio', 
+            jogador: 1, 
+            adversario: j2.name, 
+            palavra: estado.palavra,
+            palavraSecreta: game.word,
+            turno: game.turno, 
+            categoria: game.categoria,
+            meuSocketId: j1.id,
+            adversarioSocketId: j2.id
+          });
+          io.to(j2.id).emit('eventoJogo', { 
+            tipo: 'inicio', 
+            jogador: 2, 
+            adversario: j1.name, 
+            palavra: estado.palavra,
+            palavraSecreta: game.word,
+            turno: game.turno, 
+            categoria: game.categoria,
+            meuSocketId: j2.id,
+            adversarioSocketId: j1.id
+          });
         } else {
           io.to(j1.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
           io.to(j2.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
@@ -86,14 +131,22 @@ module.exports = function(io) {
 
         // Quando ambos estiverem prontos, iniciar o jogo
         if (game.prontos.size === 2) {
-          const [j1, j2] = game.players;
+          // Garante que j1 é sempre o jogador 1 e j2 é sempre o jogador 2
+          const j1 = game.players.find(p => p.numero === 1);
+          const j2 = game.players.find(p => p.numero === 2);
+          
+          if (!j1 || !j2) {
+            console.error('❌ Erro: jogadores não encontrados corretamente ao iniciar jogo', game.players);
+            return;
+          }
+          
           const estado = game.gameInstance.getEstado();
           
           // Garante que o turno inicial seja sempre 1 (jogador 1 começa)
           game.turno = 1;
           
           console.log(`🎮 Iniciando jogo na sala ${roomId}`);
-          console.log(`Jogador 1: ${j1.name} (${j1.id}), Jogador 2: ${j2.name} (${j2.id})`);
+          console.log(`Jogador 1: ${j1.name} (${j1.id}, numero: ${j1.numero}), Jogador 2: ${j2.name} (${j2.id}, numero: ${j2.numero})`);
           console.log(`Turno inicial: ${game.turno}`);
 
           io.to(j1.id).emit('eventoJogo', {
@@ -126,6 +179,7 @@ module.exports = function(io) {
         // Verifica se é o turno do jogador
         const jogadorAtual = game.players.find(p => p.id === socket.id);
         if (!jogadorAtual) {
+          console.log(`❌ Jogador não encontrado: ${socket.id}`);
           socket.emit('eventoJogo', {
             tipo: 'erro',
             mensagem: 'Jogador não encontrado na sala!'
@@ -133,16 +187,22 @@ module.exports = function(io) {
           return;
         }
         
-        const numeroJogador = game.players.indexOf(jogadorAtual) + 1;
+        // Usa o número do jogador armazenado (mais confiável que indexOf)
+        const numeroJogador = jogadorAtual.numero;
+        
+        console.log(`🎯 Verificando turno: jogador=${numeroJogador}, turno atual=${game.turno}`);
         
         if (numeroJogador !== game.turno) {
           // Não é o turno deste jogador
+          console.log(`❌ Não é o turno do jogador ${numeroJogador}. Turno atual: ${game.turno}`);
           socket.emit('eventoJogo', {
             tipo: 'erro',
             mensagem: 'Não é seu turno!'
           });
           return;
         }
+        
+        console.log(`✅ É o turno do jogador ${numeroJogador}. Processando jogada...`);
 
         // Processa a jogada usando a classe Game
         const resultado = game.gameInstance.chutarLetra(msg.letra);

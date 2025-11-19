@@ -69,12 +69,16 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- 4. SOCKET LISTENERS ---
 function configurarListenersSocket() {
     aoReceberEvento((evento) => {
+        console.log('📨 Evento recebido:', evento);
         if (evento.tipo === 'inicio') {
             iniciarJogo(evento);
         } else if (evento.tipo === 'jogada') {
             processarJogada(evento);
         } else if (evento.tipo === 'erro') {
-            console.warn('Erro do servidor:', evento.mensagem);
+            console.warn('❌ Erro do servidor:', evento.mensagem);
+            mostrarFeedback(evento.mensagem || 'Erro no servidor', 'red');
+            // Se o erro for "não é seu turno", não faz nada além de mostrar feedback
+            // O turno será atualizado quando o servidor enviar o próximo evento 'jogada'
         }
     });
 }
@@ -92,9 +96,16 @@ function iniciarJogo(dados) {
     turnoAtual = dados.turno !== undefined ? dados.turno : 1; // Garante que sempre tenha um turno inicial
     categoria = dados.categoria;
     
-    console.log(`Jogador ${meuNumeroJogador} - Socket ID: ${meuSocketId}`);
-    console.log(`Turno atual: ${turnoAtual}, Meu número: ${meuNumeroJogador}`);
-    console.log(`É meu turno? ${turnoAtual === meuNumeroJogador}`);
+    console.log(`👤 Jogador ${meuNumeroJogador} - Socket ID: ${meuSocketId}`);
+    console.log(`🔄 Turno atual: ${turnoAtual}, Meu número: ${meuNumeroJogador}`);
+    console.log(`✅ É meu turno? ${turnoAtual === meuNumeroJogador}`);
+    
+    // Validação: garante que o número do jogador está correto
+    if (!meuNumeroJogador || (meuNumeroJogador !== 1 && meuNumeroJogador !== 2)) {
+        console.error('❌ Número de jogador inválido:', meuNumeroJogador);
+        mostrarFeedback('Erro: número de jogador inválido', 'red');
+        return;
+    }
     
     // Atualiza nomes dos jogadores
     if (meuNumeroJogador === 1) {
@@ -265,7 +276,9 @@ async function processarChute(letra) {
     timerEl.style.color = '#888';
     
     // Envia jogada para o servidor
-    console.log(`Enviando jogada: ${letra} (turno: ${turnoAtual}, meu número: ${meuNumeroJogador})`);
+    console.log(`📤 Enviando jogada: ${letra} (turno: ${turnoAtual}, meu número: ${meuNumeroJogador})`);
+    console.log(`🔍 Validação antes de enviar: jogoAtivo=${jogoEstaAtivo}, turnoAtual=${turnoAtual}, meuNumero=${meuNumeroJogador}, letraChutada=${letrasChutadas.has(letra)}`);
+    
     enviarEvento({
         tipo: 'jogada',
         letra: letra
