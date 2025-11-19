@@ -44,12 +44,43 @@ module.exports = function(io) {
 
       const game = activeGames.get(roomId);
       
-      // Verifica se o jogador já está na lista (reconexão)
-      const jogadorExistente = game.players.find(p => p.id === socket.id);
-      if (jogadorExistente) {
-        console.log(`🔄 Jogador ${jogadorExistente.numero} (${playerName}, ${socket.id}) reconectou na sala ${roomId}`);
+      // Verifica se o jogador já está na lista pelo socket.id (reconexão com mesmo socket)
+      const jogadorExistentePorSocket = game.players.find(p => p.id === socket.id);
+      if (jogadorExistentePorSocket) {
+        console.log(`🔄 Jogador ${jogadorExistentePorSocket.numero} (${playerName}, ${socket.id}) reconectou na sala ${roomId}`);
         // Atualiza o nome caso tenha mudado
-        jogadorExistente.name = playerName;
+        jogadorExistentePorSocket.name = playerName;
+        // Envia evento de preparação se necessário
+        if (game.players.length === 2) {
+          const j1 = game.players.find(p => p.numero === 1);
+          const j2 = game.players.find(p => p.numero === 2);
+          if (j1 && j2) {
+            io.to(j1.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
+            io.to(j2.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
+          }
+        }
+        return;
+      }
+      
+      // Verifica se há um jogador com o mesmo nome (reconexão com novo socket.id)
+      const jogadorExistentePorNome = game.players.find(p => p.name === playerName);
+      if (jogadorExistentePorNome && jogadorExistentePorNome.id !== socket.id) {
+        const socketIdAntigo = jogadorExistentePorNome.id;
+        console.log(`🔄 Jogador ${jogadorExistentePorNome.numero} (${playerName}) reconectou com novo socket: ${socketIdAntigo} -> ${socket.id}`);
+        
+        // Remove o socket.id antigo do set de prontos
+        game.prontos.delete(socketIdAntigo);
+        
+        // Desconecta o socket antigo para evitar conflitos
+        const socketAntigo = io.sockets.sockets.get(socketIdAntigo);
+        if (socketAntigo) {
+          socketAntigo.leave(roomId);
+          console.log(`🔌 Socket antigo ${socketIdAntigo} removido da sala`);
+        }
+        
+        // Atualiza o socket.id do jogador
+        jogadorExistentePorNome.id = socket.id;
+        
         // Envia evento de preparação se necessário
         if (game.players.length === 2) {
           const j1 = game.players.find(p => p.numero === 1);
