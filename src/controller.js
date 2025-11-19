@@ -8,13 +8,13 @@ const jwt = require('jsonwebtoken');
 let jogoAtual = null;
 
 function iniciarNovoJogo() {
+async function iniciarNovoJogo() {
     console.log("Controller: Criando novo jogo...");
-    const { palavra, categoria } = getNovaPalavra();
-    
-    // 2. SALVE O JOGO NA VARIÁVEL
+
+    const { palavra, categoria } = await getNovaPalavra();
+
     jogoAtual = new Game(palavra, categoria);
     
-    // 3. Retorne o estado
     return jogoAtual.getEstado();
 }
 
