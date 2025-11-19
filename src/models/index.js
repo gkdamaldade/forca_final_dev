@@ -24,6 +24,8 @@ Object.values(models).forEach(model => {
   }
 });
 
-models.Category.hasMany(models.Word, { foreignKey: 'category_id', as: 'words' });
+// Associação comentada porque o modelo Word usa 'categoria' como string, não 'category_id' como foreign key
+// Se no futuro o modelo Word for alterado para usar category_id, descomente esta linha:
+// models.Category.hasMany(models.Word, { foreignKey: 'category_id', as: 'words' });
 
 module.exports = { sequelize, models };
