@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 // 3. Faz o 'fetch' para o novo endpoint
                 
-                const response = await fetch(`api/players/cadastro`, {
+                const response = await fetch(`api/players/register`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ username, email, password })
