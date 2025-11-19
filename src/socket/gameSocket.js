@@ -103,9 +103,33 @@ module.exports = function(io) {
         return;
       }
       
-      const numeroJogador = game.players.length + 1; // 1 ou 2
+      // Garante que o primeiro jogador seja sempre 1 e o segundo seja sempre 2
+      const numeroJogador = game.players.length === 0 ? 1 : 2;
+      
+      // Verifica se já existe um jogador com esse número (proteção contra duplicatas)
+      const jogadorComMesmoNumero = game.players.find(p => p.numero === numeroJogador);
+      if (jogadorComMesmoNumero) {
+        console.warn(`⚠️ Já existe um jogador com número ${numeroJogador}. Corrigindo números...`);
+        // Corrige os números: primeiro jogador = 1, segundo = 2
+        game.players.forEach((p, index) => {
+          p.numero = index + 1;
+        });
+        console.log(`✅ Números corrigidos:`, game.players.map(p => `${p.name} (${p.id}) = ${p.numero}`));
+      }
+      
       game.players.push({ id: socket.id, name: playerName, numero: numeroJogador });
       console.log(`👤 Jogador ${numeroJogador} (${playerName}, ${socket.id}) entrou na sala ${roomId}. Total: ${game.players.length}`);
+      
+      // Validação final: garante que os números estão corretos
+      if (game.players.length === 2) {
+        const nums = game.players.map(p => p.numero).sort();
+        if (nums[0] !== 1 || nums[1] !== 2) {
+          console.error(`❌ Números inválidos detectados: ${nums}. Corrigindo...`);
+          game.players[0].numero = 1;
+          game.players[1].numero = 2;
+          console.log(`✅ Números corrigidos para:`, game.players.map(p => `${p.name} = ${p.numero}`));
+        }
+      }
 
       const total = io.sockets.adapter.rooms.get(roomId)?.size || 0;
       io.to(roomId).emit('eventoJogo', { tipo: 'conectado', total });
@@ -113,12 +137,64 @@ module.exports = function(io) {
       console.log(`📊 Estado após entrada: ${game.players.length} jogadores na sala ${roomId}`);
 
       if (game.players.length === 2) {
+        // Validação e correção dos números antes de continuar
+        const nums = game.players.map(p => p.numero).sort();
+        if (nums[0] !== 1 || nums[1] !== 2) {
+          console.warn(`⚠️ Números inválidos antes de iniciar: ${nums}. Corrigindo...`);
+          game.players[0].numero = 1;
+          game.players[1].numero = 2;
+          console.log(`✅ Números corrigidos:`, game.players.map(p => `${p.name} (${p.id}) = ${p.numero}`));
+        }
+        
         // Garante que j1 é sempre o jogador 1 e j2 é sempre o jogador 2
         const j1 = game.players.find(p => p.numero === 1);
         const j2 = game.players.find(p => p.numero === 2);
         
         if (!j1 || !j2) {
-          console.error('❌ Erro: jogadores não encontrados corretamente', game.players);
+          console.error('❌ Erro: jogadores não encontrados corretamente após correção', game.players);
+          // Tenta corrigir novamente usando a ordem do array
+          game.players[0].numero = 1;
+          game.players[1].numero = 2;
+          const j1Corrigido = game.players[0];
+          const j2Corrigido = game.players[1];
+          console.log(`🔧 Usando correção de emergência: J1=${j1Corrigido.name}, J2=${j2Corrigido.name}`);
+          
+          // Continua com os jogadores corrigidos
+          if (game.players.length === 2 && game.prontos.size === 2) {
+            const estado = game.gameInstance.getEstado();
+            game.turno = 1;
+            
+            console.log(`📤 Enviando evento 'inicio' para J1 (${j1Corrigido.id}): jogador=1, turno=${game.turno}`);
+            io.to(j1Corrigido.id).emit('eventoJogo', { 
+              tipo: 'inicio', 
+              jogador: 1, 
+              adversario: j2Corrigido.name, 
+              palavra: estado.palavra,
+              palavraSecreta: game.word,
+              turno: game.turno, 
+              categoria: game.categoria,
+              meuSocketId: j1Corrigido.id,
+              adversarioSocketId: j2Corrigido.id
+            });
+            
+            console.log(`📤 Enviando evento 'inicio' para J2 (${j2Corrigido.id}): jogador=2, turno=${game.turno}`);
+            io.to(j2Corrigido.id).emit('eventoJogo', { 
+              tipo: 'inicio', 
+              jogador: 2, 
+              adversario: j1Corrigido.name, 
+              palavra: estado.palavra,
+              palavraSecreta: game.word,
+              turno: game.turno, 
+              categoria: game.categoria,
+              meuSocketId: j2Corrigido.id,
+              adversarioSocketId: j1Corrigido.id
+            });
+          } else {
+            console.log(`⏳ Aguardando prontos: ${game.players.length} jogadores, ${game.prontos.size} prontos`);
+            console.log(`📤 Enviando evento 'preparacao' para J1 (${j1Corrigido.id}) e J2 (${j2Corrigido.id})`);
+            io.to(j1Corrigido.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
+            io.to(j2Corrigido.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
+          }
           return;
         }
         
@@ -208,12 +284,56 @@ module.exports = function(io) {
 
         // Quando ambos estiverem prontos, iniciar o jogo
         if (game.players.length === 2 && game.prontos.size === 2) {
+          // Validação e correção dos números antes de iniciar
+          const nums = game.players.map(p => p.numero).sort();
+          if (nums[0] !== 1 || nums[1] !== 2) {
+            console.warn(`⚠️ Números inválidos antes de iniciar jogo: ${nums}. Corrigindo...`);
+            game.players[0].numero = 1;
+            game.players[1].numero = 2;
+            console.log(`✅ Números corrigidos:`, game.players.map(p => `${p.name} (${p.id}) = ${p.numero}`));
+          }
+          
           // Garante que j1 é sempre o jogador 1 e j2 é sempre o jogador 2
           const j1 = game.players.find(p => p.numero === 1);
           const j2 = game.players.find(p => p.numero === 2);
           
           if (!j1 || !j2) {
             console.error('❌ Erro: jogadores não encontrados corretamente ao iniciar jogo', game.players);
+            // Correção de emergência
+            game.players[0].numero = 1;
+            game.players[1].numero = 2;
+            const j1Corrigido = game.players[0];
+            const j2Corrigido = game.players[1];
+            console.log(`🔧 Usando correção de emergência: J1=${j1Corrigido.name}, J2=${j2Corrigido.name}`);
+            
+            const estado = game.gameInstance.getEstado();
+            game.turno = 1;
+            
+            console.log(`📤 Enviando evento 'inicio' para J1 (${j1Corrigido.id}): jogador=1, turno=${game.turno}`);
+            io.to(j1Corrigido.id).emit('eventoJogo', {
+              tipo: 'inicio',
+              jogador: 1,
+              adversario: j2Corrigido.name,
+              palavra: estado.palavra,
+              palavraSecreta: game.word,
+              turno: game.turno,
+              categoria: game.categoria,
+              meuSocketId: j1Corrigido.id,
+              adversarioSocketId: j2Corrigido.id
+            });
+
+            console.log(`📤 Enviando evento 'inicio' para J2 (${j2Corrigido.id}): jogador=2, turno=${game.turno}`);
+            io.to(j2Corrigido.id).emit('eventoJogo', {
+              tipo: 'inicio',
+              jogador: 2,
+              adversario: j1Corrigido.name,
+              palavra: estado.palavra,
+              palavraSecreta: game.word,
+              turno: game.turno,
+              categoria: game.categoria,
+              meuSocketId: j2Corrigido.id,
+              adversarioSocketId: j1Corrigido.id
+            });
             return;
           }
           
