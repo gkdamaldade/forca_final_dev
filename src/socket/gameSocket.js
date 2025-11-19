@@ -65,7 +65,8 @@ module.exports = function(io) {
 
         io.to(roomId).emit('eventoJogo', {
           tipo: 'pronto',
-          nome: msg.nome
+          nome: msg.nome,
+          total: game.prontos.size
         });
 
         // Quando ambos estiverem prontos, iniciar o jogo
