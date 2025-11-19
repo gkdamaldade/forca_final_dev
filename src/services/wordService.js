@@ -14,7 +14,7 @@ async function getRandomWord({ categoria }) {
   }
 
   // Busca palavra aleatória
-  const palavra = await models.Palavra.findOne({
+  const palavra = await models.Word.findOne({
     where,
     order: [sequelize.random()] // ORDER BY RANDOM()
   });
