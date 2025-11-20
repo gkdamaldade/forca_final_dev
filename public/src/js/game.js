@@ -83,12 +83,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     configurarInterfacePreparacao();
     
-    // Configura listeners ANTES de conectar
+    // Configura listeners ANTES de conectar (será reconfigurado após conexão se necessário)
     configurarListenersSocket();
     
-    // Conecta ao socket (pode já estar conectado, mas garante a conexão)
+    // Conecta ao socket
     console.log(`🔌 Conectando ao socket: sala=${sala}, nome=${nomeJogador}, categoria=${categoria}`);
     conectarSocket(sala, nomeJogador, categoria);
+    
+    // Reconfigura listeners após conexão para garantir que estão ativos
+    setTimeout(() => {
+        configurarListenersSocket();
+        console.log(`✅ Listeners de socket reconfigurados após conexão`);
+    }, 200);
     
     // Aguarda um pouco para garantir que o socket está conectado
     setTimeout(() => {
@@ -266,10 +272,12 @@ function ocultarModoPreparacao() {
 
 // --- 4. SOCKET LISTENERS ---
 function configurarListenersSocket() {
+    console.log(`[${instanceId}] 🔧 Configurando listeners de socket...`);
     aoReceberEvento((evento) => {
-        console.log('📨 Evento recebido:', evento);
-        console.log('📋 Tipo do evento:', evento.tipo);
-        console.log('📊 Estado ANTES do evento: meuNumeroJogador=', meuNumeroJogador, ', jogoEstaAtivo=', jogoEstaAtivo);
+        console.log(`[${instanceId}] 📨 Evento recebido:`, evento);
+        console.log(`[${instanceId}] 📋 Tipo do evento:`, evento.tipo);
+        console.log(`[${instanceId}] 📦 Dados completos:`, JSON.stringify(evento, null, 2));
+        console.log(`[${instanceId}] 📊 Estado ANTES do evento: meuNumeroJogador=${meuNumeroJogador}, jogoEstaAtivo=${jogoEstaAtivo}`);
         
         if (evento.tipo === 'inicio') {
             console.log('🎮 Evento INICIO recebido! Iniciando jogo...');

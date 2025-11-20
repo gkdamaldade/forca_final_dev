@@ -298,12 +298,20 @@ module.exports = function(io) {
         // Usa o nome do socket.data (mais confiável que msg.nome do cliente)
         const nomeJogador = socket.data?.nome || msg.nome;
         
+        console.log(`📥 Evento 'pronto' recebido: socket.id=${socket.id}, nome=${nomeJogador}, roomId=${roomId}`);
+        console.log(`📋 Jogadores na sala:`, game.players.map(p => `${p.name} (${p.id})`));
+        console.log(`📋 IDs dos prontos atuais:`, Array.from(game.prontos));
+        
         // Adiciona o socket.id ao set de prontos (identificador único)
         // Isso evita problemas se dois jogadores tiverem o mesmo nome
         const jogadorAtual = game.players.find(p => p.id === socket.id);
         
         if (!jogadorAtual) {
-          console.log(`⚠️ Jogador não encontrado ao marcar como pronto: ${socket.id}`);
+          console.error(`❌ ERRO: Jogador não encontrado ao marcar como pronto!`);
+          console.error(`   Socket ID: ${socket.id}`);
+          console.error(`   Nome: ${nomeJogador}`);
+          console.error(`   Sala: ${roomId}`);
+          console.error(`   Jogadores na sala:`, game.players);
           socket.emit('eventoJogo', {
             tipo: 'erro',
             mensagem: 'Jogador não encontrado na sala!'
@@ -324,13 +332,18 @@ module.exports = function(io) {
           console.log(`ℹ️ Jogador ${jogadorAtual.numero} (${nomeJogador}, ${socket.id}) já estava pronto. Total prontos: ${game.prontos.size}`);
         }
 
-        // Envia evento para TODOS na sala informando quem está pronto
-        io.to(roomId).emit('eventoJogo', {
+        // SEMPRE envia evento para TODOS na sala informando quem está pronto
+        // Isso garante que o contador seja atualizado mesmo se o jogador já estava pronto
+        const eventoPronto = {
           tipo: 'pronto',
           nome: nomeJogador,
           socketId: socket.id, // Inclui o socket.id para identificação única
           total: game.prontos.size
-        });
+        };
+        
+        console.log(`📤 Enviando evento 'pronto' para TODOS na sala ${roomId}:`, eventoPronto);
+        io.to(roomId).emit('eventoJogo', eventoPronto);
+        console.log(`✅ Evento 'pronto' enviado. Total na sala: ${io.sockets.adapter.rooms.get(roomId)?.size || 0} sockets`);
 
         console.log(`📊 Estado da sala ${roomId}: ${game.players.length} jogadores, ${game.prontos.size} prontos`);
         console.log(`📋 IDs dos jogadores:`, game.players.map(p => `${p.name} (${p.id}, numero=${p.numero})`));

@@ -71,7 +71,25 @@ export function aoReceberEvento(callback) {
   if (socket) {
     // Remove listeners anteriores para evitar duplicação
     socket.off('eventoJogo');
-    socket.on('eventoJogo', callback);
+    socket.on('eventoJogo', (evento) => {
+      console.log('🔔 Socket recebeu evento via aoReceberEvento:', evento);
+      callback(evento);
+    });
+    console.log('✅ Listener de eventoJogo configurado no socket');
+  } else {
+    console.warn('⚠️ Socket não existe ainda ao tentar configurar listener. Tentando novamente em 100ms...');
+    setTimeout(() => {
+      if (socket) {
+        socket.off('eventoJogo');
+        socket.on('eventoJogo', (evento) => {
+          console.log('🔔 Socket recebeu evento via aoReceberEvento (retry):', evento);
+          callback(evento);
+        });
+        console.log('✅ Listener de eventoJogo configurado no socket (retry)');
+      } else {
+        console.error('❌ Socket ainda não existe após retry!');
+      }
+    }, 100);
   }
 }
 
