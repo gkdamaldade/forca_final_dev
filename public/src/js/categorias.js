@@ -12,9 +12,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // Mapeamento das categorias presentes no HTML para as categorias que a API espera.
     // O JS buscará o atributo 'aria-label' do botão e usará o nome correspondente.
     const categoriasValidas = [
-        'Alimento', 'Animais', 'Esportes', 'Países', 'Profissões'
+        'Alimentos', 'Animais', 'Esportes', 'Países', 'Profissões'
         // Adicione outras categorias do HTML aqui se houver mais botões na grade.
     ];
+    
+    // Mapeamento das categorias do frontend para as categorias no banco de dados
+    // (sem plural, sem acento): "Profissões" -> "profissao", "Alimentos" -> "alimento"
+    const mapeamentoCategoriaParaBanco = {
+        'Alimentos': 'alimento',
+        'Animais': 'animais',
+        'Esportes': 'esportes',
+        'Países': 'paises',
+        'Profissões': 'profissao'
+    };
     
     // ----------------------------------------------------------------------
     // 2. Verificação de Autenticação
@@ -61,22 +71,40 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Seleciona todos os botões da grade
     const botoes = document.querySelectorAll('.grid-button');
+    
+    console.log(`🔍 Total de botões encontrados: ${botoes.length}`);
 
-    botoes.forEach(botao => {
+    botoes.forEach((botao, index) => {
         // Obter o nome da categoria a partir do atributo 'aria-label' do HTML
         const categoria = botao.getAttribute('aria-label');
         
+        console.log(`🔍 Botão ${index + 1}: aria-label="${categoria}"`);
+        
         // Verifica se a categoria está mapeada e é válida antes de adicionar o listener
-        if (!categoria || !categoriasValidas.includes(categoria)) {
-            console.warn(`Categoria inválida ou não mapeada: ${categoria}. Botão ignorado.`);
+        if (!categoria) {
+            console.warn(`⚠️ Botão ${index + 1} não tem aria-label. Ignorado.`);
+            return;
+        }
+        
+        if (!categoriasValidas.includes(categoria)) {
+            console.warn(`⚠️ Categoria "${categoria}" não está na lista de válidas:`, categoriasValidas);
+            console.warn(`⚠️ Botão ${index + 1} ignorado.`);
             return; 
         }
+        
+        console.log(`✅ Botão "${categoria}" configurado corretamente.`);
 
         // Adiciona o event listener de clique para a criação da sala
         botao.addEventListener('click', async () => {
             try {
                 // Remove o disabled do botão se ele estiver lá.
                 botao.disabled = true;
+                
+                console.log(`🖱️ Clicou na categoria: ${categoria}`);
+                
+                // Mapeia a categoria do frontend para a categoria do banco de dados
+                const categoriaParaBanco = mapeamentoCategoriaParaBanco[categoria] || categoria.toLowerCase();
+                console.log(`🔄 Categoria mapeada: "${categoria}" -> "${categoriaParaBanco}"`);
 
                 const resp = await fetch('/api/salas', {
                     method: 'POST',
@@ -84,20 +112,24 @@ document.addEventListener('DOMContentLoaded', () => {
                         'Content-Type': 'application/json',
                         Authorization: `Bearer ${token}`
                     },
-                    body: JSON.stringify({ categoria })
+                    body: JSON.stringify({ categoria: categoriaParaBanco })
                 });
 
                 const data = await resp.json().catch(() => ({}));
                 
                 if (!resp.ok) {
+                    console.error(`❌ Erro ao criar sala: ${resp.status}`, data);
                     throw new Error(data?.message || `Erro ao criar sala (${resp.status})`);
                 }
 
+                console.log(`✅ Sala criada com sucesso: ${data.sala}, categoria: ${data.categoria}`);
+                
                 // Redirecionamento após sucesso
                 const params = new URLSearchParams({ sala: data.sala, categoria: data.categoria });
                 window.location.href = `/public/pages/sessao_host.html?${params.toString()}`;
 
             } catch (e) {
+                console.error(`❌ Erro ao criar sala para ${categoria}:`, e);
                 alert(`Falha ao criar sala para ${categoria}: ${e.message}`);
             } finally {
                 // Reabilita o botão em caso de erro

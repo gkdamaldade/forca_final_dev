@@ -23,6 +23,7 @@ const codigoSalaEl = document.querySelector('[data-codigo-sala]');
 // --- 2. ESTADO DO JOGO ---
 let meuNumeroJogador = null; // 1 ou 2
 let meuSocketId = null; // Socket ID deste jogador (para identificação única)
+let meuPlayerId = null; // ID do jogador no banco de dados
 let adversarioNome = '';
 let adversarioSocketId = null; // Socket ID do adversário
 let palavraSecreta = ''; // Minha palavra secreta
@@ -72,7 +73,8 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         const payload = JSON.parse(atob(token.split('.')[1]));
         nomeJogador = payload.nome || payload.name || '';
-        console.log(`👤 Nome do jogador: ${nomeJogador}`);
+        meuPlayerId = payload.id || null; // Armazena o ID do jogador do token
+        console.log(`👤 Nome do jogador: ${nomeJogador}, ID: ${meuPlayerId}`);
         instanceId = `${nomeJogador}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     } catch (e) {
         console.error('❌ Erro ao decodificar token:', e);
@@ -90,8 +92,8 @@ document.addEventListener('DOMContentLoaded', () => {
     configurarListenersSocket();
     
     // Conecta ao socket
-    console.log(`🔌 Conectando ao socket: sala=${sala}, nome=${nomeJogador}, categoria=${categoria}`);
-    conectarSocket(sala, nomeJogador, categoria);
+    console.log(`🔌 Conectando ao socket: sala=${sala}, nome=${nomeJogador}, playerId=${meuPlayerId}, categoria=${categoria}`);
+    conectarSocket(sala, nomeJogador, meuPlayerId, categoria);
     
     // Reconfigura listeners após conexão para garantir que estão ativos
     setTimeout(() => {

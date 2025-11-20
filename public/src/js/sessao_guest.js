@@ -54,9 +54,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   let nome = '';
+  let playerId = null;
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));
     nome = payload.name || payload.nome;
+    playerId = payload.id || null;
   } catch (erro) {
     console.error('Token inválido:', erro);
     localStorage.removeItem('token');
@@ -94,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const categoria = dados?.categoria || "Geral";
 
       // --- Conecta ao WebSocket ---
-      conectarSocket(sala, nome, categoria);
+      conectarSocket(sala, nome, playerId, categoria);
 
       // --- Escuta eventos ---
       aoReceberEvento((evento) => {

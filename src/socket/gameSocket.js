@@ -1,5 +1,6 @@
 const { getRandomWord } = require('../services/wordService');
 const { Game } = require('../game');
+const { models } = require('../models');
 
 const RECONNECT_GRACE_MS = 15000;
 const activeGames = new Map();
@@ -8,11 +9,11 @@ module.exports = function(io) {
   io.on('connection', socket => {
     console.log('🎮 Conectado:', socket.id);
 
-    socket.on('joinRoom', async ({ roomId, playerName, categoria }) => {
-      console.log(`🚪 joinRoom recebido: roomId=${roomId}, playerName=${playerName}, categoria=${categoria}, socket.id=${socket.id}`);
+    socket.on('joinRoom', async ({ roomId, playerName, playerId, categoria }) => {
+      console.log(`🚪 joinRoom recebido: roomId=${roomId}, playerName=${playerName}, playerId=${playerId}, categoria=${categoria}, socket.id=${socket.id}`);
       
       socket.join(roomId);
-      socket.data = { nome: playerName, sala: roomId };
+      socket.data = { nome: playerName, playerId: playerId, sala: roomId };
       
       console.log(`✅ Socket ${socket.id} entrou na sala ${roomId}`);
       
@@ -164,7 +165,8 @@ module.exports = function(io) {
       
       game.players.push({ 
         id: socket.id, 
-        name: playerName, 
+        name: playerName,
+        playerId: playerId || null, // ID do jogador no banco de dados
         numero: numeroJogador,
         wasReady: false,
         desconectado: false,
@@ -588,6 +590,29 @@ module.exports = function(io) {
           if (game.vidas[0] <= 0 || game.vidas[1] <= 0) {
             const vencedor = game.vidas[0] > 0 ? 1 : 2;
             console.log(`🏆 Jogo finalizado! Vencedor: Jogador ${vencedor}`);
+            
+            // Registra vitória no banco de dados
+            try {
+              const jogadorVencedor = game.players.find(p => p.numero === vencedor);
+              if (jogadorVencedor && jogadorVencedor.playerId) {
+                // Busca o jogador pelo ID no banco (mais preciso que buscar pelo nome)
+                const player = await models.Player.findByPk(jogadorVencedor.playerId);
+                if (player) {
+                  // Incrementa as vitórias
+                  await player.increment('vitorias');
+                  await player.reload(); // Recarrega para pegar o valor atualizado
+                  console.log(`✅ Vitória registrada para ${jogadorVencedor.name} (ID: ${jogadorVencedor.playerId})! Total de vitórias: ${player.vitorias}`);
+                } else {
+                  console.warn(`⚠️ Jogador com ID ${jogadorVencedor.playerId} não encontrado no banco de dados.`);
+                }
+              } else {
+                console.warn(`⚠️ Jogador vencedor não encontrado ou sem playerId no game.players`);
+              }
+            } catch (error) {
+              console.error(`❌ Erro ao registrar vitória:`, error);
+              // Não bloqueia o fim do jogo se houver erro ao registrar vitória
+            }
+            
             // Envia evento de fim de jogo
             io.to(roomId).emit('eventoJogo', {
               tipo: 'fim',

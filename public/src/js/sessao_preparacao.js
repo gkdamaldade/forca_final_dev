@@ -4,7 +4,9 @@ const urlParams = new URLSearchParams(window.location.search);
 const sala = urlParams.get('sala');
 const categoria = urlParams.get('categoria') || 'Geral';
 const token = localStorage.getItem('token');
-const nome = JSON.parse(atob(token.split('.')[1])).nome;
+const payload = JSON.parse(atob(token.split('.')[1]));
+const nome = payload.nome || payload.name;
+const playerId = payload.id || null;
 
 // Identificador único para esta instância da página (útil para debug e garantir unicidade)
 const instanceId = `${nome}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -19,7 +21,7 @@ const botaoPronto = document.querySelector('.botao-pronto');
 document.querySelector('.contador').textContent = '( 0 / 2 )';
 
 // Conecta ao socket e entra na sala
-conectarSocket(sala, nome, categoria);
+conectarSocket(sala, nome, playerId, categoria);
 
 // Atualiza contador de jogadores prontos
 aoReceberEvento((evento) => {

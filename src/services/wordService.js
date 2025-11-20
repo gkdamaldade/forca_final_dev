@@ -1,18 +1,36 @@
 const { models, sequelize } = require('../models');
 
 /**
+ * Mapeamento das categorias do frontend para as categorias no banco de dados
+ */
+const mapeamentoCategorias = {
+  'alimentos': 'alimento',
+  'profissoes': 'profissao',
+  'profissões': 'profissao',
+  'animais': 'animais',
+  'esportes': 'esportes',
+  'paises': 'paises',
+  'países': 'paises'
+};
+
+/**
  * Normaliza a categoria para corresponder ao formato do banco
- * Remove acentos, converte para minúsculas e substitui hífens por espaços
+ * Remove acentos, converte para minúsculas e mapeia para os nomes do banco
  */
 function normalizarCategoria(categoria) {
   if (!categoria) return null;
   
-  // Remove acentos e converte para minúsculas
-  const normalizada = categoria
+  // Remove acentos, converte para minúsculas e remove espaços extras
+  let normalizada = categoria
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim();
+  
+  // Aplica o mapeamento se existir
+  if (mapeamentoCategorias[normalizada]) {
+    normalizada = mapeamentoCategorias[normalizada];
+  }
   
   return normalizada;
 }

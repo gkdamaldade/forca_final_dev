@@ -5,10 +5,11 @@ let meuSocketId = null; // Armazena o ID do socket desta instância
  * Conecta ao servidor WebSocket e entra na sala informada.
  * @param {string} sala - ID da sala
  * @param {string} nome - Nome do jogador
+ * @param {number} playerId - ID do jogador no banco de dados
  * @param {string} categoria - Categoria da palavra (opcional)
  */
-export function conectarSocket(sala, nome, categoria) {
-  console.log(`🔌 conectarSocket chamado: sala=${sala}, nome=${nome}, categoria=${categoria}`);
+export function conectarSocket(sala, nome, playerId, categoria) {
+  console.log(`🔌 conectarSocket chamado: sala=${sala}, nome=${nome}, playerId=${playerId}, categoria=${categoria}`);
   
   // Sempre cria uma nova conexão para garantir isolamento entre abas/instâncias
   // Isso é importante quando testando na mesma máquina
@@ -25,8 +26,8 @@ export function conectarSocket(sala, nome, categoria) {
   socket.on('connect', () => {
     meuSocketId = socket.id;
     console.log(`✅ Socket conectado com ID: ${meuSocketId}`);
-    console.log(`📤 Enviando joinRoom: roomId=${sala}, playerName=${nome}, categoria=${categoriaSlug || null}`);
-    socket.emit('joinRoom', { roomId: sala, playerName: nome, categoria: categoriaSlug || null });
+    console.log(`📤 Enviando joinRoom: roomId=${sala}, playerName=${nome}, playerId=${playerId}, categoria=${categoriaSlug || null}`);
+    socket.emit('joinRoom', { roomId: sala, playerName: nome, playerId: playerId, categoria: categoriaSlug || null });
   });
   
   socket.on('disconnect', () => {
@@ -42,7 +43,7 @@ export function conectarSocket(sala, nome, categoria) {
   if (socket.connected) {
     meuSocketId = socket.id;
     console.log(`📤 Socket já conectado, enviando joinRoom imediatamente`);
-    socket.emit('joinRoom', { roomId: sala, playerName: nome, categoria: categoriaSlug || null });
+    socket.emit('joinRoom', { roomId: sala, playerName: nome, playerId: playerId, categoria: categoriaSlug || null });
   }
 }
 

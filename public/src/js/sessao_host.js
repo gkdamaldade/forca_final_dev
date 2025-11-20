@@ -16,7 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let nome;
     
-    // Decodifica o token para obter o nome (necessário para o socket)
+    // Decodifica o token para obter o nome e ID (necessário para o socket)
+    let playerId = null;
     try {
         const tokenParts = token.split('.');
         if (tokenParts.length !== 3) throw new Error('Token mal formatado.');
@@ -24,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // O token é decodificado dentro de um bloco try/catch para evitar crash
         const payload = JSON.parse(atob(tokenParts[1]));
         nome = payload.name || payload.nome; // Tenta pegar o nome por 'name' ou 'nome'
+        playerId = payload.id || null; // Pega o ID do jogador
 
         if (!nome) {
             console.error('Nome do usuário não encontrado no payload do token.');
@@ -49,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 3. Conexão ao Socket
     // Conecta ao socket e entra na sala com os dados do usuário e categoria
-    conectarSocket(sala, nome, categoria);
+    conectarSocket(sala, nome, playerId, categoria);
 
     // 4. Escuta Eventos de Preparação
     // Escuta o evento de preparação (quando o segundo jogador entra)
