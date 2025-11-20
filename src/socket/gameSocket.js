@@ -554,39 +554,85 @@ module.exports = function(io) {
         
         console.log(`Jogada processada: letra=${msg.letra}, resultado=${resultado}, turno atual=${game.turno}`);
         
-        // Verifica se o jogador completou sua palavra (vitória)
-        let adversarioPerdeuVida = false;
+        // Verifica se o jogador completou sua palavra (vitória) ou errou 6 vezes (derrota)
+        let alguemPerdeuVida = false;
+        let jogadorQuePerdeuVida = null;
+        let motivoPerdaVida = '';
+        
         if (resultado === 'vitoria') {
           // Jogador completou sua palavra, adversário perde uma vida
           const adversarioNum = numeroJogador === 1 ? 2 : 1;
           game.vidas[adversarioNum - 1]--;
-          adversarioPerdeuVida = true;
+          alguemPerdeuVida = true;
+          jogadorQuePerdeuVida = adversarioNum;
+          motivoPerdaVida = 'vitoria';
           console.log(`🎯 Jogador ${numeroJogador} completou sua palavra! Jogador ${adversarioNum} perde uma vida. Vidas restantes: J1=${game.vidas[0]}, J2=${game.vidas[1]}`);
-          
-          // Se o adversário perdeu todas as vidas, o jogo acaba
-          if (game.vidas[adversarioNum - 1] <= 0) {
-            console.log(`🏆 Jogador ${numeroJogador} venceu! Jogador ${adversarioNum} perdeu todas as vidas.`);
-            // Prepara nova palavra para o jogador que venceu
-            // O jogo continua até alguém perder todas as vidas
+        } else if (resultado === 'derrota') {
+          // Jogador errou 6 vezes, ele mesmo perde uma vida
+          game.vidas[numeroJogador - 1]--;
+          alguemPerdeuVida = true;
+          jogadorQuePerdeuVida = numeroJogador;
+          motivoPerdaVida = 'erros';
+          console.log(`❌ Jogador ${numeroJogador} errou 6 vezes! Ele perde uma vida. Vidas restantes: J1=${game.vidas[0]}, J2=${game.vidas[1]}`);
+        }
+        
+        // Se alguém perdeu vida, reseta AMBAS as palavras e começa nova rodada
+        if (alguemPerdeuVida) {
+          // Verifica se o jogo acabou
+          if (game.vidas[0] <= 0 || game.vidas[1] <= 0) {
+            const vencedor = game.vidas[0] > 0 ? 1 : 2;
+            console.log(`🏆 Jogo finalizado! Vencedor: Jogador ${vencedor}`);
+            // Envia evento de fim de jogo
+            io.to(roomId).emit('eventoJogo', {
+              tipo: 'fim',
+              vencedor: vencedor,
+              vidas: game.vidas
+            });
+            setTimeout(() => {
+              activeGames.delete(roomId);
+            }, 5000);
+            return; // Não processa mais nada se o jogo acabou
           } else {
-            // Reseta a palavra do jogador que completou (nova rodada)
+            // Reseta AMBAS as palavras para nova rodada
+            console.log(`🔄 Alguém perdeu vida! Resetando ambas as palavras para nova rodada...`);
             try {
-              const novaPalavraObj = await getRandomWord({ categoria: game.categoria });
-              const novaPalavra = (novaPalavraObj?.palavra || 'FORCA').toUpperCase();
-              game.words[numeroJogador - 1] = novaPalavra;
-              game.gameInstances[numeroJogador - 1] = new Game(novaPalavra, game.categoria);
-              console.log(`🔄 Nova palavra para jogador ${numeroJogador}: ${novaPalavra}`);
+              // Busca duas novas palavras
+              const novaPalavraObj1 = await getRandomWord({ categoria: game.categoria });
+              const novaPalavra1 = (novaPalavraObj1?.palavra || 'FORCA').toUpperCase();
+              
+              let novaPalavraObj2;
+              let novaPalavra2;
+              let tentativas = 0;
+              do {
+                novaPalavraObj2 = await getRandomWord({ categoria: game.categoria });
+                novaPalavra2 = (novaPalavraObj2?.palavra || 'FORCA').toUpperCase();
+                tentativas++;
+              } while (novaPalavra1 === novaPalavra2 && tentativas < 5);
+              
+              // Reseta ambas as instâncias
+              game.words[0] = novaPalavra1;
+              game.words[1] = novaPalavra2;
+              game.gameInstances[0] = new Game(novaPalavra1, game.categoria);
+              game.gameInstances[1] = new Game(novaPalavra2, game.categoria);
+              
+              // Reseta o turno para o jogador 1
+              game.turno = 1;
+              
+              console.log(`✅ Nova rodada iniciada! Palavra J1: ${novaPalavra1}, Palavra J2: ${novaPalavra2}`);
             } catch (error) {
-              console.error('Erro ao buscar nova palavra:', error);
-              game.words[numeroJogador - 1] = 'FORCA';
-              game.gameInstances[numeroJogador - 1] = new Game('FORCA', game.categoria);
+              console.error('Erro ao buscar novas palavras:', error);
+              game.words[0] = 'FORCA';
+              game.words[1] = 'JOGO';
+              game.gameInstances[0] = new Game('FORCA', game.categoria);
+              game.gameInstances[1] = new Game('JOGO', game.categoria);
+              game.turno = 1;
             }
           }
         }
         
         // Se a jogada foi válida (não repetida) e o jogo continua, troca o turno
-        // Mas se o jogador completou a palavra, não troca o turno (ele continua)
-        if (resultado !== 'repetida' && resultado !== 'vitoria' && gameInstanceJogador.status === 'jogando') {
+        // Mas se alguém perdeu vida, o turno já foi resetado para 1
+        if (resultado !== 'repetida' && !alguemPerdeuVida && gameInstanceJogador.status === 'jogando') {
           game.turno = game.turno === 1 ? 2 : 1;
           console.log(`Turno trocado para: ${game.turno}`);
         }
@@ -614,23 +660,13 @@ module.exports = function(io) {
           statusJogador1: estado1Final.status,
           statusJogador2: estado2Final.status,
           vidas: game.vidas,
-          adversarioPerdeuVida: adversarioPerdeuVida,
-          jogadorQueJogou: numeroJogador
+          alguemPerdeuVida: alguemPerdeuVida,
+          jogadorQuePerdeuVida: jogadorQuePerdeuVida,
+          motivoPerdaVida: motivoPerdaVida,
+          jogadorQueJogou: numeroJogador,
+          novaRodada: alguemPerdeuVida && game.vidas[0] > 0 && game.vidas[1] > 0
         });
 
-        // Se algum jogador perdeu todas as vidas, o jogo acaba
-        if (game.vidas[0] <= 0 || game.vidas[1] <= 0) {
-          const vencedor = game.vidas[0] > 0 ? 1 : 2;
-          console.log(`🏆 Jogo finalizado! Vencedor: Jogador ${vencedor}`);
-          io.to(roomId).emit('eventoJogo', {
-            tipo: 'fim',
-            vencedor: vencedor,
-            vidas: game.vidas
-          });
-          setTimeout(() => {
-            activeGames.delete(roomId);
-          }, 5000);
-        }
       }
 
       if (msg.tipo === 'tempoEsgotado') {

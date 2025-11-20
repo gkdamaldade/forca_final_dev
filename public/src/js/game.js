@@ -29,7 +29,8 @@ let palavraSecreta = ''; // Minha palavra secreta
 let palavraExibida = ''; // Minha palavra exibida
 let palavraAdversarioExibida = ''; // Palavra do adversário exibida
 let turnoAtual = 1;
-let erros = 0;
+let errosJogador1 = 0; // Erros do jogador 1
+let errosJogador2 = 0; // Erros do jogador 2
 let letrasChutadas = new Set();
 let vidas = [2, 2]; // [vidas jogador 1, vidas jogador 2]
 let jogoEstaAtivo = false;
@@ -294,17 +295,19 @@ function configurarListenersSocket() {
             // Atualiza o estado do jogo com os dados recebidos
             turnoAtual = parseInt(evento.turno) || turnoAtual;
             
+            // Atualiza erros de ambos os jogadores
+            errosJogador1 = evento.errosJogador1 || 0;
+            errosJogador2 = evento.errosJogador2 || 0;
+            
             // Atualiza palavras baseado no número do jogador
             if (meuNumeroJogador === 1) {
                 palavraExibida = evento.palavraJogador1 || palavraExibida;
                 palavraAdversarioExibida = evento.palavraJogador2 || palavraAdversarioExibida;
                 letrasChutadas = new Set(evento.letrasChutadasJogador1 || []);
-                erros = evento.errosJogador1 || erros;
             } else {
                 palavraExibida = evento.palavraJogador2 || palavraExibida;
                 palavraAdversarioExibida = evento.palavraJogador1 || palavraAdversarioExibida;
                 letrasChutadas = new Set(evento.letrasChutadasJogador2 || []);
-                erros = evento.errosJogador2 || erros;
             }
             
             if (evento.vidas) {
@@ -416,7 +419,8 @@ function iniciarJogo(dados) {
     }
     
     jogoEstaAtivo = true;
-    erros = 0;
+    errosJogador1 = 0;
+    errosJogador2 = 0;
     letrasChutadas.clear();
     
     categoriaEl.textContent = categoria;
@@ -471,18 +475,20 @@ function processarJogada(dados) {
         return;
     }
     
+    // Atualiza erros de ambos os jogadores separadamente
+    errosJogador1 = dados.errosJogador1 || 0;
+    errosJogador2 = dados.errosJogador2 || 0;
+    
     // Atualiza estado apenas se a jogada foi válida
     // O servidor envia palavras separadas para cada jogador
     if (meuNumeroJogador === 1) {
         palavraExibida = dados.palavraJogador1 || palavraExibida;
         palavraAdversarioExibida = dados.palavraJogador2 || palavraAdversarioExibida;
         letrasChutadas = new Set(dados.letrasChutadasJogador1 || []);
-        erros = dados.errosJogador1 || 0;
     } else {
         palavraExibida = dados.palavraJogador2 || palavraExibida;
         palavraAdversarioExibida = dados.palavraJogador1 || palavraAdversarioExibida;
         letrasChutadas = new Set(dados.letrasChutadasJogador2 || []);
-        erros = dados.errosJogador2 || 0;
     }
     
     turnoAtual = parseInt(dados.turno) || turnoAtual; // Garante que seja um número
@@ -493,8 +499,73 @@ function processarJogada(dados) {
         atualizarVidasUI();
     }
     
+    // Verifica se alguém perdeu vida e se começou nova rodada
+    if (dados.alguemPerdeuVida) {
+        const jogadorQuePerdeu = dados.jogadorQuePerdeuVida;
+        const motivo = dados.motivoPerdaVida;
+        
+        if (motivo === 'vitoria') {
+            // Alguém completou a palavra, adversário perdeu vida
+            if (jogadorQuePerdeu === meuNumeroJogador) {
+                mostrarFeedback('❌ Você perdeu uma vida!', 'red');
+            } else {
+                mostrarFeedback('🎯 Adversário perdeu uma vida!', 'green');
+            }
+        } else if (motivo === 'erros') {
+            // Alguém errou 6 vezes, ele mesmo perdeu vida
+            if (jogadorQuePerdeu === meuNumeroJogador) {
+                mostrarFeedback('❌ Você errou 6 vezes! Perdeu uma vida!', 'red');
+            } else {
+                mostrarFeedback('🎯 Adversário errou 6 vezes! Perdeu uma vida!', 'green');
+            }
+        }
+        
+        // Se começou nova rodada, reseta o estado
+        if (dados.novaRodada) {
+            console.log('🔄 Nova rodada iniciada! Resetando estado...');
+            // Reseta letras chutadas e erros para nova rodada
+            letrasChutadas = new Set();
+            errosJogador1 = 0;
+            errosJogador2 = 0;
+            
+            // Atualiza palavras com as novas
+            if (meuNumeroJogador === 1) {
+                palavraExibida = dados.palavraJogador1 || palavraExibida;
+                palavraAdversarioExibida = dados.palavraJogador2 || palavraAdversarioExibida;
+            } else {
+                palavraExibida = dados.palavraJogador2 || palavraExibida;
+                palavraAdversarioExibida = dados.palavraJogador1 || palavraAdversarioExibida;
+            }
+            
+            // Reseta letras chutadas com as novas do servidor
+            if (meuNumeroJogador === 1) {
+                letrasChutadas = new Set(dados.letrasChutadasJogador1 || []);
+            } else {
+                letrasChutadas = new Set(dados.letrasChutadasJogador2 || []);
+            }
+            
+            // Reseta o teclado para nova rodada
+            atualizarTecladoDesabilitado();
+            
+            // Se começou nova rodada e é meu turno, inicia o timer
+            const turnoAtualNum = Number(turnoAtual) || 0;
+            const meuNumeroNum = Number(meuNumeroJogador) || 0;
+            if (turnoAtualNum === meuNumeroNum && meuNumeroNum > 0 && jogoEstaAtivo) {
+                console.log(`✓ Nova rodada iniciada! É meu turno (jogador ${meuNumeroNum}), iniciando timer`);
+                iniciarTimer();
+            } else {
+                console.log(`✗ Nova rodada iniciada! Não é meu turno (jogador ${meuNumeroNum}, turno atual: ${turnoAtualNum})`);
+                if (timerEl) {
+                    timerEl.textContent = 'Aguardando...';
+                    timerEl.style.color = '#888';
+                }
+            }
+        }
+    }
+    
     console.log(`🔄 Turno atualizado após jogada: ${turnoAtual} (tipo: ${typeof turnoAtual})`);
     console.log(`💚 Vidas: J1=${vidas[0]}, J2=${vidas[1]}`);
+    console.log(`❌ Erros: J1=${errosJogador1}, J2=${errosJogador2}`);
     
     atualizarPalavraExibida();
     atualizarBonecosUI();
@@ -506,38 +577,30 @@ function processarJogada(dados) {
         mostrarFeedback('✓ Letra correta!', 'green');
     } else if (dados.resultado === 'erro') {
         mostrarFeedback('✗ Letra incorreta!', 'red');
-    } else if (dados.resultado === 'vitoria') {
-        if (dados.adversarioPerdeuVida) {
-            const adversarioNum = dados.jogadorQueJogou === 1 ? 2 : 1;
-            mostrarFeedback(`🎯 Você completou! Adversário perde uma vida!`, 'green');
-        } else {
-            mostrarFeedback('🎯 Você completou a palavra!', 'green');
-        }
+    } else if (dados.resultado === 'vitoria' && !dados.alguemPerdeuVida) {
+        mostrarFeedback('🎯 Você completou a palavra!', 'green');
     }
     
     // Limpa o timer anterior
     clearInterval(timerInterval);
     
-    // Se é meu turno, inicia o timer (usando comparação numérica)
-    const turnoAtualNum = Number(turnoAtual) || 0;
-    const meuNumeroNum = Number(meuNumeroJogador) || 0;
-    
-    if (turnoAtualNum === meuNumeroNum && meuNumeroNum > 0 && jogoEstaAtivo) {
-        console.log(`✓ É meu turno agora (jogador ${meuNumeroNum}), iniciando timer`);
-        iniciarTimer();
-    } else {
-        console.log(`✗ Não é meu turno (jogador ${meuNumeroNum}, turno atual: ${turnoAtualNum})`);
-        if (timerEl) {
-            timerEl.textContent = 'Aguardando...';
-            timerEl.style.color = '#888';
+    // Se é meu turno e não começou nova rodada, inicia o timer (usando comparação numérica)
+    if (!dados.novaRodada) {
+        const turnoAtualNum = Number(turnoAtual) || 0;
+        const meuNumeroNum = Number(meuNumeroJogador) || 0;
+        
+        if (turnoAtualNum === meuNumeroNum && meuNumeroNum > 0 && jogoEstaAtivo) {
+            console.log(`✓ É meu turno agora (jogador ${meuNumeroNum}), iniciando timer`);
+            iniciarTimer();
+        } else {
+            console.log(`✗ Não é meu turno (jogador ${meuNumeroNum}, turno atual: ${turnoAtualNum})`);
+            if (timerEl) {
+                timerEl.textContent = 'Aguardando...';
+                timerEl.style.color = '#888';
+            }
+            // Garante que o teclado está desabilitado quando não é o turno
+            atualizarTecladoDesabilitado();
         }
-        // Garante que o teclado está desabilitado quando não é o turno
-        atualizarTecladoDesabilitado();
-    }
-    
-    // Verifica fim de jogo
-    if (dados.status === 'vitoria' || dados.status === 'derrota') {
-        // Não finaliza aqui, aguarda evento 'fim' do servidor
     }
 }
 
@@ -632,7 +695,13 @@ async function processarChute(letra) {
         return;
     }
 
+    // Converte para maiúscula (hífen não muda, cedilha vira Ç)
     letra = letra.toUpperCase();
+    
+    // Garante que cedilha minúscula vira maiúscula
+    if (letra === 'ç' || letra === 'Ç') {
+        letra = 'Ç';
+    }
 
     // Verifica se a letra já foi chutada (verificação local para feedback rápido)
     if (letrasChutadas.has(letra)) {
@@ -747,8 +816,9 @@ function gerarPalavraOculta() {
 }
 
 function atualizarBonecosUI() {
-    const indiceP1 = Math.min(erros + 1, 7);
-    const indiceP2 = Math.min(erros + 1, 7);
+    // Cada jogador tem sua própria imagem baseada em seus próprios erros
+    const indiceP1 = Math.min(errosJogador1 + 1, 7); // +1 porque as imagens começam em bob1.png
+    const indiceP2 = Math.min(errosJogador2 + 1, 7); // +1 porque as imagens começam em patrick1.png
     
     if (bonecoP1_El) {
         bonecoP1_El.src = `/public/assets/images/bob${indiceP1}.png`;
@@ -756,6 +826,8 @@ function atualizarBonecosUI() {
     if (bonecoP2_El) {
         bonecoP2_El.src = `/public/assets/images/patrick${indiceP2}.png`;
     }
+    
+    console.log(`🖼️ Bonecos atualizados: J1 (${errosJogador1} erros) -> bob${indiceP1}.png, J2 (${errosJogador2} erros) -> patrick${indiceP2}.png`);
 }
 
 function desabilitarTeclaVisual(letra) {
@@ -905,10 +977,18 @@ function configurarTecladoVirtual() {
 }
 
 function lidarComChuteDeTecladoFisico(e) {
-    // Primeiro verifica se é uma letra (A-Z) - se não for, não faz nada e permite o comportamento padrão
-    const letra = e.key.toUpperCase();
-    if (!(letra.length === 1 && letra >= 'A' && letra <= 'Z')) {
-        // Não é uma letra, permite comportamento padrão (F12, Escape, etc.)
+    // Primeiro verifica se é uma letra (A-Z), hífen (-) ou cedilha (Ç) - se não for, não faz nada e permite o comportamento padrão
+    let letra = e.key.toUpperCase();
+    
+    // Trata cedilha minúscula
+    if (e.key === 'ç' || e.key === 'Ç') {
+        letra = 'Ç';
+    }
+    
+    // Aceita A-Z, hífen (-) e cedilha (Ç)
+    const letrasValidas = /^[A-Z\-Ç]$/;
+    if (!(letra.length === 1 && letrasValidas.test(letra))) {
+        // Não é uma letra válida, permite comportamento padrão (F12, Escape, etc.)
         return;
     }
 

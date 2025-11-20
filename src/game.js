@@ -28,7 +28,8 @@ class Game {
         if (this.status !== "jogando") return this.status;
         letra = letra.toUpperCase();
 
-        if (!letra.match(/^[A-Z]$/) || this.letrasChutadas.has(letra)) {
+        // Aceita letras A-Z, hífen (-) e cedilha (Ç)
+        if (!letra.match(/^[A-Z\-Ç]$/) || this.letrasChutadas.has(letra)) {
             return "repetida";
         }
         this.letrasChutadas.add(letra);
