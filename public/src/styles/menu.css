@@ -115,11 +115,12 @@ header {
   justify-content: center;
   gap: 20px;
   margin-bottom: 30px;
-  padding: 20px 30px;
+  padding: 15px 20px;
   width: 100%;
   position: relative;
   animation: fadeInDown 0.8s ease-out;
-  background: transparent;
+  background: none !important;
+  box-shadow: none;
 }
 
 @keyframes fadeInDown {
@@ -134,7 +135,7 @@ header {
 }
 
 .saudacao-icone {
-  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  font-size: clamp(1.3rem, 3vw, 1.8rem);
   color: var(--aqua);
   filter: drop-shadow(0 0 10px rgba(0, 229, 255, 0.6));
   animation: float 3s ease-in-out infinite;
@@ -167,7 +168,7 @@ header {
 
 .saudacao-texto {
   font-family: "Orbitron", sans-serif;
-  font-size: clamp(1.4rem, 4vw, 2.5rem);
+  font-size: clamp(1.1rem, 3vw, 1.8rem);
   font-weight: 700;
   text-align: center;
   letter-spacing: 0.08em;
@@ -183,9 +184,10 @@ header {
   flex-wrap: wrap;
   justify-content: center;
   position: relative;
-  background: transparent;
-  padding: 8px 16px;
-  border-radius: 12px;
+  background: none !important;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .saudacao-prefixo {
@@ -195,6 +197,9 @@ header {
     0 4px 8px rgba(0,0,0,.3),
     0 0 20px rgba(0, 229, 255, 0.4);
   animation: glow 2s ease-in-out infinite alternate;
+  background: none !important;
+  padding: 0;
+  border-radius: 0;
 }
 
 .saudacao-nome {
@@ -207,6 +212,9 @@ header {
   font-weight: 800;
   position: relative;
   animation: pulseGlow 2s ease-in-out infinite;
+  background: none !important;
+  padding: 0;
+  border-radius: 0;
 }
 
 @keyframes glow {
@@ -478,9 +486,9 @@ header {
   }
   
   .saudacao-texto {
-    font-size: clamp(1.2rem, 3.5vw, 2rem);
+    font-size: clamp(1rem, 3vw, 1.5rem);
     gap: 6px;
-    padding: 6px 12px;
+    padding: 0;
   }
 }
 
@@ -496,10 +504,10 @@ header {
   }
   
   .saudacao-texto {
-    font-size: clamp(1rem, 3vw, 1.6rem);
+    font-size: clamp(0.9rem, 2.5vw, 1.3rem);
     flex-direction: column;
     gap: 4px;
-    padding: 4px 10px;
+    padding: 0;
   }
 }
 
@@ -515,9 +523,9 @@ header {
   }
   
   .saudacao-texto {
-    font-size: clamp(0.9rem, 2.5vw, 1.4rem);
+    font-size: clamp(0.8rem, 2vw, 1.2rem);
     gap: 3px;
-    padding: 4px 8px;
+    padding: 0;
   }
   
   .menu-container {
