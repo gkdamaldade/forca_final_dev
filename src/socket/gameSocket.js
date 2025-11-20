@@ -850,7 +850,7 @@ module.exports = function(io) {
         let vidasAtualizadas = [...game.vidas]; // Cópia das vidas atuais
         
         switch (poderId) {
-          case 'vida_extra':
+          case 'vida_extra': {
             // Adiciona uma vida ao jogador (pode ultrapassar 3)
             const vidaAtual = game.vidas[numeroJogador - 1];
             vidasAtualizadas[numeroJogador - 1] = Math.min(vidaAtual + 1, 4); // Máximo 4 vidas
@@ -863,8 +863,9 @@ module.exports = function(io) {
             };
             console.log(`💚 Vida extra adicionada! Jogador ${numeroJogador} agora tem ${vidasAtualizadas[numeroJogador - 1]} vidas`);
             break;
+          }
             
-          case 'tirar_vida':
+          case 'tirar_vida': {
             // Adiciona um erro na forca do adversário (não remove vida diretamente)
             const adversarioNum = numeroJogador === 1 ? 2 : 1;
             const gameInstanceAdversario = game.gameInstances[adversarioNum - 1];
@@ -934,8 +935,9 @@ module.exports = function(io) {
               };
             }
             break;
+          }
             
-          case 'liberar_letra':
+          case 'liberar_letra': {
             // Revela uma letra da palavra do jogador
             const gameInstance = game.gameInstances[numeroJogador - 1];
             if (gameInstance && gameInstance.status === 'jogando') {
@@ -977,13 +979,14 @@ module.exports = function(io) {
               }
             }
             break;
+          }
             
-          case 'ocultar_letra':
+          case 'ocultar_letra': {
             // Oculta uma letra da palavra do adversário
             const adversarioNum2 = numeroJogador === 1 ? 2 : 1;
-            const gameInstanceAdversario = game.gameInstances[adversarioNum2 - 1];
-            if (gameInstanceAdversario && gameInstanceAdversario.status === 'jogando') {
-              const palavraAdversario = gameInstanceAdversario.getEstado().palavra;
+            const gameInstanceAdversarioOcultar = game.gameInstances[adversarioNum2 - 1];
+            if (gameInstanceAdversarioOcultar && gameInstanceAdversarioOcultar.status === 'jogando') {
+              const palavraAdversario = gameInstanceAdversarioOcultar.getEstado().palavra;
               const letrasReveladas = [];
               
               for (let i = 0; i < palavraAdversario.length; i++) {
@@ -1019,8 +1022,9 @@ module.exports = function(io) {
               }
             }
             break;
+          }
             
-          case 'ocultar_dica':
+          case 'ocultar_dica': {
             // Por enquanto, apenas notifica que foi usado (não há sistema de dicas ainda)
             resultadoPoder = {
               tipo: 'ocultarDica',
@@ -1029,8 +1033,9 @@ module.exports = function(io) {
             };
             console.log(`🚫 Dica ocultada (sistema de dicas ainda não implementado)`);
             break;
+          }
             
-          case 'palpite':
+          case 'palpite': {
             // Ativa o poder de palpite: quando o adversário chutar uma letra que você não chutou,
             // ela conta como erro na sua forca e não para o turno dele
             game.palpiteAtivo[numeroJogador] = true;
@@ -1042,14 +1047,17 @@ module.exports = function(io) {
             };
             console.log(`🎯 Poder de palpite ativado para jogador ${numeroJogador}`);
             break;
+          }
             
-          default:
+          default: {
             resultadoPoder = {
               tipo: 'erro',
               sucesso: false,
               mensagem: `Poder '${poderId}' ainda não implementado`
             };
             console.warn(`⚠️ Poder desconhecido ou não implementado: ${poderId}`);
+            break;
+          }
         }
         
         // Remove o poder da lista de poderes disponíveis do jogador (para não usar novamente)
