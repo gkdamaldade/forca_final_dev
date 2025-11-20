@@ -438,7 +438,8 @@ module.exports = function(io) {
               categoria: game.categoria,
               meuSocketId: j1Corrigido.id,
               adversarioSocketId: j2Corrigido.id,
-              vidas: game.vidas
+              vidas: game.vidas,
+              poderes: j1Corrigido.poderes || []
             });
             
             console.log(`📤 Enviando evento 'inicio' para J2 (${j2Corrigido.id}): jogador=2, turno=${game.turno}`);
@@ -453,7 +454,8 @@ module.exports = function(io) {
               categoria: game.categoria,
               meuSocketId: j2Corrigido.id,
               adversarioSocketId: j1Corrigido.id,
-              vidas: game.vidas
+              vidas: game.vidas,
+              poderes: j2Corrigido.poderes || []
             });
             return;
           }
@@ -492,7 +494,8 @@ module.exports = function(io) {
             categoria: game.categoria,
             meuSocketId: j1.id, // Socket ID deste jogador para identificação única
             adversarioSocketId: j2.id, // Socket ID do adversário
-            vidas: game.vidas
+            vidas: game.vidas,
+            poderes: j1.poderes || [] // Poderes selecionados pelo jogador 1
           };
           
           const eventoInicioJ2 = {
@@ -506,7 +509,8 @@ module.exports = function(io) {
             categoria: game.categoria,
             meuSocketId: j2.id, // Socket ID deste jogador para identificação única
             adversarioSocketId: j1.id, // Socket ID do adversário
-            vidas: game.vidas
+            vidas: game.vidas,
+            poderes: j2.poderes || [] // Poderes selecionados pelo jogador 2
           };
 
           // Verifica se os sockets estão conectados ANTES de enviar
@@ -765,7 +769,74 @@ module.exports = function(io) {
         }
       }
 
+      if (msg.tipo === 'usarPoder') {
+        console.log(`🎯 Evento 'usarPoder' recebido: poderId=${msg.poderId}, jogador=${msg.jogador}, socket.id=${socket.id}`);
+        
+        const jogadorAtual = game.players.find(p => p.id === socket.id);
+        
+        if (!jogadorAtual) {
+          console.error(`❌ Jogador não encontrado: ${socket.id}`);
+          socket.emit('eventoJogo', {
+            tipo: 'erro',
+            mensagem: 'Jogador não encontrado na sala!'
+          });
+          return;
+        }
+        
+        const numeroJogador = jogadorAtual.numero;
+        const poderId = msg.poderId;
+        
+        // Verifica se é o turno do jogador (poderes só podem ser usados no próprio turno)
+        if (numeroJogador !== game.turno) {
+          console.log(`❌ Não é o turno do jogador ${numeroJogador}. Turno atual: ${game.turno}`);
+          socket.emit('eventoJogo', {
+            tipo: 'erro',
+            mensagem: 'Você só pode usar poderes no seu turno!'
+          });
+          return;
+        }
+        
+        // Verifica se o jogador tem esse poder disponível
+        const poderesJogador = jogadorAtual.poderes || [];
+        if (!poderesJogador.includes(poderId)) {
+          console.log(`❌ Jogador ${numeroJogador} não tem o poder ${poderId} disponível`);
+          socket.emit('eventoJogo', {
+            tipo: 'erro',
+            mensagem: 'Este poder não está disponível!'
+          });
+          return;
+        }
+        
+        console.log(`✅ Processando poder ${poderId} do jogador ${numeroJogador}`);
+        
+        // Processa o poder (implementação básica - pode ser expandida)
+        // Por enquanto, apenas registra que o poder foi usado
+        // Em futuras versões, pode adicionar lógica específica para cada poder
+        
+        // Envia confirmação para o jogador que usou o poder
+        socket.emit('eventoJogo', {
+          tipo: 'poderUsado',
+          poderId: poderId,
+          jogador: numeroJogador,
+          sucesso: true
+        });
+        
+        // Notifica o adversário sobre o poder usado (sem revelar qual poder foi)
+        const adversario = game.players.find(p => p.numero !== numeroJogador);
+        if (adversario) {
+          io.to(adversario.id).emit('eventoJogo', {
+            tipo: 'adversarioUsouPoder',
+            jogador: numeroJogador
+          });
+        }
+        
+        // Remove o poder da lista de poderes disponíveis do jogador (para não usar novamente)
+        jogadorAtual.poderes = jogadorAtual.poderes.filter(p => p !== poderId);
+        console.log(`✅ Poder ${poderId} removido da lista de poderes disponíveis do jogador ${numeroJogador}`);
+      }
+      
       if (msg.tipo === 'poder') {
+        // Mantido para compatibilidade (se houver código antigo usando este evento)
         io.to(roomId).emit('eventoJogo', {
           tipo: 'poder',
           poder: msg.poder,

@@ -154,17 +154,19 @@ body::after{
 .pre-game-wrapper .jogadores-prep {
   width: 100%;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
+  align-items: center;
   gap: 32px;
   flex-wrap: wrap;
 }
 
 .pre-game-wrapper .jogador-prep {
-  flex: 1 1 45%;
-  max-width: 400px;
+  flex: 0 1 auto;
+  max-width: 500px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 100%;
 }
 
 .pre-game-wrapper .jogador-prep h2 {
@@ -180,6 +182,8 @@ body::after{
   border-radius: 16px;
   background: rgba(255,255,255,.06);
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+  justify-content: center;
+  margin: 0 auto;
 }
 
 .pre-game-wrapper .poder {
@@ -692,6 +696,16 @@ header {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+}
+
+.poderes-jogador:empty::before {
+  content: 'Nenhum poder selecionado';
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.9rem;
+  font-style: italic;
 }
 
 .poder {
@@ -751,6 +765,50 @@ header {
   cursor: not-allowed;
   filter: grayscale(0.5);
   transform: none !important;
+}
+
+.poder.usado {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.8);
+  position: relative;
+  pointer-events: none;
+}
+
+.poder.usado::after {
+  content: '✗';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 28px;
+  color: #ff5555;
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(255, 85, 85, 0.8);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.poder.usado {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.8);
+  position: relative;
+  pointer-events: none;
+}
+
+.poder.usado::after {
+  content: '✗';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 28px;
+  color: #ff5555;
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(255, 85, 85, 0.8);
+  pointer-events: none;
+  z-index: 10;
 }
 
 .poder img {

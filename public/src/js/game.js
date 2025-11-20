@@ -45,6 +45,42 @@ let usuarioPronto = false;
 const jogadoresProntos = new Set();
 let poderesSelecionados = new Set(); // Set com os nomes dos poderes selecionados (ex: "liberar_letra", "vida_extra")
 const MAX_PODERES = 3;
+let poderesDisponiveis = []; // Array com os poderes selecionados que podem ser usados no jogo
+let poderesUsados = new Set(); // Set com os poderes que já foram usados (não podem ser usados novamente)
+
+// Mapeamento de nomes de poderes para nomes de imagens e descrições
+const MAPEAMENTO_PODERES = {
+    'liberar_letra': {
+        imagem: '/public/assets/images/liberar_letra.png',
+        nome: 'Liberar Letra',
+        descricao: 'Revela uma letra da palavra'
+    },
+    'ocultar_dica': {
+        imagem: '/public/assets/images/ocultar_dica.png',
+        nome: 'Ocultar Dica',
+        descricao: 'Oculta a dica do adversário'
+    },
+    'ocultar_letra': {
+        imagem: '/public/assets/images/ocultar_letra.png',
+        nome: 'Ocultar Letra',
+        descricao: 'Oculta uma letra da palavra do adversário'
+    },
+    'tirar_vida': {
+        imagem: '/public/assets/images/Tirar_vida.png',
+        nome: 'Tirar Vida',
+        descricao: 'Tira uma vida do adversário'
+    },
+    'vida_extra': {
+        imagem: '/public/assets/images/vida_extra.png',
+        nome: 'Vida Extra',
+        descricao: 'Ganha uma vida extra'
+    },
+    'palpite': {
+        imagem: '/public/assets/images/palpite.png',
+        nome: 'Palpite',
+        descricao: 'Faz um palpite sobre a palavra'
+    }
+};
 
 // --- 3. INICIALIZAÇÃO ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -251,6 +287,109 @@ function atualizarEstadoBotoesPoderes() {
     });
 }
 
+// Função para renderizar os poderes selecionados na tela de jogo
+function renderizarPoderesNoJogo() {
+    const containerPoderes = document.getElementById('poderes-jogador-container');
+    if (!containerPoderes) {
+        console.error(`[${instanceId}] ❌ Container de poderes não encontrado!`);
+        return;
+    }
+    
+    // Limpa o container
+    containerPoderes.innerHTML = '';
+    
+    if (poderesDisponiveis.length === 0) {
+        console.log(`[${instanceId}] ℹ️ Nenhum poder selecionado para exibir`);
+        return;
+    }
+    
+    // Cria um botão para cada poder disponível
+    poderesDisponiveis.forEach(poderId => {
+        const poderInfo = MAPEAMENTO_PODERES[poderId];
+        if (!poderInfo) {
+            console.warn(`[${instanceId}] ⚠️ Poder desconhecido: ${poderId}`);
+            return;
+        }
+        
+        const botaoPoder = document.createElement('button');
+        botaoPoder.className = 'poder';
+        botaoPoder.setAttribute('data-poder', poderId);
+        botaoPoder.setAttribute('title', poderInfo.descricao || poderInfo.nome);
+        botaoPoder.disabled = poderesUsados.has(poderId); // Desabilita se já foi usado
+        
+        const imgPoder = document.createElement('img');
+        imgPoder.src = poderInfo.imagem;
+        imgPoder.alt = poderInfo.nome;
+        
+        botaoPoder.appendChild(imgPoder);
+        
+        // Adiciona classe se já foi usado
+        if (poderesUsados.has(poderId)) {
+            botaoPoder.classList.add('usado');
+        }
+        
+        // Adiciona listener para usar o poder
+        botaoPoder.addEventListener('click', () => usarPoder(poderId, botaoPoder));
+        
+        containerPoderes.appendChild(botaoPoder);
+    });
+    
+    console.log(`[${instanceId}] ✅ ${poderesDisponiveis.length} poderes renderizados na tela de jogo`);
+}
+
+// Função para usar um poder durante o jogo
+function usarPoder(poderId, botaoElemento) {
+    if (!jogoEstaAtivo) {
+        console.warn(`[${instanceId}] ⚠️ Jogo não está ativo. Não é possível usar poderes.`);
+        mostrarFeedback('O jogo não está ativo', 'orange');
+        return;
+    }
+    
+    // Verifica se o poder já foi usado
+    if (poderesUsados.has(poderId)) {
+        console.warn(`[${instanceId}] ⚠️ Poder ${poderId} já foi usado!`);
+        mostrarFeedback('Este poder já foi usado!', 'orange');
+        return;
+    }
+    
+    // Verifica se o poder está disponível
+    if (!poderesDisponiveis.includes(poderId)) {
+        console.warn(`[${instanceId}] ⚠️ Poder ${poderId} não está disponível!`);
+        mostrarFeedback('Este poder não está disponível', 'orange');
+        return;
+    }
+    
+    // Verifica se é o turno do jogador (poderes só podem ser usados no próprio turno)
+    if (turnoAtual !== meuNumeroJogador) {
+        console.warn(`[${instanceId}] ⚠️ Não é seu turno! Turno atual: ${turnoAtual}, Seu número: ${meuNumeroJogador}`);
+        mostrarFeedback('Você só pode usar poderes no seu turno!', 'orange');
+        return;
+    }
+    
+    console.log(`[${instanceId}] 🎯 Usando poder: ${poderId}`);
+    
+    // Marca o poder como usado
+    poderesUsados.add(poderId);
+    
+    // Atualiza visualmente o botão (desabilita e marca como usado)
+    if (botaoElemento) {
+        botaoElemento.disabled = true;
+        botaoElemento.classList.add('usado');
+        botaoElemento.style.opacity = '0.5';
+        botaoElemento.style.cursor = 'not-allowed';
+    }
+    
+    // Envia evento ao servidor para processar o poder
+    enviarEvento({
+        tipo: 'usarPoder',
+        poderId: poderId,
+        jogador: meuNumeroJogador
+    });
+    
+    const poderInfo = MAPEAMENTO_PODERES[poderId];
+    mostrarFeedback(`${poderInfo?.nome || poderId} usado!`, 'green');
+}
+
 function aoClicarBotaoPronto() {
     console.log(`[${instanceId}] 🖱️ Botão pronto clicado!`);
     
@@ -455,9 +594,33 @@ function configurarListenersSocket() {
         } else if (evento.tipo === 'pronto') {
             console.log('✅ Evento PRONTO recebido na tela unificada:', evento);
             registrarEventoPronto(evento);
+        } else if (evento.tipo === 'poderUsado') {
+            console.log('✅ Poder usado com sucesso:', evento);
+            if (evento.poderId) {
+                const poderInfo = MAPEAMENTO_PODERES[evento.poderId];
+                mostrarFeedback(`${poderInfo?.nome || evento.poderId} usado com sucesso!`, 'green');
+            }
+        } else if (evento.tipo === 'adversarioUsouPoder') {
+            console.log('⚠️ Adversário usou um poder:', evento);
+            mostrarFeedback('Adversário usou um poder!', 'orange');
         } else if (evento.tipo === 'erro') {
             console.warn('❌ Erro do servidor:', evento.mensagem);
             mostrarFeedback(evento.mensagem || 'Erro no servidor', 'red');
+            // Se o erro for relacionado a poderes e o poder foi rejeitado, reabilita o botão
+            if (evento.mensagem && (evento.mensagem.includes('poder') || evento.mensagem.includes('Poder'))) {
+                const botoesPoder = document.querySelectorAll('#poderes-jogador-container .poder');
+                botoesPoder.forEach(botao => {
+                    const poderId = botao.getAttribute('data-poder');
+                    if (poderesUsados.has(poderId)) {
+                        // Se o servidor rejeitou, remove do set de usados
+                        poderesUsados.delete(poderId);
+                        botao.classList.remove('usado');
+                        botao.disabled = false;
+                        botao.style.opacity = '1';
+                        botao.style.cursor = 'pointer';
+                    }
+                });
+            }
             // Se o erro for "não é seu turno", não faz nada além de mostrar feedback
             // O turno será atualizado quando o servidor enviar o próximo evento 'jogada'
         } else {
@@ -528,6 +691,15 @@ function iniciarJogo(dados) {
     letrasChutadas.clear();
     
     categoriaEl.textContent = categoria;
+    
+    // Carrega os poderes selecionados que foram enviados pelo servidor
+    poderesDisponiveis = dados.poderes || [];
+    poderesUsados.clear(); // Reseta poderes usados
+    console.log(`🎯 Poderes disponíveis para o jogo:`, poderesDisponiveis);
+    
+    // Renderiza os poderes na tela de jogo
+    renderizarPoderesNoJogo();
+    
     atualizarVidasUI();
     atualizarPalavraExibida();
     atualizarBonecosUI();
