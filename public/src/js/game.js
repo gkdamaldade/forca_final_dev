@@ -209,23 +209,29 @@ function ativarModoPreparacao(evento = {}) {
 
 function registrarEventoPronto(evento) {
     console.log(`[${instanceId}] 📨 Processando evento 'pronto':`, evento);
+    console.log(`[${instanceId}] 📦 Dados completos do evento:`, JSON.stringify(evento, null, 2));
     
     // Adiciona o jogador ao set de prontos
     if (evento.socketId) {
         jogadoresProntos.add(evento.socketId);
+        console.log(`[${instanceId}] ✅ Adicionado socket.id ao set: ${evento.socketId}`);
     } else if (evento.nome) {
         jogadoresProntos.add(evento.nome);
+        console.log(`[${instanceId}] ✅ Adicionado nome ao set: ${evento.nome}`);
     }
 
-    // Atualiza contador com o total do servidor (mais confiável)
-    const totalProntos = evento.total !== undefined ? evento.total : jogadoresProntos.size;
-    console.log(`[${instanceId}] 📊 Total de prontos: ${totalProntos}/2`);
+    // SEMPRE atualiza contador com o total do servidor (mais confiável)
+    // O servidor envia o total correto, então usamos ele diretamente
+    const totalProntos = evento.total !== undefined && evento.total !== null ? evento.total : jogadoresProntos.size;
+    console.log(`[${instanceId}] 📊 Total de prontos recebido do servidor: ${evento.total}, usando: ${totalProntos}/2`);
     atualizarContadorProntos(totalProntos);
 
     // Verifica se o evento é do próprio usuário
     const meuSocketAtual = getMeuSocketId();
     const eventoEDoMeuSocket = evento.socketId && evento.socketId === meuSocketAtual;
     const eventoEDoMeuNome = evento.nome === nomeJogador;
+
+    console.log(`[${instanceId}] 🔍 Verificação: meuSocketId=${meuSocketAtual}, eventoSocketId=${evento.socketId}, eventoEDoMeuSocket=${eventoEDoMeuSocket}, eventoEDoMeuNome=${eventoEDoMeuNome}, usuarioPronto=${usuarioPronto}`);
 
     if ((eventoEDoMeuSocket || (eventoEDoMeuNome && !evento.socketId)) && !usuarioPronto) {
         console.log(`[${instanceId}] ✅ Usuário ${nomeJogador} marcado como pronto via evento do servidor`);
@@ -237,6 +243,16 @@ function registrarEventoPronto(evento) {
     // Não precisamos fazer nada aqui, apenas aguardar o evento 'inicio'
     if (totalProntos === 2) {
         console.log(`[${instanceId}] 🎮 Ambos os jogadores estão prontos! Aguardando evento 'inicio' do servidor...`);
+        console.log(`[${instanceId}] ⏳ Se o evento 'inicio' não chegar em 3 segundos, pode haver um problema no servidor.`);
+        
+        // Timeout de segurança: se o evento 'inicio' não chegar em 3 segundos, loga um aviso
+        setTimeout(() => {
+            if (estaNoModoPreparacao && !jogoEstaAtivo) {
+                console.warn(`[${instanceId}] ⚠️ AVISO: Evento 'inicio' não chegou após 3 segundos com ambos prontos!`);
+                console.warn(`[${instanceId}] 📊 Estado atual: estaNoModoPreparacao=${estaNoModoPreparacao}, jogoEstaAtivo=${jogoEstaAtivo}`);
+                console.warn(`[${instanceId}] 🔍 Verifique os logs do servidor para ver se o evento 'inicio' foi enviado.`);
+            }
+        }, 3000);
     }
 }
 
@@ -734,6 +750,14 @@ function configurarTecladoVirtual() {
 }
 
 function lidarComChuteDeTecladoFisico(e) {
+    // Primeiro verifica se é uma letra (A-Z) - se não for, não faz nada e permite o comportamento padrão
+    const letra = e.key.toUpperCase();
+    if (!(letra.length === 1 && letra >= 'A' && letra <= 'Z')) {
+        // Não é uma letra, permite comportamento padrão (F12, Escape, etc.)
+        return;
+    }
+
+    // A partir daqui, só processa letras (A-Z)
     // Verificação crítica: jogo foi inicializado?
     if (!meuNumeroJogador || meuNumeroJogador === 0 || (meuNumeroJogador !== 1 && meuNumeroJogador !== 2)) {
         e.preventDefault();
@@ -747,41 +771,38 @@ function lidarComChuteDeTecladoFisico(e) {
         return false;
     }
 
-    const letra = e.key.toUpperCase();
-    if (letra.length === 1 && letra >= 'A' && letra <= 'Z') {
-        const btn = [...tecladoContainer.querySelectorAll('.tecla')]
-            .find(b => b.textContent === letra);
-        
-        // Verifica múltiplas condições antes de processar
-        if (!btn || btn.disabled) {
-            e.preventDefault();
-            return false;
-        }
-        
-        // Verifica se a letra já foi chutada
-        if (letrasChutadas.has(letra)) {
-            e.preventDefault();
-            mostrarFeedback('Letra já foi chutada!', 'orange');
-            return false;
-        }
-        
-        // Verifica se é o turno do jogador (usando comparação numérica)
-        const turnoAtualNum = Number(turnoAtual) || 0;
-        const meuNumeroNum = Number(meuNumeroJogador) || 0;
-        
-        if (turnoAtualNum !== meuNumeroNum || meuNumeroNum === 0) {
-            e.preventDefault();
-            console.warn(`⚠️ Tentativa de chute (teclado físico) fora do turno: turnoAtual=${turnoAtualNum}, meuNumero=${meuNumeroNum}`);
-            mostrarFeedback('Não é seu turno!', 'orange');
-            return false;
-        }
-        
-        // Verifica se o jogo está ativo
-        if (!jogoEstaAtivo) {
-            e.preventDefault();
-            return false;
-        }
-        
-        processarChute(letra);
+    const btn = [...tecladoContainer.querySelectorAll('.tecla')]
+        .find(b => b.textContent === letra);
+    
+    // Verifica múltiplas condições antes de processar
+    if (!btn || btn.disabled) {
+        e.preventDefault();
+        return false;
     }
+    
+    // Verifica se a letra já foi chutada
+    if (letrasChutadas.has(letra)) {
+        e.preventDefault();
+        mostrarFeedback('Letra já foi chutada!', 'orange');
+        return false;
+    }
+    
+    // Verifica se é o turno do jogador (usando comparação numérica)
+    const turnoAtualNum = Number(turnoAtual) || 0;
+    const meuNumeroNum = Number(meuNumeroJogador) || 0;
+    
+    if (turnoAtualNum !== meuNumeroNum || meuNumeroNum === 0) {
+        e.preventDefault();
+        console.warn(`⚠️ Tentativa de chute (teclado físico) fora do turno: turnoAtual=${turnoAtualNum}, meuNumero=${meuNumeroNum}`);
+        mostrarFeedback('Não é seu turno!', 'orange');
+        return false;
+    }
+    
+    // Verifica se o jogo está ativo
+    if (!jogoEstaAtivo) {
+        e.preventDefault();
+        return false;
+    }
+    
+    processarChute(letra);
 }

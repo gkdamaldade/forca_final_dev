@@ -438,14 +438,30 @@ module.exports = function(io) {
             adversarioSocketId: j1.id // Socket ID do adversário
           };
 
-          console.log(`📤 Enviando evento 'inicio' para J1 (${j1.id}):`, eventoInicioJ1);
-          io.to(j1.id).emit('eventoJogo', eventoInicioJ1);
+          // Verifica se os sockets estão conectados ANTES de enviar
+          const j1SocketVerificado = io.sockets.sockets.get(j1.id);
+          const j2SocketVerificado = io.sockets.sockets.get(j2.id);
+          
+          if (j1SocketVerificado) {
+            console.log(`📤 Enviando evento 'inicio' para J1 (${j1.id}):`, eventoInicioJ1);
+            io.to(j1.id).emit('eventoJogo', eventoInicioJ1);
+          } else {
+            console.error(`❌ ERRO: Socket J1 (${j1.id}) não está conectado! Não foi possível enviar evento 'inicio'.`);
+          }
 
-          console.log(`📤 Enviando evento 'inicio' para J2 (${j2.id}):`, eventoInicioJ2);
-          io.to(j2.id).emit('eventoJogo', eventoInicioJ2);
+          if (j2SocketVerificado) {
+            console.log(`📤 Enviando evento 'inicio' para J2 (${j2.id}):`, eventoInicioJ2);
+            io.to(j2.id).emit('eventoJogo', eventoInicioJ2);
+          } else {
+            console.error(`❌ ERRO: Socket J2 (${j2.id}) não está conectado! Não foi possível enviar evento 'inicio'.`);
+          }
           
           // Verifica se os eventos foram enviados corretamente
-          console.log(`✅ Eventos 'inicio' enviados para ambos os jogadores`);
+          if (j1SocketVerificado && j2SocketVerificado) {
+            console.log(`✅ Eventos 'inicio' enviados para ambos os jogadores`);
+          } else {
+            console.error(`❌ ERRO: Um ou ambos os sockets não estão conectados! J1: ${!!j1SocketVerificado}, J2: ${!!j2SocketVerificado}`);
+          }
         } else {
           console.log(`⏳ Condição NÃO satisfeita: players.length=${game.players.length}, prontos.size=${game.prontos.size}`);
           console.log(`📋 Esperando mais jogadores ou prontos...`);
