@@ -107,6 +107,172 @@ header {
 }
 
 /* ==============================
+   Saudação Estilizada
+   ============================== */
+.saudacao-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 30px;
+  padding: 20px 30px;
+  width: 100%;
+  position: relative;
+  animation: fadeInDown 0.8s ease-out;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.saudacao-icone {
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  color: var(--aqua);
+  filter: drop-shadow(0 0 10px rgba(0, 229, 255, 0.6));
+  animation: float 3s ease-in-out infinite;
+  transition: all 0.3s ease;
+}
+
+.icone-esquerdo {
+  animation-delay: 0s;
+}
+
+.icone-direito {
+  animation-delay: 1.5s;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0.9;
+  }
+  50% {
+    transform: translateY(-10px) rotate(10deg);
+    opacity: 1;
+  }
+}
+
+.saudacao-icone:hover {
+  transform: scale(1.2) rotate(15deg);
+  filter: drop-shadow(0 0 20px rgba(0, 229, 255, 0.9));
+}
+
+.saudacao-texto {
+  font-family: "Orbitron", sans-serif;
+  font-size: clamp(1.8rem, 5vw, 3.5rem);
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.08em;
+  color: #e9fbff;
+  text-shadow:
+    0 2px 4px rgba(0,0,0,.4),
+    0 4px 8px rgba(0,0,0,.3),
+    0 0 20px rgba(0, 229, 255, 0.4),
+    0 0 40px rgba(0, 229, 255, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  position: relative;
+}
+
+.saudacao-prefixo {
+  color: #e9fbff;
+  text-shadow:
+    0 2px 4px rgba(0,0,0,.4),
+    0 4px 8px rgba(0,0,0,.3),
+    0 0 20px rgba(0, 229, 255, 0.4);
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+.saudacao-nome {
+  color: var(--aqua);
+  text-shadow:
+    0 2px 4px rgba(0,0,0,.4),
+    0 4px 8px rgba(0,0,0,.3),
+    0 0 20px rgba(0, 229, 255, 0.6),
+    0 0 40px rgba(0, 229, 255, 0.4);
+  font-weight: 800;
+  position: relative;
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+@keyframes glow {
+  from {
+    text-shadow:
+      0 2px 4px rgba(0,0,0,.4),
+      0 4px 8px rgba(0,0,0,.3),
+      0 0 20px rgba(0, 229, 255, 0.4);
+  }
+  to {
+    text-shadow:
+      0 2px 4px rgba(0,0,0,.4),
+      0 4px 8px rgba(0,0,0,.3),
+      0 0 30px rgba(0, 229, 255, 0.6),
+      0 0 50px rgba(0, 229, 255, 0.3);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    text-shadow:
+      0 2px 4px rgba(0,0,0,.4),
+      0 4px 8px rgba(0,0,0,.3),
+      0 0 20px rgba(0, 229, 255, 0.6),
+      0 0 40px rgba(0, 229, 255, 0.4);
+    transform: scale(1);
+  }
+  50% {
+    text-shadow:
+      0 2px 4px rgba(0,0,0,.4),
+      0 4px 8px rgba(0,0,0,.3),
+      0 0 30px rgba(0, 229, 255, 0.8),
+      0 0 60px rgba(0, 229, 255, 0.6);
+    transform: scale(1.05);
+  }
+}
+
+/* Efeito de partículas decorativas */
+.saudacao-container::before {
+  content: '';
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 2px;
+  background: var(--aqua);
+  border-radius: 50%;
+  box-shadow:
+    0 0 10px rgba(0, 229, 255, 0.8),
+    0 0 20px rgba(0, 229, 255, 0.6),
+    -30px 10px 0 -2px rgba(0, 229, 255, 0.4),
+    30px 10px 0 -2px rgba(0, 229, 255, 0.4),
+    -60px 20px 0 -2px rgba(0, 229, 255, 0.3),
+    60px 20px 0 -2px rgba(0, 229, 255, 0.3);
+  animation: sparkle 3s ease-in-out infinite;
+}
+
+@keyframes sparkle {
+  0%, 100% {
+    opacity: 0.5;
+    transform: translateX(-50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.2);
+  }
+}
+
+/* ==============================
    Painel (vidro) – FIXO EM F11
    ============================== */
 .menu-container {
@@ -295,8 +461,42 @@ header {
 /* ==============================
    Responsividade (mobile)
    ============================== */
+/* Responsividade da Saudação */
+@media (max-width: 768px) {
+  .saudacao-container {
+    gap: 12px;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+  }
+  
+  .saudacao-icone {
+    font-size: clamp(1.4rem, 3vw, 2rem);
+  }
+  
+  .saudacao-texto {
+    font-size: clamp(1.4rem, 4vw, 2.5rem);
+    gap: 6px;
+  }
+}
+
 @media (max-width: 520px){
-  .menu-container{
+  .saudacao-container {
+    gap: 10px;
+    padding: 12px 15px;
+    margin-bottom: 15px;
+  }
+  
+  .saudacao-icone {
+    font-size: clamp(1.2rem, 2.5vw, 1.6rem);
+  }
+  
+  .saudacao-texto {
+    font-size: clamp(1.2rem, 3.5vw, 2rem);
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .menu-container {
     max-width: 94vw;
     /* Em mobile a altura pode reduzir um pouco para caber melhor */
     min-height: 440px;
