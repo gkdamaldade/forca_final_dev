@@ -437,7 +437,8 @@ module.exports = function(io) {
             return;
           }
           
-          const estado = game.gameInstance.getEstado();
+          const estado1 = game.gameInstances[0].getEstado();
+          const estado2 = game.gameInstances[1].getEstado();
           
           // Garante que o turno inicial seja sempre 1 (jogador 1 começa)
           game.turno = 1;
@@ -445,7 +446,7 @@ module.exports = function(io) {
           console.log(`🎮 Iniciando jogo na sala ${roomId}`);
           console.log(`Jogador 1: ${j1.name} (${j1.id}, numero: ${j1.numero}), Jogador 2: ${j2.name} (${j2.id}, numero: ${j2.numero})`);
           console.log(`Turno inicial: ${game.turno}`);
-          console.log(`Palavra secreta: ${game.word}, Palavra exibida: ${estado.palavra}`);
+          console.log(`Palavra J1: ${game.words[0]}, Palavra J2: ${game.words[1]}`);
 
           // Verifica se os sockets ainda estão conectados
           const j1Socket = io.sockets.sockets.get(j1.id);
@@ -462,24 +463,28 @@ module.exports = function(io) {
             tipo: 'inicio',
             jogador: 1,
             adversario: j2.name,
-            palavra: estado.palavra, // Palavra oculta para exibição
-            palavraSecreta: game.word, // Palavra completa (para lógica)
+            palavra: estado1.palavra, // Palavra oculta do jogador 1
+            palavraAdversario: estado2.palavra, // Palavra oculta do jogador 2
+            palavraSecreta: game.words[0], // Palavra completa do jogador 1
             turno: game.turno, // Sempre 1 no início
             categoria: game.categoria,
             meuSocketId: j1.id, // Socket ID deste jogador para identificação única
-            adversarioSocketId: j2.id // Socket ID do adversário
+            adversarioSocketId: j2.id, // Socket ID do adversário
+            vidas: game.vidas
           };
           
           const eventoInicioJ2 = {
             tipo: 'inicio',
             jogador: 2,
             adversario: j1.name,
-            palavra: estado.palavra, // Palavra oculta para exibição
-            palavraSecreta: game.word, // Palavra completa (para lógica)
+            palavra: estado2.palavra, // Palavra oculta do jogador 2
+            palavraAdversario: estado1.palavra, // Palavra oculta do jogador 1
+            palavraSecreta: game.words[1], // Palavra completa do jogador 2
             turno: game.turno, // Sempre 1 no início
             categoria: game.categoria,
             meuSocketId: j2.id, // Socket ID deste jogador para identificação única
-            adversarioSocketId: j1.id // Socket ID do adversário
+            adversarioSocketId: j1.id, // Socket ID do adversário
+            vidas: game.vidas
           };
 
           // Verifica se os sockets estão conectados ANTES de enviar
