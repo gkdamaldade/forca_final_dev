@@ -104,31 +104,54 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function configurarInterfacePreparacao() {
+    console.log(`[${instanceId}] 🔧 Configurando interface de preparação...`);
+    
     estaNoModoPreparacao = true;
+    usuarioPronto = false;
+    jogadoresProntos.clear();
+    
     if (preGameWrapper) {
         preGameWrapper.classList.remove('hidden');
+        console.log(`[${instanceId}] ✅ Painel de preparação exibido`);
+    } else {
+        console.error(`[${instanceId}] ❌ Elemento .pre-game-wrapper não encontrado!`);
     }
+    
     if (jogoContainer) {
         jogoContainer.classList.add('hidden');
+        console.log(`[${instanceId}] ✅ Painel de jogo ocultado`);
+    } else {
+        console.error(`[${instanceId}] ❌ Elemento .jogo-container não encontrado!`);
     }
 
+    // Inicializa contador em 0/2
     atualizarContadorProntos(0);
 
     if (botaoPronto) {
+        // Remove listeners antigos para evitar duplicação
+        botaoPronto.removeEventListener('click', aoClicarBotaoPronto);
+        // Adiciona novo listener
+        botaoPronto.addEventListener('click', aoClicarBotaoPronto);
+        
         botaoPronto.disabled = false;
         botaoPronto.textContent = 'Pronto';
         botaoPronto.style.opacity = '1';
         botaoPronto.style.cursor = 'pointer';
-        botaoPronto.addEventListener('click', aoClicarBotaoPronto);
+        console.log(`[${instanceId}] ✅ Botão pronto configurado e habilitado`);
+    } else {
+        console.error(`[${instanceId}] ❌ Elemento .botao-pronto não encontrado!`);
     }
 }
 
 function aoClicarBotaoPronto() {
+    console.log(`[${instanceId}] 🖱️ Botão pronto clicado!`);
+    
     if (usuarioPronto) {
         console.log(`[${instanceId}] ⚠️ Botão pronto já foi clicado. Ignorando novo clique.`);
         return;
     }
 
+    console.log(`[${instanceId}] ✅ Marcando usuário como pronto localmente...`);
     usuarioPronto = true;
     travarBotaoPronto();
 
@@ -156,9 +179,13 @@ function desbloquearBotaoPronto() {
 }
 
 function atualizarContadorProntos(total) {
-    if (!contadorProntosEl) return;
+    if (!contadorProntosEl) {
+        console.warn('⚠️ Elemento .contador não encontrado!');
+        return;
+    }
     const valorSeguro = Math.max(0, Math.min(2, total || 0));
     contadorProntosEl.textContent = `( ${valorSeguro} / 2 )`;
+    console.log(`[${instanceId}] 📊 Contador atualizado: ${valorSeguro}/2`);
 }
 
 function ativarModoPreparacao(evento = {}) {
@@ -168,34 +195,48 @@ function ativarModoPreparacao(evento = {}) {
     if (preGameWrapper) preGameWrapper.classList.remove('hidden');
     if (jogoContainer) jogoContainer.classList.add('hidden');
 
-    if (!usuarioPronto) {
-        desbloquearBotaoPronto();
-    }
-
+    // Se não há total no evento, reseta para 0/2
     if (evento.total !== undefined) {
         atualizarContadorProntos(evento.total);
+    } else {
+        atualizarContadorProntos(0);
+    }
+
+    if (!usuarioPronto) {
+        desbloquearBotaoPronto();
     }
 }
 
 function registrarEventoPronto(evento) {
-    ativarModoPreparacao(evento);
-
+    console.log(`[${instanceId}] 📨 Processando evento 'pronto':`, evento);
+    
+    // Adiciona o jogador ao set de prontos
     if (evento.socketId) {
         jogadoresProntos.add(evento.socketId);
     } else if (evento.nome) {
         jogadoresProntos.add(evento.nome);
     }
 
-    const totalProntos = evento.total || jogadoresProntos.size;
+    // Atualiza contador com o total do servidor (mais confiável)
+    const totalProntos = evento.total !== undefined ? evento.total : jogadoresProntos.size;
+    console.log(`[${instanceId}] 📊 Total de prontos: ${totalProntos}/2`);
     atualizarContadorProntos(totalProntos);
 
+    // Verifica se o evento é do próprio usuário
     const meuSocketAtual = getMeuSocketId();
     const eventoEDoMeuSocket = evento.socketId && evento.socketId === meuSocketAtual;
     const eventoEDoMeuNome = evento.nome === nomeJogador;
 
     if ((eventoEDoMeuSocket || (eventoEDoMeuNome && !evento.socketId)) && !usuarioPronto) {
+        console.log(`[${instanceId}] ✅ Usuário ${nomeJogador} marcado como pronto via evento do servidor`);
         usuarioPronto = true;
         travarBotaoPronto();
+    }
+
+    // Quando ambos estiverem prontos, o servidor enviará o evento 'inicio' automaticamente
+    // Não precisamos fazer nada aqui, apenas aguardar o evento 'inicio'
+    if (totalProntos === 2) {
+        console.log(`[${instanceId}] 🎮 Ambos os jogadores estão prontos! Aguardando evento 'inicio' do servidor...`);
     }
 }
 
