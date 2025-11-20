@@ -315,7 +315,7 @@ module.exports = function(io) {
       }
     });
 
-    socket.on('eventoJogo', msg => {
+    socket.on('eventoJogo', async msg => {
       const roomId = [...socket.rooms].find(r => r !== socket.id);
       const game = activeGames.get(roomId);
       if (!game) return;
