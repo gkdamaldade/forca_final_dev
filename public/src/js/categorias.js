@@ -47,12 +47,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ----------------------------------------------------------------------
-    // 3. Exibição da Saudação
+    // 3. Exibição da Saudação (estilo similar ao menu, mas mais sutil)
     // ----------------------------------------------------------------------
     const menuContainer = document.querySelector('.menu-container');
     if (menuContainer) {
         const saudacaoEl = document.createElement('p');
-        saudacaoEl.className = 'saudacao';
+        saudacaoEl.className = 'saudacao-categorias';
         saudacaoEl.textContent = `Olá, ${nomeUsuario}! Escolha uma categoria:`;
         
         // Em vez de usar .prepend no .menu-container, você pode inseri-lo no .menu-title
@@ -63,6 +63,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // Caso .menu-title não exista, usa o container principal
             menuContainer.prepend(saudacaoEl);
         }
+        
+        // Animação de entrada suave
+        setTimeout(() => {
+            saudacaoEl.style.opacity = '1';
+            saudacaoEl.style.transform = 'translateY(0)';
+        }, 100);
     }
 
     // ----------------------------------------------------------------------

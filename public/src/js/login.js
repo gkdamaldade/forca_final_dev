@@ -51,8 +51,15 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('user', JSON.stringify(payload.user));
       }
 
-      alert('Login realizado com sucesso! Bem-vindo!');
-      window.location.href = 'menu.html';
+      // Transição suave para a próxima tela
+      const body = document.body;
+      body.style.transition = 'opacity 0.5s ease-out, transform 0.5s ease-out';
+      body.style.opacity = '0';
+      body.style.transform = 'translateY(-20px)';
+      
+      setTimeout(() => {
+        window.location.href = 'menu.html';
+      }, 500);
 
     } catch (error) {
       const hint = error instanceof TypeError
