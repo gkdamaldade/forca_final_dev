@@ -25,11 +25,13 @@ let meuNumeroJogador = null; // 1 ou 2
 let meuSocketId = null; // Socket ID deste jogador (para identificação única)
 let adversarioNome = '';
 let adversarioSocketId = null; // Socket ID do adversário
-let palavraSecreta = '';
-let palavraExibida = '';
+let palavraSecreta = ''; // Minha palavra secreta
+let palavraExibida = ''; // Minha palavra exibida
+let palavraAdversarioExibida = ''; // Palavra do adversário exibida
 let turnoAtual = 1;
 let erros = 0;
 let letrasChutadas = new Set();
+let vidas = [2, 2]; // [vidas jogador 1, vidas jogador 2]
 let jogoEstaAtivo = false;
 let timerInterval = null;
 let sala = '';
@@ -291,11 +293,26 @@ function configurarListenersSocket() {
             console.log('🔄 Evento TURNO TROCADO recebido:', evento);
             // Atualiza o estado do jogo com os dados recebidos
             turnoAtual = parseInt(evento.turno) || turnoAtual;
-            palavraExibida = evento.palavra || palavraExibida;
-            erros = evento.erros || erros;
-            letrasChutadas = new Set(evento.letrasChutadas || []);
+            
+            // Atualiza palavras baseado no número do jogador
+            if (meuNumeroJogador === 1) {
+                palavraExibida = evento.palavraJogador1 || palavraExibida;
+                palavraAdversarioExibida = evento.palavraJogador2 || palavraAdversarioExibida;
+                letrasChutadas = new Set(evento.letrasChutadasJogador1 || []);
+                erros = evento.errosJogador1 || erros;
+            } else {
+                palavraExibida = evento.palavraJogador2 || palavraExibida;
+                palavraAdversarioExibida = evento.palavraJogador1 || palavraAdversarioExibida;
+                letrasChutadas = new Set(evento.letrasChutadasJogador2 || []);
+                erros = evento.errosJogador2 || erros;
+            }
+            
+            if (evento.vidas) {
+                vidas = evento.vidas;
+            }
             
             // Atualiza a UI
+            atualizarVidasUI();
             atualizarPalavraExibida();
             atualizarBonecosUI();
             atualizarTurnoUI();
@@ -315,6 +332,14 @@ function configurarListenersSocket() {
                     timerEl.textContent = 'Aguardando...';
                     timerEl.style.color = '#888';
                 }
+            }
+        } else if (evento.tipo === 'fim') {
+            console.log('🏆 Evento FIM recebido:', evento);
+            const vencedor = evento.vencedor;
+            if (vencedor === meuNumeroJogador) {
+                finalizarJogo('vitoria');
+            } else {
+                finalizarJogo('derrota');
             }
         } else if (evento.tipo === 'preparacao') {
             console.log('⏳ Evento PREPARACAO recebido - aguardando ambos estarem prontos...');
@@ -361,10 +386,15 @@ function iniciarJogo(dados) {
     meuSocketId = dados.meuSocketId || getMeuSocketId(); // Usa socketId do servidor ou busca localmente
     adversarioNome = dados.adversario;
     adversarioSocketId = dados.adversarioSocketId;
-    palavraSecreta = dados.palavraSecreta || dados.palavra; // Usa palavraSecreta se disponível
-    palavraExibida = dados.palavra || ''; // Palavra oculta para exibição
+    palavraSecreta = dados.palavraSecreta || dados.palavra; // Minha palavra secreta
+    palavraExibida = dados.palavra || ''; // Minha palavra oculta para exibição
+    palavraAdversarioExibida = dados.palavraAdversario || ''; // Palavra do adversário exibida
     turnoAtual = Number(dados.turno) || 1; // Garante que sempre tenha um turno inicial e seja um número
     categoria = dados.categoria || 'Geral';
+    vidas = dados.vidas || [2, 2]; // Vidas de cada jogador [J1, J2]
+    
+    console.log(`📝 Palavras recebidas: Minha="${palavraExibida}", Adversário="${palavraAdversarioExibida}"`);
+    console.log(`💚 Vidas iniciais: J1=${vidas[0]}, J2=${vidas[1]}`);
     
     console.log(`✅ Jogador ${meuNumeroJogador} (tipo: ${typeof meuNumeroJogador}) - Socket ID: ${meuSocketId}`);
     console.log(`🔄 Turno atual: ${turnoAtual} (tipo: ${typeof turnoAtual}), Meu número: ${meuNumeroJogador} (tipo: ${typeof meuNumeroJogador})`);
@@ -390,6 +420,7 @@ function iniciarJogo(dados) {
     letrasChutadas.clear();
     
     categoriaEl.textContent = categoria;
+    atualizarVidasUI();
     atualizarPalavraExibida();
     atualizarBonecosUI();
     atualizarTurnoUI();
@@ -441,12 +472,29 @@ function processarJogada(dados) {
     }
     
     // Atualiza estado apenas se a jogada foi válida
-    letrasChutadas = new Set(dados.letrasChutadas || []);
-    palavraExibida = dados.palavra;
-    erros = dados.erros || 0;
+    // O servidor envia palavras separadas para cada jogador
+    if (meuNumeroJogador === 1) {
+        palavraExibida = dados.palavraJogador1 || palavraExibida;
+        palavraAdversarioExibida = dados.palavraJogador2 || palavraAdversarioExibida;
+        letrasChutadas = new Set(dados.letrasChutadasJogador1 || []);
+        erros = dados.errosJogador1 || 0;
+    } else {
+        palavraExibida = dados.palavraJogador2 || palavraExibida;
+        palavraAdversarioExibida = dados.palavraJogador1 || palavraAdversarioExibida;
+        letrasChutadas = new Set(dados.letrasChutadasJogador2 || []);
+        erros = dados.errosJogador2 || 0;
+    }
+    
     turnoAtual = parseInt(dados.turno) || turnoAtual; // Garante que seja um número
     
+    // Atualiza vidas se fornecidas
+    if (dados.vidas) {
+        vidas = dados.vidas;
+        atualizarVidasUI();
+    }
+    
     console.log(`🔄 Turno atualizado após jogada: ${turnoAtual} (tipo: ${typeof turnoAtual})`);
+    console.log(`💚 Vidas: J1=${vidas[0]}, J2=${vidas[1]}`);
     
     atualizarPalavraExibida();
     atualizarBonecosUI();
@@ -458,6 +506,13 @@ function processarJogada(dados) {
         mostrarFeedback('✓ Letra correta!', 'green');
     } else if (dados.resultado === 'erro') {
         mostrarFeedback('✗ Letra incorreta!', 'red');
+    } else if (dados.resultado === 'vitoria') {
+        if (dados.adversarioPerdeuVida) {
+            const adversarioNum = dados.jogadorQueJogou === 1 ? 2 : 1;
+            mostrarFeedback(`🎯 Você completou! Adversário perde uma vida!`, 'green');
+        } else {
+            mostrarFeedback('🎯 Você completou a palavra!', 'green');
+        }
     }
     
     // Limpa o timer anterior
@@ -482,7 +537,7 @@ function processarJogada(dados) {
     
     // Verifica fim de jogo
     if (dados.status === 'vitoria' || dados.status === 'derrota') {
-        finalizarJogo(dados.status);
+        // Não finaliza aqui, aguarda evento 'fim' do servidor
     }
 }
 
@@ -619,21 +674,71 @@ async function processarChute(letra) {
 }
 
 // --- 7. ATUALIZAÇÃO DE UI ---
+function atualizarVidasUI() {
+    console.log(`💚 Atualizando vidas: J1=${vidas[0]}, J2=${vidas[1]}`);
+    
+    // Atualiza vidas do jogador 1
+    if (vidasP1Container) {
+        vidasP1Container.innerHTML = '';
+        for (let i = 0; i < 2; i++) {
+            const vida = document.createElement('span');
+            vida.className = 'vida';
+            if (i < vidas[0]) {
+                vida.style.backgroundColor = '#00bcd4';
+            } else {
+                vida.style.backgroundColor = '#555';
+                vida.style.opacity = '0.3';
+            }
+            vidasP1Container.appendChild(vida);
+        }
+    }
+    
+    // Atualiza vidas do jogador 2
+    if (vidasP2Container) {
+        vidasP2Container.innerHTML = '';
+        for (let i = 0; i < 2; i++) {
+            const vida = document.createElement('span');
+            vida.className = 'vida';
+            if (i < vidas[1]) {
+                vida.style.backgroundColor = '#00bcd4';
+            } else {
+                vida.style.backgroundColor = '#555';
+                vida.style.opacity = '0.3';
+            }
+            vidasP2Container.appendChild(vida);
+        }
+    }
+}
+
 function atualizarPalavraExibida() {
-    const palavraFormatada = palavraExibida || gerarPalavraOculta();
-    console.log(`📝 Atualizando palavra exibida: "${palavraFormatada}" (palavraExibida: "${palavraExibida}", palavraSecreta: "${palavraSecreta}")`);
+    // Determina qual palavra mostrar para cada jogador
+    let minhaPalavra = palavraExibida || gerarPalavraOculta();
+    let palavraAdv = palavraAdversarioExibida || '';
     
-    if (palavraP1_El) {
-        palavraP1_El.textContent = palavraFormatada;
-    } else {
-        console.error('❌ palavraP1_El não encontrado!');
-    }
+    console.log(`📝 Atualizando palavras: Minha="${minhaPalavra}", Adversário="${palavraAdv}"`);
     
-    if (palavraP2_El) {
-        palavraP2_El.textContent = palavraFormatada;
+    // Se sou jogador 1, minha palavra vai na primeira posição
+    if (meuNumeroJogador === 1) {
+        if (palavraP1_El) {
+            palavraP1_El.textContent = minhaPalavra;
+        }
+        if (palavraP2_El) {
+            palavraP2_El.textContent = palavraAdv || gerarPalavraOcultaAdversario();
+        }
     } else {
-        console.error('❌ palavraP2_El não encontrado!');
+        // Se sou jogador 2, minha palavra vai na segunda posição
+        if (palavraP1_El) {
+            palavraP1_El.textContent = palavraAdv || gerarPalavraOcultaAdversario();
+        }
+        if (palavraP2_El) {
+            palavraP2_El.textContent = minhaPalavra;
+        }
     }
+}
+
+function gerarPalavraOcultaAdversario() {
+    // Gera palavra oculta genérica para o adversário (não sabemos o tamanho)
+    return '_ _ _ _ _ _ _';
 }
 
 function gerarPalavraOculta() {

@@ -18,31 +18,47 @@ module.exports = function(io) {
       
       if (!activeGames.has(roomId)) {
         try {
-          // Busca palavra aleatória do banco filtrando por categoria
-          const wordObj = await getRandomWord({ categoria: categoria });
-          const palavra = (wordObj?.palavra || 'FORCA').toUpperCase();
-          const categoriaUsada = wordObj?.categoria || categoria;
+          // Busca duas palavras aleatórias (uma para cada jogador)
+          const wordObj1 = await getRandomWord({ categoria: categoria });
+          const palavra1 = (wordObj1?.palavra || 'FORCA').toUpperCase();
+          const categoriaUsada = wordObj1?.categoria || categoria;
           
-          const gameInstance = new Game(palavra, categoriaUsada);
+          // Busca segunda palavra (pode ser a mesma categoria)
+          let wordObj2;
+          let palavra2;
+          let tentativas = 0;
+          do {
+            wordObj2 = await getRandomWord({ categoria: categoria });
+            palavra2 = (wordObj2?.palavra || 'FORCA').toUpperCase();
+            tentativas++;
+          } while (palavra1 === palavra2 && tentativas < 5); // Tenta pegar palavras diferentes
+          
+          // Cria instâncias de Game separadas para cada jogador
+          const gameInstance1 = new Game(palavra1, categoriaUsada);
+          const gameInstance2 = new Game(palavra2, categoriaUsada);
+          
           activeGames.set(roomId, {
             players: [],
-            word: palavra,
+            words: [palavra1, palavra2], // Palavras para cada jogador
             turno: 1,
             categoria: categoriaUsada,
-            prontos: new Set(), // Armazena socket.id dos jogadores prontos
-            gameInstance: gameInstance // Instância da classe Game para lógica do jogo
+            prontos: new Set(),
+            gameInstances: [gameInstance1, gameInstance2], // Uma instância por jogador
+            vidas: [2, 2] // Cada jogador começa com 2 vidas
           });
         } catch (error) {
-          console.error('Erro ao buscar palavra:', error);
-          // Fallback caso não encontre palavra
-          const gameInstance = new Game('FORCA', categoria || 'Geral');
+          console.error('Erro ao buscar palavras:', error);
+          // Fallback caso não encontre palavras
+          const gameInstance1 = new Game('FORCA', categoria || 'Geral');
+          const gameInstance2 = new Game('JOGO', categoria || 'Geral');
           activeGames.set(roomId, {
             players: [],
-            word: 'FORCA',
+            words: ['FORCA', 'JOGO'],
             turno: 1,
             categoria: categoria || 'Geral',
-            prontos: new Set(), // Armazena socket.id dos jogadores prontos
-            gameInstance: gameInstance
+            prontos: new Set(),
+            gameInstances: [gameInstance1, gameInstance2],
+            vidas: [2, 2]
           });
         }
       }
@@ -196,7 +212,8 @@ module.exports = function(io) {
           
           // Continua com os jogadores corrigidos
           if (game.players.length === 2 && game.prontos.size === 2) {
-            const estado = game.gameInstance.getEstado();
+            const estado1 = game.gameInstances[0].getEstado();
+            const estado2 = game.gameInstances[1].getEstado();
             game.turno = 1;
             
             console.log(`📤 Enviando evento 'inicio' para J1 (${j1Corrigido.id}): jogador=1, turno=${game.turno}`);
@@ -204,12 +221,14 @@ module.exports = function(io) {
               tipo: 'inicio', 
               jogador: 1, 
               adversario: j2Corrigido.name, 
-              palavra: estado.palavra,
-              palavraSecreta: game.word,
+              palavra: estado1.palavra,
+              palavraAdversario: estado2.palavra,
+              palavraSecreta: game.words[0],
               turno: game.turno, 
               categoria: game.categoria,
               meuSocketId: j1Corrigido.id,
-              adversarioSocketId: j2Corrigido.id
+              adversarioSocketId: j2Corrigido.id,
+              vidas: game.vidas
             });
             
             console.log(`📤 Enviando evento 'inicio' para J2 (${j2Corrigido.id}): jogador=2, turno=${game.turno}`);
@@ -217,12 +236,14 @@ module.exports = function(io) {
               tipo: 'inicio', 
               jogador: 2, 
               adversario: j1Corrigido.name, 
-              palavra: estado.palavra,
-              palavraSecreta: game.word,
+              palavra: estado2.palavra,
+              palavraAdversario: estado1.palavra,
+              palavraSecreta: game.words[1],
               turno: game.turno, 
               categoria: game.categoria,
               meuSocketId: j2Corrigido.id,
-              adversarioSocketId: j1Corrigido.id
+              adversarioSocketId: j1Corrigido.id,
+              vidas: game.vidas
             });
           } else {
             console.log(`⏳ Aguardando prontos: ${game.players.length} jogadores, ${game.prontos.size} prontos`);
@@ -250,33 +271,38 @@ module.exports = function(io) {
         if (ambosProntos && j1Pronto && j2Pronto) {
           // Ambos estão prontos, inicia o jogo imediatamente
           console.log(`🎮 Ambos os jogadores estão prontos! Iniciando jogo...`);
-          const estado = game.gameInstance.getEstado();
+          const estado1 = game.gameInstances[0].getEstado();
+          const estado2 = game.gameInstances[1].getEstado();
           game.turno = 1; // Garante que o turno inicial seja sempre 1
           
-          console.log(`📤 Enviando evento 'inicio' para J1 (${j1.id}): jogador=1, turno=${game.turno}, palavra="${estado.palavra}"`);
+          console.log(`📤 Enviando evento 'inicio' para J1 (${j1.id}): jogador=1, turno=${game.turno}, palavra="${estado1.palavra}"`);
           io.to(j1.id).emit('eventoJogo', { 
             tipo: 'inicio', 
             jogador: 1, 
             adversario: j2.name, 
-            palavra: estado.palavra,
-            palavraSecreta: game.word,
+            palavra: estado1.palavra,
+            palavraAdversario: estado2.palavra,
+            palavraSecreta: game.words[0],
             turno: game.turno, 
             categoria: game.categoria,
             meuSocketId: j1.id,
-            adversarioSocketId: j2.id
+            adversarioSocketId: j2.id,
+            vidas: game.vidas
           });
           
-          console.log(`📤 Enviando evento 'inicio' para J2 (${j2.id}): jogador=2, turno=${game.turno}, palavra="${estado.palavra}"`);
+          console.log(`📤 Enviando evento 'inicio' para J2 (${j2.id}): jogador=2, turno=${game.turno}, palavra="${estado2.palavra}"`);
           io.to(j2.id).emit('eventoJogo', { 
             tipo: 'inicio', 
             jogador: 2, 
             adversario: j1.name, 
-            palavra: estado.palavra,
-            palavraSecreta: game.word,
+            palavra: estado2.palavra,
+            palavraAdversario: estado1.palavra,
+            palavraSecreta: game.words[1],
             turno: game.turno, 
             categoria: game.categoria,
             meuSocketId: j2.id,
-            adversarioSocketId: j1.id
+            adversarioSocketId: j1.id,
+            vidas: game.vidas
           });
         } else {
           console.log(`⏳ Aguardando prontos: ${game.players.length} jogadores, ${game.prontos.size} prontos`);
@@ -375,7 +401,8 @@ module.exports = function(io) {
             const j2Corrigido = game.players[1];
             console.log(`🔧 Usando correção de emergência: J1=${j1Corrigido.name}, J2=${j2Corrigido.name}`);
             
-            const estado = game.gameInstance.getEstado();
+            const estado1 = game.gameInstances[0].getEstado();
+            const estado2 = game.gameInstances[1].getEstado();
             game.turno = 1;
             
             console.log(`📤 Enviando evento 'inicio' para J1 (${j1Corrigido.id}): jogador=1, turno=${game.turno}`);
@@ -383,25 +410,29 @@ module.exports = function(io) {
               tipo: 'inicio',
               jogador: 1,
               adversario: j2Corrigido.name,
-              palavra: estado.palavra,
-              palavraSecreta: game.word,
+              palavra: estado1.palavra,
+              palavraAdversario: estado2.palavra,
+              palavraSecreta: game.words[0],
               turno: game.turno,
               categoria: game.categoria,
               meuSocketId: j1Corrigido.id,
-              adversarioSocketId: j2Corrigido.id
+              adversarioSocketId: j2Corrigido.id,
+              vidas: game.vidas
             });
-
+            
             console.log(`📤 Enviando evento 'inicio' para J2 (${j2Corrigido.id}): jogador=2, turno=${game.turno}`);
             io.to(j2Corrigido.id).emit('eventoJogo', {
               tipo: 'inicio',
               jogador: 2,
               adversario: j1Corrigido.name,
-              palavra: estado.palavra,
-              palavraSecreta: game.word,
+              palavra: estado2.palavra,
+              palavraAdversario: estado1.palavra,
+              palavraSecreta: game.words[1],
               turno: game.turno,
               categoria: game.categoria,
               meuSocketId: j2Corrigido.id,
-              adversarioSocketId: j1Corrigido.id
+              adversarioSocketId: j1Corrigido.id,
+              vidas: game.vidas
             });
             return;
           }
@@ -510,32 +541,87 @@ module.exports = function(io) {
         
         console.log(`✅ É o turno do jogador ${numeroJogador}. Processando jogada...`);
 
-        // Processa a jogada usando a classe Game
-        const resultado = game.gameInstance.chutarLetra(msg.letra);
-        const estado = game.gameInstance.getEstado();
+        // Processa a jogada usando a instância de Game do jogador atual
+        const gameInstanceJogador = game.gameInstances[numeroJogador - 1];
+        const resultado = gameInstanceJogador.chutarLetra(msg.letra);
+        const estadoJogador = gameInstanceJogador.getEstado();
+        const estadoAdversario = game.gameInstances[numeroJogador === 1 ? 1 : 0].getEstado();
         
         console.log(`Jogada processada: letra=${msg.letra}, resultado=${resultado}, turno atual=${game.turno}`);
         
+        // Verifica se o jogador completou sua palavra (vitória)
+        let adversarioPerdeuVida = false;
+        if (resultado === 'vitoria') {
+          // Jogador completou sua palavra, adversário perde uma vida
+          const adversarioNum = numeroJogador === 1 ? 2 : 1;
+          game.vidas[adversarioNum - 1]--;
+          adversarioPerdeuVida = true;
+          console.log(`🎯 Jogador ${numeroJogador} completou sua palavra! Jogador ${adversarioNum} perde uma vida. Vidas restantes: J1=${game.vidas[0]}, J2=${game.vidas[1]}`);
+          
+          // Se o adversário perdeu todas as vidas, o jogo acaba
+          if (game.vidas[adversarioNum - 1] <= 0) {
+            console.log(`🏆 Jogador ${numeroJogador} venceu! Jogador ${adversarioNum} perdeu todas as vidas.`);
+            // Prepara nova palavra para o jogador que venceu
+            // O jogo continua até alguém perder todas as vidas
+          } else {
+            // Reseta a palavra do jogador que completou (nova rodada)
+            try {
+              const novaPalavraObj = await getRandomWord({ categoria: game.categoria });
+              const novaPalavra = (novaPalavraObj?.palavra || 'FORCA').toUpperCase();
+              game.words[numeroJogador - 1] = novaPalavra;
+              game.gameInstances[numeroJogador - 1] = new Game(novaPalavra, game.categoria);
+              console.log(`🔄 Nova palavra para jogador ${numeroJogador}: ${novaPalavra}`);
+            } catch (error) {
+              console.error('Erro ao buscar nova palavra:', error);
+              game.words[numeroJogador - 1] = 'FORCA';
+              game.gameInstances[numeroJogador - 1] = new Game('FORCA', game.categoria);
+            }
+          }
+        }
+        
         // Se a jogada foi válida (não repetida) e o jogo continua, troca o turno
-        if (resultado !== 'repetida' && game.gameInstance.status === 'jogando') {
+        // Mas se o jogador completou a palavra, não troca o turno (ele continua)
+        if (resultado !== 'repetida' && resultado !== 'vitoria' && gameInstanceJogador.status === 'jogando') {
           game.turno = game.turno === 1 ? 2 : 1;
           console.log(`Turno trocado para: ${game.turno}`);
         }
 
+        // Atualiza estados após possível reset
+        const estadoJogadorAtualizado = game.gameInstances[numeroJogador - 1].getEstado();
+        const estadoAdversarioAtualizado = game.gameInstances[numeroJogador === 1 ? 1 : 0].getEstado();
+
         // Envia o resultado para todos na sala
+        // Cada jogador recebe sua própria palavra e a do adversário
+        const estado1Final = game.gameInstances[0].getEstado();
+        const estado2Final = game.gameInstances[1].getEstado();
+        
         io.to(roomId).emit('eventoJogo', {
           tipo: 'jogada',
           letra: msg.letra,
           resultado: resultado, // 'acerto', 'erro', 'vitoria', 'derrota', 'repetida'
-          palavra: estado.palavra,
-          erros: estado.erros,
-          letrasChutadas: estado.letrasChutadas,
+          palavraJogador1: estado1Final.palavra,
+          palavraJogador2: estado2Final.palavra,
+          errosJogador1: estado1Final.erros,
+          errosJogador2: estado2Final.erros,
+          letrasChutadasJogador1: estado1Final.letrasChutadas,
+          letrasChutadasJogador2: estado2Final.letrasChutadas,
           turno: game.turno,
-          status: estado.status
+          statusJogador1: estado1Final.status,
+          statusJogador2: estado2Final.status,
+          vidas: game.vidas,
+          adversarioPerdeuVida: adversarioPerdeuVida,
+          jogadorQueJogou: numeroJogador
         });
 
-        // Se o jogo acabou, limpa a sala
-        if (estado.status === 'vitoria' || estado.status === 'derrota') {
+        // Se algum jogador perdeu todas as vidas, o jogo acaba
+        if (game.vidas[0] <= 0 || game.vidas[1] <= 0) {
+          const vencedor = game.vidas[0] > 0 ? 1 : 2;
+          console.log(`🏆 Jogo finalizado! Vencedor: Jogador ${vencedor}`);
+          io.to(roomId).emit('eventoJogo', {
+            tipo: 'fim',
+            vencedor: vencedor,
+            vidas: game.vidas
+          });
           setTimeout(() => {
             activeGames.delete(roomId);
           }, 5000);
@@ -553,22 +639,32 @@ module.exports = function(io) {
         const numeroJogador = jogadorAtual.numero;
         
         // Só passa o turno se for realmente o turno deste jogador e o jogo está ativo
-        if (numeroJogador === game.turno && game.gameInstance.status === 'jogando') {
+        const gameInstanceJogador = game.gameInstances[numeroJogador - 1];
+        if (numeroJogador === game.turno && gameInstanceJogador.status === 'jogando') {
           console.log(`⏱️ Tempo esgotado para jogador ${numeroJogador}. Passando turno...`);
           
           // Troca o turno
           game.turno = game.turno === 1 ? 2 : 1;
           
-          const estado = game.gameInstance.getEstado();
+          const estado1 = game.gameInstances[0].getEstado();
+          const estado2 = game.gameInstances[1].getEstado();
           
           // Notifica todos na sala sobre a mudança de turno
+          const estado1Atualizado = game.gameInstances[0].getEstado();
+          const estado2Atualizado = game.gameInstances[1].getEstado();
+          
           io.to(roomId).emit('eventoJogo', {
             tipo: 'turnoTrocado',
             turno: game.turno,
-            palavra: estado.palavra,
-            erros: estado.erros,
-            letrasChutadas: estado.letrasChutadas,
-            status: estado.status
+            palavraJogador1: estado1Atualizado.palavra,
+            palavraJogador2: estado2Atualizado.palavra,
+            errosJogador1: estado1Atualizado.erros,
+            errosJogador2: estado2Atualizado.erros,
+            letrasChutadasJogador1: estado1Atualizado.letrasChutadas,
+            letrasChutadasJogador2: estado2Atualizado.letrasChutadas,
+            statusJogador1: estado1Atualizado.status,
+            statusJogador2: estado2Atualizado.status,
+            vidas: game.vidas
           });
           
           console.log(`✅ Turno trocado para: ${game.turno}`);
