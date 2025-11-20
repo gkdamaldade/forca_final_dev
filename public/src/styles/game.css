@@ -682,53 +682,113 @@ header {
 .area-inferior {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 16px;
   width: 100%;
   padding: 0 8px;
   box-sizing: border-box;
-  margin-top: 0;
+  margin-top: 8px;
   flex-shrink: 0;
 }
 
-/* Poderes */
-.poderes-jogador {
+/* Seção de Poderes - Container completo */
+.poderes-section {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  align-items: center;
+  gap: 10px;
+  min-width: 140px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+  border: 2px solid rgba(255,255,255,.2);
+  box-shadow:
+    0 8px 24px rgba(0,0,0,.3),
+    inset 0 1px 0 rgba(255,255,255,.3);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.poderes-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,.15);
+}
+
+.poderes-titulo {
+  font-family: "Orbitron", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--aqua);
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+}
+
+.poderes-contador {
+  font-family: "Orbitron", sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgba(255,255,255,.7);
+  letter-spacing: 0.05em;
+}
+
+/* Poderes - Container dos botões */
+.poderes-jogador {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 10px;
   align-items: center;
   justify-content: center;
   min-height: 60px;
+  width: 100%;
 }
 
 .poderes-jogador:empty::before {
-  content: 'Nenhum poder selecionado';
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 0.9rem;
+  content: 'Nenhum poder';
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.8rem;
   font-style: italic;
+  font-family: "Orbitron", sans-serif;
 }
 
 .poder {
-  width: 78px;
-  height: 78px;
+  width: 64px;
+  height: 64px;
   background:
-    radial-gradient(100% 100% at 35% 30%, rgba(255,255,255,.35), rgba(255,255,255,.12) 55%, rgba(255,255,255,0) 60%),
-    linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.08));
-  border: 2px solid var(--glass-brd);
+    radial-gradient(100% 100% at 35% 30%, rgba(255,255,255,.4), rgba(255,255,255,.15) 55%, rgba(255,255,255,0) 60%),
+    linear-gradient(180deg, rgba(255,255,255,.2), rgba(255,255,255,.1));
+  border: 2px solid rgba(255,255,255,.4);
   border-radius: 50%;
-  padding: 6px;
+  padding: 5px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow:
-    0 10px 22px rgba(0,0,0,.28),
-    0 6px 0 rgba(0,0,0,.25);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+    0 8px 16px rgba(0,0,0,.3),
+    0 4px 8px rgba(0,0,0,.2),
+    inset 0 1px 0 rgba(255,255,255,.4);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   position: relative;
+}
+
+.poder:hover:not(:disabled):not(.usado) {
+  transform: scale(1.15) translateY(-2px);
+  filter: brightness(1.2);
+  border-color: var(--aqua);
+  box-shadow:
+    0 12px 24px rgba(0, 229, 255, 0.4),
+    0 6px 12px rgba(0, 229, 255, 0.3),
+    inset 0 1px 0 rgba(255,255,255,.5),
+    0 0 20px rgba(0, 229, 255, 0.3);
 }
 
 .poder::before {
@@ -741,15 +801,6 @@ header {
   background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
   opacity: 0;
   transition: opacity 0.3s ease;
-}
-
-.poder:hover {
-  transform: scale(1.12) rotate(5deg);
-  filter: brightness(1.15);
-  border-color: #fff;
-  box-shadow:
-    0 14px 28px rgba(0, 229, 255, 0.3),
-    0 8px 0 rgba(0, 0, 0, 0.3);
 }
 
 .poder:hover::before {
@@ -812,12 +863,17 @@ header {
 }
 
 .poder img {
-  width: 100%;
-  height: 100%;
+  width: 85%;
+  height: 85%;
   object-fit: contain;
   display: block;
   border-radius: 50%;
-  filter: drop-shadow(0 4px 8px rgba(0,0,0,.25));
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,.3));
+  transition: transform 0.3s ease;
+}
+
+.poder:hover:not(:disabled):not(.usado) img {
+  transform: scale(1.1) rotate(5deg);
 }
 
 /* ===========================
@@ -929,6 +985,23 @@ header {
 @media (max-width: 860px){
   .menu-container { padding: 28px 24px; }
   .jogo-container { padding: 0 24px; }
-  .area-inferior { flex-direction: column; margin-top: 64px; }
-  .poderes-jogador { flex-direction: row; }
+  .area-inferior { 
+    flex-direction: column; 
+    margin-top: 64px;
+    gap: 16px;
+    align-items: center;
+  }
+  .poderes-section {
+    width: 100%;
+    max-width: 100%;
+  }
+  .poderes-jogador { 
+    flex-direction: row; 
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .poder {
+    width: 56px;
+    height: 56px;
+  }
 }

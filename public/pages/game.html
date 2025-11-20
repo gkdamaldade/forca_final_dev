@@ -110,10 +110,14 @@
 
         <!-- Poderes + Teclado -->
         <div class="area-inferior">
-            <div class="poderes-jogador">
-                <button class="poder"><img src="/public/assets/images/ocultar_dica.png" alt="Dica"></button>
-                <button class="poder"><img src="/public/assets/images/ocultar_letra.png" alt="Tempo"></button>
-                <button class="poder"><img src="/public/assets/images/palpite.png" alt="Pular"></button>
+            <div class="poderes-section">
+                <div class="poderes-header">
+                    <span class="poderes-titulo">Meus Poderes</span>
+                    <span class="poderes-contador" id="poderes-contador-display">0/3</span>
+                </div>
+                <div class="poderes-jogador" id="poderes-jogador-container">
+                    <!-- Poderes serão inseridos dinamicamente aqui -->
+                </div>
             </div>
             
             <div class="teclado">
@@ -153,11 +157,6 @@
                 <button class="tecla">-</button>
                 <button class="tecla">Ç</button>
                 </div>
-            </div>
-            
-
-            <div class="poderes-jogador" id="poderes-jogador-container">
-                <!-- Poderes serão inseridos dinamicamente aqui -->
             </div>
         </div>
     </div>

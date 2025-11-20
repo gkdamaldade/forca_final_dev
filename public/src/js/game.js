@@ -334,7 +334,21 @@ function renderizarPoderesNoJogo() {
         containerPoderes.appendChild(botaoPoder);
     });
     
+    // Atualiza contador de poderes
+    atualizarContadorPoderesDisplay();
+    
     console.log(`[${instanceId}] ✅ ${poderesDisponiveis.length} poderes renderizados na tela de jogo`);
+}
+
+// Atualiza o contador de poderes na tela de jogo
+function atualizarContadorPoderesDisplay() {
+    const contadorEl = document.getElementById('poderes-contador-display');
+    if (contadorEl) {
+        const disponiveis = poderesDisponiveis.length;
+        const usados = poderesUsados.size;
+        contadorEl.textContent = `${usados}/${disponiveis}`;
+        contadorEl.style.color = usados === disponiveis ? 'rgba(255,255,255,.5)' : 'rgba(255,255,255,.7)';
+    }
 }
 
 // Função para usar um poder durante o jogo
@@ -378,6 +392,9 @@ function usarPoder(poderId, botaoElemento) {
         botaoElemento.style.opacity = '0.5';
         botaoElemento.style.cursor = 'not-allowed';
     }
+    
+    // Atualiza contador de poderes
+    atualizarContadorPoderesDisplay();
     
     // Envia evento ao servidor para processar o poder
     enviarEvento({
@@ -696,9 +713,13 @@ function iniciarJogo(dados) {
     poderesDisponiveis = dados.poderes || [];
     poderesUsados.clear(); // Reseta poderes usados
     console.log(`🎯 Poderes disponíveis para o jogo:`, poderesDisponiveis);
+    console.log(`🎯 Tipo de poderes:`, typeof poderesDisponiveis, Array.isArray(poderesDisponiveis));
+    console.log(`🎯 Número de poderes:`, poderesDisponiveis.length);
     
-    // Renderiza os poderes na tela de jogo
-    renderizarPoderesNoJogo();
+    // Renderiza os poderes na tela de jogo (com pequeno delay para garantir que o DOM está pronto)
+    setTimeout(() => {
+        renderizarPoderesNoJogo();
+    }, 100);
     
     atualizarVidasUI();
     atualizarPalavraExibida();
