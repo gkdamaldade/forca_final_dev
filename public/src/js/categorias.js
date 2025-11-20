@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Mapeamento das categorias presentes no HTML para as categorias que a API espera.
     // O JS buscará o atributo 'aria-label' do botão e usará o nome correspondente.
     const categoriasValidas = [
-        'Comidas', 'Animais', 'Esportes', 'Países', 'Profissões'
+        'Alimento', 'Animais', 'Esportes', 'Países', 'Profissões'
         // Adicione outras categorias do HTML aqui se houver mais botões na grade.
     ];
     
