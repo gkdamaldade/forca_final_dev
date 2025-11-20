@@ -20,7 +20,7 @@ async function carregarRanking() {
     try {
         // Usa a variável que definimos no topo
         // const response = await fetch(`${BACKEND_URL}/api/ranking`);
-        const response = await fetch(`${BACKEND_URL}/api/players/ranking`);
+        const response = await fetch(`/api/players/ranking`);
 
         if (!response.ok) {
             throw new Error(`Erro na API: ${response.status}`);
