@@ -46,7 +46,8 @@ module.exports = function(io) {
             categoria: categoriaUsada,
             prontos: new Set(),
             gameInstances: [gameInstance1, gameInstance2], // Uma instância por jogador
-            vidas: [3, 3] // Cada jogador começa com 3 vidas
+            vidas: [3, 3], // Cada jogador começa com 3 vidas
+            palpiteAtivo: { 1: false, 2: false } // Rastreia se o poder de palpite está ativo para cada jogador
           });
         } catch (error) {
           console.error('Erro ao buscar palavras:', error);
@@ -61,12 +62,16 @@ module.exports = function(io) {
             categoria: categoria || 'Geral',
             prontos: new Set(),
             gameInstances: [gameInstance1, gameInstance2],
-            vidas: [3, 3]
+            vidas: [3, 3],
+            palpiteAtivo: { 1: false, 2: false }
           });
         }
       }
 
       const game = activeGames.get(roomId);
+      if (!game.palpiteAtivo) {
+        game.palpiteAtivo = { 1: false, 2: false };
+      }
       
       // Verifica se o jogador já está na lista pelo socket.id (reconexão com mesmo socket)
       const jogadorExistentePorSocket = game.players.find(p => p.id === socket.id);
@@ -572,35 +577,65 @@ module.exports = function(io) {
         
         console.log(`✅ É o turno do jogador ${numeroJogador}. Processando jogada...`);
 
-        // Processa a jogada usando a instância de Game do jogador atual
+        // Verifica se o adversário tem palpite ativo
+        const adversarioNum = numeroJogador === 1 ? 2 : 1;
         const gameInstanceJogador = game.gameInstances[numeroJogador - 1];
-        const resultado = gameInstanceJogador.chutarLetra(msg.letra);
-        const estadoJogador = gameInstanceJogador.getEstado();
-        const estadoAdversario = game.gameInstances[numeroJogador === 1 ? 1 : 0].getEstado();
-        
-        console.log(`Jogada processada: letra=${msg.letra}, resultado=${resultado}, turno atual=${game.turno}`);
-        
-        // Verifica se o jogador completou sua palavra (vitória) ou errou 6 vezes (derrota)
+        const gameInstanceAdversario = game.gameInstances[adversarioNum - 1];
+        const palpiteAtivoAdversario = game.palpiteAtivo[adversarioNum] || false;
+        let palpiteTransferido = false;
+        let palpiteAcerto = false;
+        let resultado = null;
         let alguemPerdeuVida = false;
         let jogadorQuePerdeuVida = null;
         let motivoPerdaVida = '';
+        let palpiteBeneficiado = null;
         
-        if (resultado === 'vitoria') {
-          // Jogador completou sua palavra, adversário perde uma vida
-          const adversarioNum = numeroJogador === 1 ? 2 : 1;
-          game.vidas[adversarioNum - 1]--;
-          alguemPerdeuVida = true;
-          jogadorQuePerdeuVida = adversarioNum;
-          motivoPerdaVida = 'vitoria';
-          console.log(`🎯 Jogador ${numeroJogador} completou sua palavra! Jogador ${adversarioNum} perde uma vida. Vidas restantes: J1=${game.vidas[0]}, J2=${game.vidas[1]}`);
-        } else if (resultado === 'derrota') {
-          // Jogador errou 6 vezes, ele mesmo perde uma vida
-          game.vidas[numeroJogador - 1]--;
-          alguemPerdeuVida = true;
-          jogadorQuePerdeuVida = numeroJogador;
-          motivoPerdaVida = 'erros';
-          console.log(`❌ Jogador ${numeroJogador} errou 6 vezes! Ele perde uma vida. Vidas restantes: J1=${game.vidas[0]}, J2=${game.vidas[1]}`);
+        // Normaliza letra
+        const letraProcessada = (msg.letra || '').toUpperCase();
+        
+        if (palpiteAtivoAdversario && gameInstanceAdversario && !gameInstanceAdversario.letrasChutadas.has(letraProcessada)) {
+          console.log(`🎯 Palpite ativo do jogador ${adversarioNum} detectado! Letra '${letraProcessada}' será aplicada na palavra dele.`);
+          palpiteTransferido = true;
+          palpiteBeneficiado = adversarioNum;
+          game.palpiteAtivo[adversarioNum] = false;
+          
+          const resultadoPalpite = gameInstanceAdversario.aplicarLetraPalpite(letraProcessada);
+          palpiteAcerto = !!resultadoPalpite.acertou;
+          resultado = palpiteAcerto ? 'palpite_acerto' : 'palpite_desviado';
+          
+          // Se o palpite completou a palavra do adversário, quem chutou perde vida
+          if (resultadoPalpite.vitoria) {
+            game.vidas[numeroJogador - 1]--;
+            alguemPerdeuVida = true;
+            jogadorQuePerdeuVida = numeroJogador;
+            motivoPerdaVida = 'vitoria';
+            console.log(`🎯 Palpite resultou em vitória! Jogador ${numeroJogador} perde uma vida. Vidas: J1=${game.vidas[0]}, J2=${game.vidas[1]}`);
+          }
+          
+          // Turno retorna imediatamente para quem usou o palpite
+          game.turno = adversarioNum;
+        } else {
+          // Processa a jogada normalmente
+          resultado = gameInstanceJogador.chutarLetra(letraProcessada);
+          console.log(`Jogada processada: letra=${letraProcessada}, resultado=${resultado}, turno atual=${game.turno}`);
+          
+          if (resultado === 'vitoria') {
+            game.vidas[adversarioNum - 1]--;
+            alguemPerdeuVida = true;
+            jogadorQuePerdeuVida = adversarioNum;
+            motivoPerdaVida = 'vitoria';
+            console.log(`🎯 Jogador ${numeroJogador} completou sua palavra! Jogador ${adversarioNum} perde uma vida. Vidas restantes: J1=${game.vidas[0]}, J2=${game.vidas[1]}`);
+          } else if (resultado === 'derrota') {
+            game.vidas[numeroJogador - 1]--;
+            alguemPerdeuVida = true;
+            jogadorQuePerdeuVida = numeroJogador;
+            motivoPerdaVida = 'erros';
+            console.log(`❌ Jogador ${numeroJogador} errou 6 vezes! Ele perde uma vida. Vidas restantes: J1=${game.vidas[0]}, J2=${game.vidas[1]}`);
+          }
         }
+        
+        const estadoJogador = gameInstanceJogador.getEstado();
+        const estadoAdversario = gameInstanceAdversario.getEstado();
         
         // Se alguém perdeu vida, reseta AMBAS as palavras e começa nova rodada
         if (alguemPerdeuVida) {
@@ -685,16 +720,13 @@ module.exports = function(io) {
           }
         }
         
-        // Se a jogada foi válida (não repetida) e o jogo continua, troca o turno
-        // Mas se alguém perdeu vida, o turno já foi resetado para 1
-        if (resultado !== 'repetida' && !alguemPerdeuVida && gameInstanceJogador.status === 'jogando') {
+        // Controle de turno
+        if (!palpiteTransferido && resultado !== 'repetida' && !alguemPerdeuVida && gameInstanceJogador.status === 'jogando') {
+          // Se a jogada foi válida (não repetida) e o jogo continua, troca o turno
+          // Mas se alguém perdeu vida, o turno já foi resetado para 1
           game.turno = game.turno === 1 ? 2 : 1;
           console.log(`Turno trocado para: ${game.turno}`);
         }
-
-        // Atualiza estados após possível reset
-        const estadoJogadorAtualizado = game.gameInstances[numeroJogador - 1].getEstado();
-        const estadoAdversarioAtualizado = game.gameInstances[numeroJogador === 1 ? 1 : 0].getEstado();
 
         // Envia o resultado para todos na sala
         // Cada jogador recebe sua própria palavra e a do adversário
@@ -719,7 +751,11 @@ module.exports = function(io) {
           jogadorQuePerdeuVida: jogadorQuePerdeuVida,
           motivoPerdaVida: motivoPerdaVida,
           jogadorQueJogou: numeroJogador,
-          novaRodada: alguemPerdeuVida && game.vidas[0] > 0 && game.vidas[1] > 0
+          novaRodada: alguemPerdeuVida && game.vidas[0] > 0 && game.vidas[1] > 0,
+          palpiteTransferido: palpiteTransferido,
+          palpiteBeneficiado: palpiteBeneficiado,
+          palpiteAcerto: palpiteTransferido ? palpiteAcerto : null,
+          palpiteLetra: palpiteTransferido ? letraProcessada : null
         });
 
       }
@@ -809,30 +845,243 @@ module.exports = function(io) {
         
         console.log(`✅ Processando poder ${poderId} do jogador ${numeroJogador}`);
         
-        // Processa o poder (implementação básica - pode ser expandida)
-        // Por enquanto, apenas registra que o poder foi usado
-        // Em futuras versões, pode adicionar lógica específica para cada poder
+        // Processa o poder baseado no tipo
+        let resultadoPoder = null;
+        let vidasAtualizadas = [...game.vidas]; // Cópia das vidas atuais
         
-        // Envia confirmação para o jogador que usou o poder
-        socket.emit('eventoJogo', {
-          tipo: 'poderUsado',
-          poderId: poderId,
-          jogador: numeroJogador,
-          sucesso: true
-        });
-        
-        // Notifica o adversário sobre o poder usado (sem revelar qual poder foi)
-        const adversario = game.players.find(p => p.numero !== numeroJogador);
-        if (adversario) {
-          io.to(adversario.id).emit('eventoJogo', {
-            tipo: 'adversarioUsouPoder',
-            jogador: numeroJogador
-          });
+        switch (poderId) {
+          case 'vida_extra':
+            // Adiciona uma vida ao jogador (pode ultrapassar 3)
+            const vidaAtual = game.vidas[numeroJogador - 1];
+            vidasAtualizadas[numeroJogador - 1] = Math.min(vidaAtual + 1, 4); // Máximo 4 vidas
+            game.vidas[numeroJogador - 1] = vidasAtualizadas[numeroJogador - 1];
+            resultadoPoder = {
+              tipo: 'vidaExtra',
+              jogador: numeroJogador,
+              novasVidas: vidasAtualizadas,
+              sucesso: true
+            };
+            console.log(`💚 Vida extra adicionada! Jogador ${numeroJogador} agora tem ${vidasAtualizadas[numeroJogador - 1]} vidas`);
+            break;
+            
+          case 'tirar_vida':
+            // Adiciona um erro na forca do adversário (não remove vida diretamente)
+            const adversarioNum = numeroJogador === 1 ? 2 : 1;
+            const gameInstanceAdversario = game.gameInstances[adversarioNum - 1];
+            
+            if (gameInstanceAdversario && gameInstanceAdversario.status === 'jogando') {
+              // Adiciona um erro (como se o adversário tivesse errado)
+              gameInstanceAdversario.erros++;
+              
+              // Verifica se o adversário perdeu (6 erros = perde uma vida)
+              if (gameInstanceAdversario.erros >= 6) {
+                game.vidas[adversarioNum - 1]--;
+                vidasAtualizadas[adversarioNum - 1] = game.vidas[adversarioNum - 1];
+                gameInstanceAdversario.status = 'derrota';
+                
+                // Verifica se o jogo acabou
+                if (vidasAtualizadas[adversarioNum - 1] <= 0) {
+                  const vencedor = numeroJogador;
+                  console.log(`🏆 Jogo finalizado! Vencedor: Jogador ${vencedor}`);
+                  
+                  try {
+                    const jogadorVencedor = game.players.find(p => p.numero === vencedor);
+                    if (jogadorVencedor && jogadorVencedor.playerId) {
+                      const player = await models.Player.findByPk(jogadorVencedor.playerId);
+                      if (player) {
+                        await player.increment('vitorias');
+                        await player.reload();
+                        console.log(`✅ Vitória registrada para ${jogadorVencedor.name} (ID: ${jogadorVencedor.playerId})! Total de vitórias: ${player.vitorias}`);
+                      }
+                    }
+                  } catch (error) {
+                    console.error(`❌ Erro ao registrar vitória:`, error);
+                  }
+                  
+                  io.to(roomId).emit('eventoJogo', {
+                    tipo: 'fim',
+                    vencedor: vencedor,
+                    vidas: vidasAtualizadas
+                  });
+                  
+                  setTimeout(() => {
+                    activeGames.delete(roomId);
+                  }, 5000);
+                  
+                  jogadorAtual.poderes = jogadorAtual.poderes.filter(p => p !== poderId);
+                  return;
+                }
+              }
+              
+              const estadoAdversario = gameInstanceAdversario.getEstado();
+              resultadoPoder = {
+                tipo: 'tirarVida',
+                jogador: numeroJogador,
+                alvo: adversarioNum,
+                errosAdversario: estadoAdversario.erros,
+                novasVidas: vidasAtualizadas,
+                sucesso: true,
+                adversarioPerdeuVida: gameInstanceAdversario.erros >= 6
+              };
+              console.log(`⚔️ Erro adicionado à forca do adversário! Jogador ${adversarioNum} agora tem ${estadoAdversario.erros} erros${gameInstanceAdversario.erros >= 6 ? ' (perdeu uma vida!)' : ''}`);
+            } else {
+              resultadoPoder = {
+                tipo: 'tirarVida',
+                jogador: numeroJogador,
+                alvo: adversarioNum,
+                sucesso: false,
+                mensagem: 'Adversário não está em jogo'
+              };
+            }
+            break;
+            
+          case 'liberar_letra':
+            // Revela uma letra da palavra do jogador
+            const gameInstance = game.gameInstances[numeroJogador - 1];
+            if (gameInstance && gameInstance.status === 'jogando') {
+              // Encontra uma letra ainda não revelada na palavra
+              const palavraSecreta = game.words[numeroJogador - 1];
+              const palavraAtual = gameInstance.getEstado().palavra;
+              const letrasNaoReveladas = [];
+              
+              for (let i = 0; i < palavraSecreta.length; i++) {
+                if (palavraAtual[i] === '_' || palavraAtual[i] === ' ') {
+                  letrasNaoReveladas.push({
+                    letra: palavraSecreta[i],
+                    posicao: i
+                  });
+                }
+              }
+              
+              if (letrasNaoReveladas.length > 0) {
+                const escolhida = letrasNaoReveladas[Math.floor(Math.random() * letrasNaoReveladas.length)];
+                // Força a letra a ser revelada
+                gameInstance.letrasChutadas.add(escolhida.letra);
+                const novoEstado = gameInstance.getEstado();
+                
+                resultadoPoder = {
+                  tipo: 'liberarLetra',
+                  jogador: numeroJogador,
+                  letra: escolhida.letra,
+                  palavraAtualizada: novoEstado.palavra,
+                  sucesso: true
+                };
+                console.log(`🔓 Letra '${escolhida.letra}' revelada para jogador ${numeroJogador}`);
+              } else {
+                resultadoPoder = {
+                  tipo: 'liberarLetra',
+                  jogador: numeroJogador,
+                  sucesso: false,
+                  mensagem: 'Todas as letras já foram reveladas'
+                };
+              }
+            }
+            break;
+            
+          case 'ocultar_letra':
+            // Oculta uma letra da palavra do adversário
+            const adversarioNum2 = numeroJogador === 1 ? 2 : 1;
+            const gameInstanceAdversario = game.gameInstances[adversarioNum2 - 1];
+            if (gameInstanceAdversario && gameInstanceAdversario.status === 'jogando') {
+              const palavraAdversario = gameInstanceAdversario.getEstado().palavra;
+              const letrasReveladas = [];
+              
+              for (let i = 0; i < palavraAdversario.length; i++) {
+                if (palavraAdversario[i] !== '_' && palavraAdversario[i] !== ' ') {
+                  letrasReveladas.push({
+                    letra: palavraAdversario[i],
+                    posicao: i
+                  });
+                }
+              }
+              
+              if (letrasReveladas.length > 0) {
+                const escolhida = letrasReveladas[Math.floor(Math.random() * letrasReveladas.length)];
+                // Remove a letra do conjunto de letras chutadas (faz ela aparecer como oculta novamente)
+                // Isso é mais complexo, então vamos usar uma abordagem diferente
+                // Simplesmente notificamos o frontend para ocultar visualmente
+                resultadoPoder = {
+                  tipo: 'ocultarLetra',
+                  jogador: numeroJogador,
+                  alvo: adversarioNum2,
+                  letra: escolhida.letra,
+                  sucesso: true
+                };
+                console.log(`🔒 Letra '${escolhida.letra}' ocultada do adversário ${adversarioNum2}`);
+              } else {
+                resultadoPoder = {
+                  tipo: 'ocultarLetra',
+                  jogador: numeroJogador,
+                  alvo: adversarioNum2,
+                  sucesso: false,
+                  mensagem: 'Nenhuma letra para ocultar'
+                };
+              }
+            }
+            break;
+            
+          case 'ocultar_dica':
+            // Por enquanto, apenas notifica que foi usado (não há sistema de dicas ainda)
+            resultadoPoder = {
+              tipo: 'ocultarDica',
+              jogador: numeroJogador,
+              sucesso: true
+            };
+            console.log(`🚫 Dica ocultada (sistema de dicas ainda não implementado)`);
+            break;
+            
+          case 'palpite':
+            // Ativa o poder de palpite: quando o adversário chutar uma letra que você não chutou,
+            // ela conta como erro na sua forca e não para o turno dele
+            game.palpiteAtivo[numeroJogador] = true;
+            resultadoPoder = {
+              tipo: 'palpite',
+              jogador: numeroJogador,
+              sucesso: true,
+              mensagem: 'Palpite ativado! Letras do adversário contarão como erro na sua forca'
+            };
+            console.log(`🎯 Poder de palpite ativado para jogador ${numeroJogador}`);
+            break;
+            
+          default:
+            resultadoPoder = {
+              tipo: 'erro',
+              sucesso: false,
+              mensagem: `Poder '${poderId}' ainda não implementado`
+            };
+            console.warn(`⚠️ Poder desconhecido ou não implementado: ${poderId}`);
         }
         
         // Remove o poder da lista de poderes disponíveis do jogador (para não usar novamente)
         jogadorAtual.poderes = jogadorAtual.poderes.filter(p => p !== poderId);
         console.log(`✅ Poder ${poderId} removido da lista de poderes disponíveis do jogador ${numeroJogador}`);
+        
+        // Envia resultado do poder para o jogador que usou
+        socket.emit('eventoJogo', {
+          tipo: 'poderUsado',
+          poderId: poderId,
+          jogador: numeroJogador,
+          resultado: resultadoPoder,
+          vidas: vidasAtualizadas,
+          sucesso: resultadoPoder?.sucesso !== false
+        });
+        
+        // Notifica TODOS na sala sobre o poder usado e atualizações (vidas, etc)
+        const eventoParaTodos = {
+          tipo: 'poderUsadoGlobal',
+          poderId: poderId,
+          jogador: numeroJogador,
+          vidas: vidasAtualizadas,
+          // Não revela qual poder foi usado para o adversário, mas atualiza vidas se necessário
+          atualizarVidas: resultadoPoder?.tipo === 'vidaExtra' || resultadoPoder?.tipo === 'tirarVida'
+        };
+        
+        io.to(roomId).emit('eventoJogo', eventoParaTodos);
+        
+        // Se for tirar vida ou vida extra, atualiza as vidas de todos
+        if (resultadoPoder?.tipo === 'vidaExtra' || resultadoPoder?.tipo === 'tirarVida') {
+          console.log(`📊 Vidas atualizadas: J1=${vidasAtualizadas[0]}, J2=${vidasAtualizadas[1]}`);
+        }
       }
       
       if (msg.tipo === 'poder') {

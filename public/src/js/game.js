@@ -351,6 +351,92 @@ function atualizarContadorPoderesDisplay() {
     }
 }
 
+// Processa o resultado do uso de um poder
+function processarResultadoPoder(resultado, evento) {
+    console.log(`🎯 Processando resultado do poder:`, resultado);
+    
+    switch (resultado.tipo) {
+        case 'vidaExtra':
+            // Vida extra foi adicionada
+            if (resultado.jogador === meuNumeroJogador) {
+                mostrarFeedback('💚 Vida extra ganha!', 'green');
+                // Vidas já foram atualizadas pelo evento
+            }
+            break;
+            
+        case 'tirarVida':
+            // Erro foi adicionado à forca do adversário
+            if (resultado.jogador === meuNumeroJogador) {
+                mostrarFeedback(`⚔️ Erro adicionado à forca do adversário! (${resultado.errosAdversario} erros)`, 'green');
+                if (resultado.adversarioPerdeuVida) {
+                    mostrarFeedback('💥 Adversário perdeu uma vida por erro!', 'green');
+                }
+                // Atualiza erros do adversário
+                if (resultado.alvo === 1) {
+                    errosJogador1 = resultado.errosAdversario || errosJogador1;
+                } else {
+                    errosJogador2 = resultado.errosAdversario || errosJogador2;
+                }
+                atualizarBonecosUI();
+            } else if (resultado.alvo === meuNumeroJogador) {
+                mostrarFeedback(`❌ Erro adicionado à sua forca! (${resultado.errosAdversario} erros)`, 'red');
+                if (resultado.adversarioPerdeuVida) {
+                    mostrarFeedback('💔 Você perdeu uma vida!', 'red');
+                }
+                // Atualiza seus próprios erros
+                if (meuNumeroJogador === 1) {
+                    errosJogador1 = resultado.errosAdversario || errosJogador1;
+                } else {
+                    errosJogador2 = resultado.errosAdversario || errosJogador2;
+                }
+                atualizarBonecosUI();
+            }
+            // Vidas já foram atualizadas pelo evento se necessário
+            break;
+            
+        case 'liberarLetra':
+            // Letra foi revelada
+            if (resultado.jogador === meuNumeroJogador && resultado.sucesso) {
+                mostrarFeedback(`🔓 Letra '${resultado.letra}' revelada!`, 'green');
+                // Atualiza a palavra se fornecida
+                if (resultado.palavraAtualizada) {
+                    palavraExibida = resultado.palavraAtualizada;
+                    atualizarPalavraExibida();
+                }
+            }
+            break;
+            
+        case 'ocultarLetra':
+            // Letra foi ocultada do adversário
+            if (resultado.jogador === meuNumeroJogador && resultado.sucesso) {
+                mostrarFeedback(`🔒 Letra '${resultado.letra}' ocultada do adversário!`, 'green');
+            } else if (resultado.alvo === meuNumeroJogador) {
+                mostrarFeedback('🔒 Uma letra foi ocultada da sua palavra!', 'orange');
+                // Atualiza a palavra se necessário
+                if (resultado.palavraAtualizada) {
+                    palavraExibida = resultado.palavraAtualizada;
+                    atualizarPalavraExibida();
+                }
+            }
+            break;
+            
+        case 'ocultarDica':
+            if (resultado.jogador === meuNumeroJogador) {
+                mostrarFeedback('🚫 Dica ocultada!', 'green');
+            }
+            break;
+            
+        case 'palpite':
+            if (resultado.jogador === meuNumeroJogador) {
+                mostrarFeedback('🎯 Palpite ativado! As próximas letras do adversário contarão como erro na sua forca!', 'green');
+            }
+            break;
+            
+        default:
+            console.warn(`⚠️ Tipo de resultado de poder desconhecido: ${resultado.tipo}`);
+    }
+}
+
 // Função para usar um poder durante o jogo
 function usarPoder(poderId, botaoElemento) {
     if (!jogoEstaAtivo) {
@@ -613,9 +699,39 @@ function configurarListenersSocket() {
             registrarEventoPronto(evento);
         } else if (evento.tipo === 'poderUsado') {
             console.log('✅ Poder usado com sucesso:', evento);
+            
+            // Processa o resultado do poder
+            if (evento.resultado) {
+                processarResultadoPoder(evento.resultado, evento);
+            }
+            
+            // Atualiza vidas se fornecidas (com animação se for vida extra)
+            if (evento.vidas) {
+                const animar = evento.resultado?.tipo === 'vidaExtra';
+                const jogador = evento.resultado?.jogador;
+                vidas = evento.vidas;
+                atualizarVidasUI(animar, jogador);
+            }
+            
             if (evento.poderId) {
                 const poderInfo = MAPEAMENTO_PODERES[evento.poderId];
-                mostrarFeedback(`${poderInfo?.nome || evento.poderId} usado com sucesso!`, 'green');
+                const mensagem = evento.resultado?.mensagem || `${poderInfo?.nome || evento.poderId} usado com sucesso!`;
+                mostrarFeedback(mensagem, evento.sucesso !== false ? 'green' : 'orange');
+            }
+        } else if (evento.tipo === 'poderUsadoGlobal') {
+            console.log('🌐 Poder usado globalmente:', evento);
+            
+            // Atualiza vidas se necessário
+            if (evento.atualizarVidas && evento.vidas) {
+                vidas = evento.vidas;
+                atualizarVidasUI(false, null); // Sem animação especial aqui
+                
+                // Mostra feedback se foi nosso poder ou do adversário
+                if (evento.jogador === meuNumeroJogador) {
+                    mostrarFeedback('Poder usado com sucesso!', 'green');
+                } else {
+                    mostrarFeedback('Adversário usou um poder!', 'orange');
+                }
             }
         } else if (evento.tipo === 'adversarioUsouPoder') {
             console.log('⚠️ Adversário usou um poder:', evento);
@@ -716,6 +832,9 @@ function iniciarJogo(dados) {
     console.log(`🎯 Tipo de poderes:`, typeof poderesDisponiveis, Array.isArray(poderesDisponiveis));
     console.log(`🎯 Número de poderes:`, poderesDisponiveis.length);
     
+    // Atualiza vidas UI antes de renderizar poderes
+    atualizarVidasUI();
+    
     // Renderiza os poderes na tela de jogo (com pequeno delay para garantir que o DOM está pronto)
     setTimeout(() => {
         renderizarPoderesNoJogo();
@@ -772,6 +891,10 @@ function processarJogada(dados) {
         return;
     }
     
+    const palpiteTransferido = Boolean(dados.palpiteTransferido);
+    const palpiteBeneficiado = dados.palpiteBeneficiado || null;
+    const letraPalpite = (dados.palpiteLetra || dados.letra || '').toUpperCase();
+
     // Atualiza erros de ambos os jogadores separadamente
     errosJogador1 = dados.errosJogador1 || 0;
     errosJogador2 = dados.errosJogador2 || 0;
@@ -868,10 +991,27 @@ function processarJogada(dados) {
     atualizarBonecosUI();
     atualizarTurnoUI();
     atualizarTecladoDesabilitado(); // Atualiza teclado com letras já chutadas E bloqueia se não for o turno
+
+    // Feedback específico do palpite
+    if (palpiteTransferido) {
+        if (palpiteBeneficiado === meuNumeroJogador) {
+            if (dados.palpiteAcerto) {
+                mostrarFeedback(`🎯 Seu palpite desviou a letra '${letraPalpite}' e ela revelou sua palavra!`, 'green');
+            } else {
+                mostrarFeedback(`🛡️ Seu palpite desviou a letra '${letraPalpite}'. Nenhum erro contabilizado e o turno voltou para você!`, 'orange');
+            }
+        } else if (dados.jogadorQueJogou === meuNumeroJogador) {
+            mostrarFeedback(`⚠️ Seu chute '${letraPalpite}' foi desviado pelo poder Palpite!`, 'orange');
+            // Reabilita a tecla, já que o chute não contou para você
+            habilitarTeclaVisual(letraPalpite);
+        }
+    }
     
     // Mostra feedback visual da jogada
     // Apenas mostra feedback de erro se foi o próprio jogador que errou
-    if (dados.resultado === 'acerto') {
+    if (dados.resultado === 'palpite_acerto' || dados.resultado === 'palpite_desviado') {
+        // Já tratamos nas mensagens acima
+    } else if (dados.resultado === 'acerto') {
         mostrarFeedback('✓ Letra correta!', 'green');
     } else if (dados.resultado === 'erro' && dados.jogadorQueJogou === meuNumeroJogador) {
         // Só mostra erro se foi o próprio jogador que errou
@@ -1047,17 +1187,38 @@ async function processarChute(letra) {
 }
 
 // --- 7. ATUALIZAÇÃO DE UI ---
-function atualizarVidasUI() {
+// Armazena o estado anterior das vidas para detectar mudanças
+let vidasAnteriores = [3, 3];
+
+function atualizarVidasUI(animarVidaExtra = false, jogadorAnimacao = null) {
     console.log(`💚 Atualizando vidas: J1=${vidas[0]}, J2=${vidas[1]}`);
+    
+    // Determina o número máximo de vidas para exibir (até 4 para suportar vida extra)
+    const maxVidasParaExibir = Math.max(3, vidas[0], vidas[1]);
+    
+    // Detecta se uma vida foi adicionada (vida extra)
+    let vidaAdicionadaJ1 = vidas[0] > vidasAnteriores[0];
+    let vidaAdicionadaJ2 = vidas[1] > vidasAnteriores[1];
     
     // Atualiza vidas do jogador 1
     if (vidasP1Container) {
         vidasP1Container.innerHTML = '';
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < maxVidasParaExibir; i++) {
             const vida = document.createElement('span');
             vida.className = 'vida';
+            
+            // Se esta é a vida recém-adicionada, adiciona classe de animação
+            if (vidaAdicionadaJ1 && i === vidas[0] - 1 && (animarVidaExtra || jogadorAnimacao === 1)) {
+                vida.classList.add('vida-subindo');
+                // Remove a animação após completar
+                setTimeout(() => {
+                    vida.classList.remove('vida-subindo');
+                }, 800);
+            }
+            
             if (i < vidas[0]) {
                 vida.style.backgroundColor = '#00bcd4';
+                vida.style.opacity = '1';
             } else {
                 vida.style.backgroundColor = '#555';
                 vida.style.opacity = '0.3';
@@ -1069,11 +1230,22 @@ function atualizarVidasUI() {
     // Atualiza vidas do jogador 2
     if (vidasP2Container) {
         vidasP2Container.innerHTML = '';
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < maxVidasParaExibir; i++) {
             const vida = document.createElement('span');
             vida.className = 'vida';
+            
+            // Se esta é a vida recém-adicionada, adiciona classe de animação
+            if (vidaAdicionadaJ2 && i === vidas[1] - 1 && (animarVidaExtra || jogadorAnimacao === 2)) {
+                vida.classList.add('vida-subindo');
+                // Remove a animação após completar
+                setTimeout(() => {
+                    vida.classList.remove('vida-subindo');
+                }, 800);
+            }
+            
             if (i < vidas[1]) {
                 vida.style.backgroundColor = '#00bcd4';
+                vida.style.opacity = '1';
             } else {
                 vida.style.backgroundColor = '#555';
                 vida.style.opacity = '0.3';
@@ -1081,6 +1253,9 @@ function atualizarVidasUI() {
             vidasP2Container.appendChild(vida);
         }
     }
+    
+    // Atualiza o estado anterior
+    vidasAnteriores = [...vidas];
 }
 
 function atualizarPalavraExibida() {
@@ -1141,6 +1316,16 @@ function desabilitarTeclaVisual(letra) {
         btn.disabled = true;
         btn.style.opacity = '0.5';
         btn.style.cursor = 'not-allowed';
+    }
+}
+
+function habilitarTeclaVisual(letra) {
+    const btn = [...tecladoContainer.querySelectorAll('.tecla')]
+        .find(b => b.textContent === letra);
+    if (btn) {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
     }
 }
 

@@ -54,6 +54,43 @@ class Game {
         return resultado;
     }
 
+    /**
+     * Aplica uma letra ao jogo sem penalizar por erro.
+     * Usado pelo poder "palpite" quando o adversário chuta uma letra que o jogador não chutou.
+     * Retorna um objeto com informações sobre o resultado.
+     */
+    aplicarLetraPalpite(letra) {
+        letra = letra.toUpperCase();
+
+        if (this.status !== "jogando") {
+            return {
+                estado: this.getEstado(),
+                acertou: false,
+                vitoria: this.status === "vitoria"
+            };
+        }
+
+        const letraJaChutada = this.letrasChutadas.has(letra);
+        if (!letraJaChutada) {
+            this.letrasChutadas.add(letra);
+        }
+
+        const acertou = this.palavraSecreta.includes(letra);
+
+        if (acertou) {
+            if (this.checarVitoria()) {
+                this.status = "vitoria";
+            }
+        }
+
+        return {
+            estado: this.getEstado(),
+            acertou,
+            vitoria: this.status === "vitoria",
+            letraJaChutada
+        };
+    }
+
     trocarTurno() {
         this.turn = (this.turn === 1) ? 2 : 1;
         console.log(`Turno trocado para Jogador ${this.turn}`);
