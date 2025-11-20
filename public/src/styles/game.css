@@ -490,6 +490,27 @@ header {
   animation: pulse 1s ease-in-out infinite;
 }
 
+/* Animação mais forte quando timer < 5 segundos */
+.tempo.timer-urgente {
+  color: #ff5555 !important;
+  text-shadow: 
+    0 2px 10px rgba(255, 0, 0, 0.6),
+    0 0 30px rgba(255, 85, 85, 0.8),
+    0 0 50px rgba(255, 85, 85, 0.6);
+  animation: pulseUrgente 0.5s ease-in-out infinite;
+}
+
+@keyframes pulseUrgente {
+  0%, 100% { 
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% { 
+    transform: scale(1.15);
+    opacity: 0.9;
+  }
+}
+
 .tempo:empty::before {
   content: '15s';
   opacity: 0.5;

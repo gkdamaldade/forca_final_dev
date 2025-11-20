@@ -573,9 +573,11 @@ function processarJogada(dados) {
     atualizarTecladoDesabilitado(); // Atualiza teclado com letras já chutadas E bloqueia se não for o turno
     
     // Mostra feedback visual da jogada
+    // Apenas mostra feedback de erro se foi o próprio jogador que errou
     if (dados.resultado === 'acerto') {
         mostrarFeedback('✓ Letra correta!', 'green');
-    } else if (dados.resultado === 'erro') {
+    } else if (dados.resultado === 'erro' && dados.jogadorQueJogou === meuNumeroJogador) {
+        // Só mostra erro se foi o próprio jogador que errou
         mostrarFeedback('✗ Letra incorreta!', 'red');
     } else if (dados.resultado === 'vitoria' && !dados.alguemPerdeuVida) {
         mostrarFeedback('🎯 Você completou a palavra!', 'green');
@@ -615,6 +617,7 @@ function iniciarTimer() {
     let segundos = 15;
     timerEl.textContent = `${segundos}s`;
     timerEl.style.color = 'white';
+    timerEl.classList.remove('timer-urgente'); // Remove classe urgente ao resetar
     
     console.log(`⏱️ Timer iniciado: ${segundos}s`);
     
@@ -626,6 +629,10 @@ function iniciarTimer() {
         
         if (segundos <= 5 && timerEl) {
             timerEl.style.color = '#ff5555';
+            timerEl.classList.add('timer-urgente'); // Adiciona classe para animação mais forte
+        } else if (segundos > 5 && timerEl) {
+            timerEl.classList.remove('timer-urgente'); // Remove classe quando > 5
+            timerEl.style.color = 'white';
         }
         
         if (segundos <= 0) {
