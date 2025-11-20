@@ -157,7 +157,7 @@ header{
   flex-wrap: wrap; /* permite quebrar no mobile */
 }
 
-/* ===== Botões (estilo aqua do menu) ===== */
+/* ===== Botões (estilo aqua do menu - melhorado) ===== */
 .sessao-botao{
   background:
     radial-gradient(120% 180% at 30% 20%, rgba(255,255,255,.45), rgba(255,255,255,.1) 45%, rgba(255,255,255,0) 60%),
@@ -168,7 +168,11 @@ header{
   font-size: 30px;
   font-weight: 800;
   cursor: pointer;
-  transition: transform .06s ease, filter .2s ease, box-shadow .2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: "Orbitron", sans-serif;
+  letter-spacing: 0.05em;
+  position: relative;
+  overflow: hidden;
 
   /* Em vez de padding gigantesco, controlamos por largura */
   width: 480px;        /* mesmo look do botão JOGAR do menu */
@@ -179,8 +183,52 @@ header{
     0 10px 22px rgba(0,229,255,.28),
     0 8px 0 rgba(0,0,0,.25);
 }
-.sessao-botao:hover{ filter: brightness(1.06) saturate(1.02); }
-.sessao-botao:active{ transform: translateY(2px); }
+
+.sessao-botao {
+  z-index: 0;
+}
+
+.sessao-botao::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transition: left 0.5s ease;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.sessao-botao > * {
+  position: relative;
+  z-index: 2;
+}
+
+.sessao-botao:hover {
+  filter: brightness(1.1) saturate(1.05);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow:
+    0 14px 28px rgba(0, 229, 255, .35),
+    0 8px 0 rgba(0,0,0,.3);
+}
+
+.sessao-botao:hover::before {
+  left: 100%;
+}
+
+.sessao-botao:active {
+  transform: translateY(4px) scale(0.98);
+  box-shadow:
+    0 6px 16px rgba(0, 229, 255, .25),
+    0 3px 0 rgba(0,0,0,.3);
+}
 
 /* ===== Acessibilidade (foco) ===== */
 .sessao-botao:focus{
@@ -189,12 +237,64 @@ header{
 }
 
 /* ===== Responsividade ===== */
-@media (max-width: 720px){
+@media (max-width: 768px){
   .btn-voltar{ left: 12px; font-size: 2rem; }
-  .sessao-botao{ width: 100%; }   /* em telas menores, preenche a largura do painel */
-  .sessao-container{ max-width: 94vw; min-height: 480px; padding: 28px 20px; }
+  .sessao-botao{ 
+    width: 100%; 
+    font-size: clamp(1.4rem, 4vw, 2rem);
+    padding: 20px 24px;
+  }
+  .sessao-container{ 
+    max-width: 94vw; 
+    min-height: 480px; 
+    padding: 28px 20px; 
+  }
+  .sessao-botoes{ 
+    gap: 20px; 
+    flex-direction: column;
+  }
+  .titulo-sessao {
+    font-size: clamp(1.5rem, 5vw, 3rem);
+  }
+  .icon-img img {
+    width: clamp(60px, 15vw, 80px);
+  }
 }
-@media (max-width: 420px){
-  .sessao-botoes{ gap: 20px; }
 
+@media (max-width: 520px){
+  .sessao-botao{ 
+    width: 100%; 
+    font-size: clamp(1.2rem, 3.5vw, 1.6rem);
+    padding: 18px 20px;
+  }
+  .sessao-container{ 
+    max-width: 96vw; 
+    min-height: 420px; 
+    padding: 24px 16px; 
+  }
+  .sessao-botoes{ 
+    gap: 16px; 
+  }
+  .titulo-sessao {
+    font-size: clamp(1.3rem, 4vw, 2.5rem);
+    letter-spacing: 0.08em;
+  }
+  header {
+    padding: 8px 0;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 420px){
+  .sessao-botoes{ 
+    gap: 14px; 
+  }
+  .sessao-botao {
+    font-size: clamp(1rem, 3vw, 1.4rem);
+    padding: 16px 18px;
+  }
+  .sessao-container {
+    padding: 20px 12px;
+    min-height: 380px;
+  }
 }
