@@ -20,19 +20,19 @@ module.exports = function(io) {
       if (!activeGames.has(roomId)) {
         try {
           // Busca duas palavras aleatórias (uma para cada jogador)
-          const wordObj1 = await getRandomWord({ categoria: categoria });
+          const wordObj1 = await getRandomWord({ categoria: categoria, excluirPalavras: [] });
           const palavra1 = (wordObj1?.palavra || 'FORCA').toUpperCase();
           const categoriaUsada = wordObj1?.categoria || categoria;
           
-          // Busca segunda palavra (pode ser a mesma categoria)
+          // Busca segunda palavra excluindo a primeira (garante que sejam diferentes)
           let wordObj2;
           let palavra2;
           let tentativas = 0;
           do {
-            wordObj2 = await getRandomWord({ categoria: categoria });
+            wordObj2 = await getRandomWord({ categoria: categoria, excluirPalavras: [palavra1] });
             palavra2 = (wordObj2?.palavra || 'FORCA').toUpperCase();
             tentativas++;
-          } while (palavra1 === palavra2 && tentativas < 5); // Tenta pegar palavras diferentes
+          } while (palavra1 === palavra2 && tentativas < 5); // Tenta pegar palavras diferentes (fallback)
           
           // Cria instâncias de Game separadas para cada jogador
           const gameInstance1 = new Game(palavra1, categoriaUsada);
@@ -41,6 +41,7 @@ module.exports = function(io) {
           activeGames.set(roomId, {
             players: [],
             words: [palavra1, palavra2], // Palavras para cada jogador
+            palavrasUsadas: [palavra1, palavra2], // Rastreia todas as palavras já usadas no jogo
             turno: 1,
             turnoInicialRodada: 1, // Salva qual jogador começou a rodada atual
             categoria: categoriaUsada,
@@ -57,6 +58,7 @@ module.exports = function(io) {
           activeGames.set(roomId, {
             players: [],
             words: ['FORCA', 'JOGO'],
+            palavrasUsadas: ['FORCA', 'JOGO'], // Rastreia todas as palavras já usadas no jogo
             turno: 1,
             turnoInicialRodada: 1, // Salva qual jogador começou a rodada atual
             categoria: categoria || 'Geral',
@@ -71,6 +73,10 @@ module.exports = function(io) {
       const game = activeGames.get(roomId);
       if (!game.palpiteAtivo) {
         game.palpiteAtivo = { 1: false, 2: false };
+      }
+      // Garante que palavrasUsadas existe (para jogos criados antes dessa atualização)
+      if (!game.palavrasUsadas) {
+        game.palavrasUsadas = game.words ? [...game.words] : [];
       }
       
       // Verifica se o jogador já está na lista pelo socket.id (reconexão com mesmo socket)
@@ -679,25 +685,51 @@ module.exports = function(io) {
           } else {
             // Reseta AMBAS as palavras para nova rodada
             console.log(`🔄 Alguém perdeu vida! Resetando ambas as palavras para nova rodada...`);
+            console.log(`📋 Palavras já usadas no jogo: ${game.palavrasUsadas.join(', ')}`);
+            
             try {
-              // Busca duas novas palavras
-              const novaPalavraObj1 = await getRandomWord({ categoria: game.categoria });
+              // Busca duas novas palavras excluindo todas as palavras já usadas no jogo
+              const novaPalavraObj1 = await getRandomWord({ 
+                categoria: game.categoria, 
+                excluirPalavras: game.palavrasUsadas || [] 
+              });
               const novaPalavra1 = (novaPalavraObj1?.palavra || 'FORCA').toUpperCase();
               
+              // Busca segunda palavra excluindo a primeira E todas as palavras já usadas
               let novaPalavraObj2;
               let novaPalavra2;
               let tentativas = 0;
+              const palavrasParaExcluir = [...(game.palavrasUsadas || []), novaPalavra1];
               do {
-                novaPalavraObj2 = await getRandomWord({ categoria: game.categoria });
+                novaPalavraObj2 = await getRandomWord({ 
+                  categoria: game.categoria, 
+                  excluirPalavras: palavrasParaExcluir 
+                });
                 novaPalavra2 = (novaPalavraObj2?.palavra || 'FORCA').toUpperCase();
                 tentativas++;
+                // Se ainda assim for igual (fallback), adiciona à lista de exclusão e tenta novamente
+                if (novaPalavra1 === novaPalavra2 && tentativas < 5) {
+                  palavrasParaExcluir.push(novaPalavra2);
+                }
               } while (novaPalavra1 === novaPalavra2 && tentativas < 5);
+              
+              // Adiciona as novas palavras à lista de palavras usadas
+              if (!game.palavrasUsadas) {
+                game.palavrasUsadas = [];
+              }
+              game.palavrasUsadas.push(novaPalavra1);
+              if (novaPalavra1 !== novaPalavra2) {
+                game.palavrasUsadas.push(novaPalavra2);
+              }
               
               // Reseta ambas as instâncias
               game.words[0] = novaPalavra1;
               game.words[1] = novaPalavra2;
               game.gameInstances[0] = new Game(novaPalavra1, game.categoria);
               game.gameInstances[1] = new Game(novaPalavra2, game.categoria);
+              
+              console.log(`✅ Novas palavras escolhidas: J1=${novaPalavra1}, J2=${novaPalavra2}`);
+              console.log(`📋 Total de palavras usadas: ${game.palavrasUsadas.length}`);
               
               // Alterna o turno: quem começou a rodada anterior, o outro começa a próxima
               // Se a rodada anterior começou com o jogador 1, a próxima começa com o jogador 2
@@ -708,10 +740,39 @@ module.exports = function(io) {
               console.log(`✅ Nova rodada iniciada! Palavra J1: ${novaPalavra1}, Palavra J2: ${novaPalavra2}, Turno: Jogador ${game.turno} (rodada anterior começou com J${turnoAnterior})`);
             } catch (error) {
               console.error('Erro ao buscar novas palavras:', error);
-              game.words[0] = 'FORCA';
-              game.words[1] = 'JOGO';
-              game.gameInstances[0] = new Game('FORCA', game.categoria);
-              game.gameInstances[1] = new Game('JOGO', game.categoria);
+              // No fallback, tenta usar palavras diferentes das já usadas
+              const palavrasFallback = ['FORCA', 'JOGO', 'TESTE', 'LIVRO', 'CASA', 'GATO', 'CARRO', 'MESA'];
+              let palavraFallback1 = 'FORCA';
+              let palavraFallback2 = 'JOGO';
+              
+              // Tenta escolher palavras que não foram usadas
+              const palavrasDisponiveis = palavrasFallback.filter(p => 
+                !game.palavrasUsadas || !game.palavrasUsadas.includes(p)
+              );
+              
+              if (palavrasDisponiveis.length >= 2) {
+                palavraFallback1 = palavrasDisponiveis[0];
+                palavraFallback2 = palavrasDisponiveis[1];
+              } else if (palavrasDisponiveis.length >= 1) {
+                palavraFallback1 = palavrasDisponiveis[0];
+                palavraFallback2 = palavrasFallback.find(p => p !== palavraFallback1) || 'JOGO';
+              }
+              
+              game.words[0] = palavraFallback1;
+              game.words[1] = palavraFallback2;
+              game.gameInstances[0] = new Game(palavraFallback1, game.categoria);
+              game.gameInstances[1] = new Game(palavraFallback2, game.categoria);
+              
+              // Adiciona ao array de palavras usadas
+              if (!game.palavrasUsadas) {
+                game.palavrasUsadas = [];
+              }
+              if (!game.palavrasUsadas.includes(palavraFallback1)) {
+                game.palavrasUsadas.push(palavraFallback1);
+              }
+              if (palavraFallback1 !== palavraFallback2 && !game.palavrasUsadas.includes(palavraFallback2)) {
+                game.palavrasUsadas.push(palavraFallback2);
+              }
               // Alterna o turno também no catch
               const turnoAnterior = game.turnoInicialRodada || 1;
               game.turno = turnoAnterior === 1 ? 2 : 1;

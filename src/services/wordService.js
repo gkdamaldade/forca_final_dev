@@ -38,18 +38,28 @@ function normalizarCategoria(categoria) {
 /**
  * Busca uma palavra aleatória da tabela "palavra",
  * filtrando pela categoria vinda do front-end.
+ * @param {Object} options - Opções para busca
+ * @param {string} options.categoria - Categoria para filtrar
+ * @param {Array<string>} options.excluirPalavras - Array de palavras (em maiúsculas) para excluir da busca
  */
-async function getRandomWord({ categoria }) {
-
+async function getRandomWord({ categoria, excluirPalavras = [] }) {
+  const { Op } = require('sequelize');
   const where = {};
 
   // Se veio categoria do input, filtra (usando busca case-insensitive)
   if (categoria) {
     const categoriaNormalizada = normalizarCategoria(categoria);
-    // Usa Op.iLike para busca case-insensitive no PostgreSQL (equivalente a ILIKE)
-    const { Op } = require('sequelize');
     where.categoria = {
       [Op.iLike]: categoriaNormalizada
+    };
+  }
+
+  // Exclui palavras já usadas (busca case-insensitive)
+  if (excluirPalavras && excluirPalavras.length > 0) {
+    // Converte todas as palavras de exclusão para maiúsculas para comparação
+    const palavrasParaExcluir = excluirPalavras.map(p => p.toUpperCase());
+    where.palavra = {
+      [Op.notIn]: palavrasParaExcluir
     };
   }
 
@@ -61,8 +71,8 @@ async function getRandomWord({ categoria }) {
 
   if (!palavra) {
     const mensagem = categoria 
-      ? `Nenhuma palavra encontrada para a categoria: ${categoria}`
-      : 'Nenhuma palavra encontrada no banco de dados';
+      ? `Nenhuma palavra encontrada para a categoria: ${categoria}${excluirPalavras.length > 0 ? ` (excluindo ${excluirPalavras.length} palavras já usadas)` : ''}`
+      : `Nenhuma palavra encontrada no banco de dados${excluirPalavras.length > 0 ? ` (excluindo ${excluirPalavras.length} palavras já usadas)` : ''}`;
     throw new Error(mensagem);
   }
 
