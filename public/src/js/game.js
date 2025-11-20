@@ -43,6 +43,8 @@ let instanceId = '';
 let estaNoModoPreparacao = true;
 let usuarioPronto = false;
 const jogadoresProntos = new Set();
+let poderesSelecionados = new Set(); // Set com os nomes dos poderes selecionados (ex: "liberar_letra", "vida_extra")
+const MAX_PODERES = 3;
 
 // --- 3. INICIALIZAÇÃO ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -120,6 +122,7 @@ function configurarInterfacePreparacao() {
     estaNoModoPreparacao = true;
     usuarioPronto = false;
     jogadoresProntos.clear();
+    poderesSelecionados.clear(); // Reseta poderes selecionados
     
     if (preGameWrapper) {
         preGameWrapper.classList.remove('hidden');
@@ -135,8 +138,17 @@ function configurarInterfacePreparacao() {
         console.error(`[${instanceId}] ❌ Elemento .jogo-container não encontrado!`);
     }
 
+    // Atualiza o nome do jogador na tela de preparação
+    atualizarNomeJogadorPreparacao();
+
+    // Configura seleção de poderes
+    configurarSelecaoPoderes();
+
     // Inicializa contador em 0/2
     atualizarContadorProntos(0);
+
+    // Atualiza contador de poderes selecionados
+    atualizarContadorPoderes();
 
     if (botaoPronto) {
         // Remove listeners antigos para evitar duplicação
@@ -154,6 +166,91 @@ function configurarInterfacePreparacao() {
     }
 }
 
+function atualizarNomeJogadorPreparacao() {
+    const nomeJogadorEl = document.getElementById('nome-jogador-prep');
+    if (nomeJogadorEl && nomeJogador) {
+        nomeJogadorEl.textContent = nomeJogador;
+    }
+}
+
+function configurarSelecaoPoderes() {
+    const botoesPoder = document.querySelectorAll('#poderes-container-atual .poder');
+    
+    botoesPoder.forEach(botao => {
+        // Remove listeners antigos
+        botao.removeEventListener('click', lidarComCliquePoder);
+        // Adiciona novo listener
+        botao.addEventListener('click', lidarComCliquePoder);
+        
+        // Remove estado selecionado
+        botao.classList.remove('selecionado');
+        botao.disabled = false;
+    });
+}
+
+function lidarComCliquePoder(e) {
+    const botao = e.currentTarget;
+    const poderId = botao.getAttribute('data-poder');
+    
+    if (!poderId) {
+        console.warn(`⚠️ Botão de poder sem data-poder:`, botao);
+        return;
+    }
+    
+    // Se já está selecionado, remove
+    if (poderesSelecionados.has(poderId)) {
+        poderesSelecionados.delete(poderId);
+        botao.classList.remove('selecionado');
+        console.log(`[${instanceId}] ➖ Poder deselecionado: ${poderId}`);
+    } else {
+        // Se não está selecionado e não atingiu o máximo
+        if (poderesSelecionados.size < MAX_PODERES) {
+            poderesSelecionados.add(poderId);
+            botao.classList.add('selecionado');
+            console.log(`[${instanceId}] ➕ Poder selecionado: ${poderId}`);
+        } else {
+            // Atingiu o máximo
+            console.log(`[${instanceId}] ⚠️ Máximo de ${MAX_PODERES} poderes atingido`);
+            mostrarFeedback(`Você pode selecionar no máximo ${MAX_PODERES} poderes`, 'orange');
+            return;
+        }
+    }
+    
+    // Atualiza contador de poderes selecionados
+    atualizarContadorPoderes();
+    
+    // Atualiza estado dos botões (desabilita os não selecionados se atingiu o máximo)
+    atualizarEstadoBotoesPoderes();
+}
+
+function atualizarContadorPoderes() {
+    const contadorEl = document.getElementById('contador-selecionados');
+    if (contadorEl) {
+        contadorEl.textContent = poderesSelecionados.size;
+    }
+}
+
+function atualizarEstadoBotoesPoderes() {
+    const botoesPoder = document.querySelectorAll('#poderes-container-atual .poder');
+    const atingiuMaximo = poderesSelecionados.size >= MAX_PODERES;
+    
+    botoesPoder.forEach(botao => {
+        const poderId = botao.getAttribute('data-poder');
+        const estaSelecionado = poderesSelecionados.has(poderId);
+        
+        // Se atingiu o máximo e o botão não está selecionado, desabilita
+        if (atingiuMaximo && !estaSelecionado) {
+            botao.disabled = true;
+            botao.style.opacity = '0.4';
+            botao.style.cursor = 'not-allowed';
+        } else {
+            botao.disabled = false;
+            botao.style.opacity = '1';
+            botao.style.cursor = 'pointer';
+        }
+    });
+}
+
 function aoClicarBotaoPronto() {
     console.log(`[${instanceId}] 🖱️ Botão pronto clicado!`);
     
@@ -166,10 +263,15 @@ function aoClicarBotaoPronto() {
     usuarioPronto = true;
     travarBotaoPronto();
 
+    // Prepara lista de poderes selecionados para enviar
+    const poderesArray = Array.from(poderesSelecionados);
+    console.log(`[${instanceId}] 🎯 Poderes selecionados:`, poderesArray);
+
     console.log(`[${instanceId}] 📤 Enviando evento 'pronto' para o servidor...`);
     enviarEvento({
         tipo: 'pronto',
-        nome: nomeJogador
+        nome: nomeJogador,
+        poderes: poderesArray // Envia array de poderes selecionados
     });
 }
 

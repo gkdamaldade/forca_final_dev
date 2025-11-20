@@ -182,6 +182,100 @@ body::after{
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
 }
 
+.pre-game-wrapper .poder {
+  width: 72px;
+  height: 72px;
+  border: 2px solid rgba(255,255,255,.35);
+  border-radius: 12px;
+  background: rgba(255,255,255,.08);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  overflow: hidden;
+}
+
+.pre-game-wrapper .poder img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 8px;
+  transition: transform 0.3s ease;
+}
+
+.pre-game-wrapper .poder:hover:not(:disabled) {
+  border-color: var(--aqua);
+  background: rgba(0, 229, 255, .15);
+  transform: scale(1.05);
+  box-shadow: 0 0 15px rgba(0, 229, 255, .4);
+}
+
+.pre-game-wrapper .poder:hover:not(:disabled) img {
+  transform: scale(1.1);
+}
+
+.pre-game-wrapper .poder.selecionado {
+  border-color: var(--aqua);
+  background: linear-gradient(180deg, rgba(0, 229, 255, .3), rgba(0, 188, 212, .2));
+  box-shadow: 
+    0 0 20px rgba(0, 229, 255, .6),
+    0 0 40px rgba(0, 229, 255, .3),
+    inset 0 0 10px rgba(0, 229, 255, .2);
+  transform: scale(1.05);
+}
+
+.pre-game-wrapper .poder.selecionado::before {
+  content: '✓';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  background: var(--aqua);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  z-index: 2;
+  box-shadow: 0 2px 8px rgba(0, 229, 255, .6);
+}
+
+.pre-game-wrapper .poder:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+
+.pre-game-wrapper .jogador-prep h2 {
+  font-size: 1.6rem;
+  margin-bottom: 8px;
+}
+
+.pre-game-wrapper .instrucao-poderes {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.pre-game-wrapper .contador-selecionados {
+  margin-top: 12px;
+  font-size: 1.1rem;
+  color: #e9fbff;
+  text-align: center;
+}
+
+.pre-game-wrapper .contador-selecionados span {
+  color: var(--aqua);
+  font-weight: 700;
+}
+
 .pre-game-wrapper .codigo-container {
   font-size: 1.8rem;
   text-align: center;

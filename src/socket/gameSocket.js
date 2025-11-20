@@ -329,8 +329,10 @@ module.exports = function(io) {
       if (msg.tipo === 'pronto') {
         // Usa o nome do socket.data (mais confiável que msg.nome do cliente)
         const nomeJogador = socket.data?.nome || msg.nome;
+        const poderesSelecionados = msg.poderes || []; // Array de poderes selecionados
         
         console.log(`📥 Evento 'pronto' recebido: socket.id=${socket.id}, nome=${nomeJogador}, roomId=${roomId}`);
+        console.log(`🎯 Poderes selecionados:`, poderesSelecionados);
         console.log(`📋 Jogadores na sala:`, game.players.map(p => `${p.name} (${p.id})`));
         console.log(`📋 IDs dos prontos atuais:`, Array.from(game.prontos));
         
@@ -351,6 +353,16 @@ module.exports = function(io) {
           return;
         }
         
+        // Valida poderes selecionados (máximo 3)
+        if (poderesSelecionados.length > 3) {
+          console.warn(`⚠️ Jogador ${jogadorAtual.numero} enviou ${poderesSelecionados.length} poderes (máximo 3). Apenas os 3 primeiros serão considerados.`);
+          poderesSelecionados.splice(3);
+        }
+        
+        // Armazena os poderes selecionados no objeto do jogador
+        jogadorAtual.poderes = poderesSelecionados;
+        console.log(`💾 Poderes do jogador ${jogadorAtual.numero} armazenados:`, jogadorAtual.poderes);
+        
         if (!game.prontos.has(socket.id)) {
           game.prontos.add(socket.id);
           jogadorAtual.wasReady = true;
@@ -366,11 +378,13 @@ module.exports = function(io) {
 
         // SEMPRE envia evento para TODOS na sala informando quem está pronto
         // Isso garante que o contador seja atualizado mesmo se o jogador já estava pronto
+        // NOTA: Não envia os poderes selecionados para outros jogadores (privacidade)
         const eventoPronto = {
           tipo: 'pronto',
           nome: nomeJogador,
           socketId: socket.id, // Inclui o socket.id para identificação única
           total: game.prontos.size
+          // NÃO inclui poderes aqui - cada jogador só sabe seus próprios poderes
         };
         
         console.log(`📤 Enviando evento 'pronto' para TODOS na sala ${roomId}:`, eventoPronto);

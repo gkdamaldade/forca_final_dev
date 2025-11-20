@@ -24,52 +24,30 @@
 
         <div class="sessao-container">
             <div class="jogadores-prep">
-                <div class="jogador-prep">
-                    <h2>Jogador 1</h2>
-                    <div class="poderes-container">
-                        <button class="poder" type="button" aria-label="Dica">
-                            <img src="/public/assets/images/liberar_letra.png" alt="">
+                <div class="jogador-prep" id="jogador-prep-atual">
+                    <h2 id="nome-jogador-prep">Selecione seus poderes</h2>
+                    <p class="instrucao-poderes">Escolha até 3 poderes (opcional)</p>
+                    <div class="poderes-container" id="poderes-container-atual">
+                        <button class="poder" type="button" data-poder="liberar_letra" aria-label="Liberar Letra">
+                            <img src="/public/assets/images/liberar_letra.png" alt="Liberar Letra">
                         </button>
-                        <button class="poder" type="button" aria-label="Tempo +">
-                            <img src="/public/assets/images/ocultar_dica.png" alt="">
+                        <button class="poder" type="button" data-poder="ocultar_dica" aria-label="Ocultar Dica">
+                            <img src="/public/assets/images/ocultar_dica.png" alt="Ocultar Dica">
                         </button>
-                        <button class="poder" type="button" aria-label="Pular">
-                            <img src="/public/assets/images/ocultar_letra.png" alt="">
+                        <button class="poder" type="button" data-poder="ocultar_letra" aria-label="Ocultar Letra">
+                            <img src="/public/assets/images/ocultar_letra.png" alt="Ocultar Letra">
                         </button>
-                        <button class="poder" type="button" aria-label="Revelar Letra">
-                            <img src="/public/assets/images/Tirar_vida.png" alt="">
+                        <button class="poder" type="button" data-poder="tirar_vida" aria-label="Tirar Vida">
+                            <img src="/public/assets/images/Tirar_vida.png" alt="Tirar Vida">
                         </button>
-                        <button class="poder" type="button" aria-label="Congelar">
-                            <img src="/public/assets/images/vida_extra.png" alt="">
+                        <button class="poder" type="button" data-poder="vida_extra" aria-label="Vida Extra">
+                            <img src="/public/assets/images/vida_extra.png" alt="Vida Extra">
                         </button>
-                        <button class="poder" type="button" aria-label="Barreira">
-                            <img src="/public/assets/images/palpite.png" alt="">
-                        </button>
-                    </div>
-                </div>
-
-                <div class="jogador-prep">
-                    <h2>Jogador 2</h2>
-                    <div class="poderes-container">
-                        <button class="poder" type="button" aria-label="Dica">
-                            <img src="/public/assets/images/liberar_letra.png" alt="">
-                        </button>
-                        <button class="poder" type="button" aria-label="Tempo +">
-                            <img src="/public/assets/images/ocultar_dica.png" alt="">
-                        </button>
-                        <button class="poder" type="button" aria-label="Pular">
-                            <img src="/public/assets/images/ocultar_letra.png" alt="">
-                        </button>
-                        <button class="poder" type="button" aria-label="Revelar Letra">
-                            <img src="/public/assets/images/Tirar_vida.png" alt="">
-                        </button>
-                        <button class="poder" type="button" aria-label="Congelar">
-                            <img src="/public/assets/images/vida_extra.png" alt="">
-                        </button>
-                        <button class="poder" type="button" aria-label="Barreira">
-                            <img src="/public/assets/images/palpite.png" alt="">
+                        <button class="poder" type="button" data-poder="palpite" aria-label="Palpite">
+                            <img src="/public/assets/images/palpite.png" alt="Palpite">
                         </button>
                     </div>
+                    <div class="contador-selecionados">Selecionados: <span id="contador-selecionados">0</span> / 3</div>
                 </div>
             </div>
 
