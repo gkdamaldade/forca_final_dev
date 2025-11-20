@@ -41,10 +41,11 @@ module.exports = function(io) {
             players: [],
             words: [palavra1, palavra2], // Palavras para cada jogador
             turno: 1,
+            turnoInicialRodada: 1, // Salva qual jogador começou a rodada atual
             categoria: categoriaUsada,
             prontos: new Set(),
             gameInstances: [gameInstance1, gameInstance2], // Uma instância por jogador
-            vidas: [2, 2] // Cada jogador começa com 2 vidas
+            vidas: [3, 3] // Cada jogador começa com 3 vidas
           });
         } catch (error) {
           console.error('Erro ao buscar palavras:', error);
@@ -55,10 +56,11 @@ module.exports = function(io) {
             players: [],
             words: ['FORCA', 'JOGO'],
             turno: 1,
+            turnoInicialRodada: 1, // Salva qual jogador começou a rodada atual
             categoria: categoria || 'Geral',
             prontos: new Set(),
             gameInstances: [gameInstance1, gameInstance2],
-            vidas: [2, 2]
+            vidas: [3, 3]
           });
         }
       }
@@ -215,6 +217,7 @@ module.exports = function(io) {
             const estado1 = game.gameInstances[0].getEstado();
             const estado2 = game.gameInstances[1].getEstado();
             game.turno = 1;
+            game.turnoInicialRodada = 1; // Primeira rodada sempre começa com jogador 1
             
             console.log(`📤 Enviando evento 'inicio' para J1 (${j1Corrigido.id}): jogador=1, turno=${game.turno}`);
             io.to(j1Corrigido.id).emit('eventoJogo', { 
@@ -274,6 +277,7 @@ module.exports = function(io) {
           const estado1 = game.gameInstances[0].getEstado();
           const estado2 = game.gameInstances[1].getEstado();
           game.turno = 1; // Garante que o turno inicial seja sempre 1
+          game.turnoInicialRodada = 1; // Primeira rodada sempre começa com jogador 1
           
           console.log(`📤 Enviando evento 'inicio' para J1 (${j1.id}): jogador=1, turno=${game.turno}, palavra="${estado1.palavra}"`);
           io.to(j1.id).emit('eventoJogo', { 
@@ -404,6 +408,7 @@ module.exports = function(io) {
             const estado1 = game.gameInstances[0].getEstado();
             const estado2 = game.gameInstances[1].getEstado();
             game.turno = 1;
+            game.turnoInicialRodada = 1; // Primeira rodada sempre começa com jogador 1
             
             console.log(`📤 Enviando evento 'inicio' para J1 (${j1Corrigido.id}): jogador=1, turno=${game.turno}`);
             io.to(j1Corrigido.id).emit('eventoJogo', {
@@ -442,6 +447,7 @@ module.exports = function(io) {
           
           // Garante que o turno inicial seja sempre 1 (jogador 1 começa)
           game.turno = 1;
+          game.turnoInicialRodada = 1; // Primeira rodada sempre começa com jogador 1
           
           console.log(`🎮 Iniciando jogo na sala ${roomId}`);
           console.log(`Jogador 1: ${j1.name} (${j1.id}, numero: ${j1.numero}), Jogador 2: ${j2.name} (${j2.id}, numero: ${j2.numero})`);
@@ -615,17 +621,23 @@ module.exports = function(io) {
               game.gameInstances[0] = new Game(novaPalavra1, game.categoria);
               game.gameInstances[1] = new Game(novaPalavra2, game.categoria);
               
-              // Reseta o turno para o jogador 1
-              game.turno = 1;
+              // Alterna o turno: quem começou a rodada anterior, o outro começa a próxima
+              // Se a rodada anterior começou com o jogador 1, a próxima começa com o jogador 2
+              const turnoAnterior = game.turnoInicialRodada || 1;
+              game.turno = turnoAnterior === 1 ? 2 : 1;
+              game.turnoInicialRodada = game.turno; // Salva o turno inicial da nova rodada
               
-              console.log(`✅ Nova rodada iniciada! Palavra J1: ${novaPalavra1}, Palavra J2: ${novaPalavra2}`);
+              console.log(`✅ Nova rodada iniciada! Palavra J1: ${novaPalavra1}, Palavra J2: ${novaPalavra2}, Turno: Jogador ${game.turno} (rodada anterior começou com J${turnoAnterior})`);
             } catch (error) {
               console.error('Erro ao buscar novas palavras:', error);
               game.words[0] = 'FORCA';
               game.words[1] = 'JOGO';
               game.gameInstances[0] = new Game('FORCA', game.categoria);
               game.gameInstances[1] = new Game('JOGO', game.categoria);
-              game.turno = 1;
+              // Alterna o turno também no catch
+              const turnoAnterior = game.turnoInicialRodada || 1;
+              game.turno = turnoAnterior === 1 ? 2 : 1;
+              game.turnoInicialRodada = game.turno;
             }
           }
         }

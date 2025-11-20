@@ -32,7 +32,7 @@ let turnoAtual = 1;
 let errosJogador1 = 0; // Erros do jogador 1
 let errosJogador2 = 0; // Erros do jogador 2
 let letrasChutadas = new Set();
-let vidas = [2, 2]; // [vidas jogador 1, vidas jogador 2]
+let vidas = [3, 3]; // [vidas jogador 1, vidas jogador 2]
 let jogoEstaAtivo = false;
 let timerInterval = null;
 let sala = '';
@@ -394,7 +394,7 @@ function iniciarJogo(dados) {
     palavraAdversarioExibida = dados.palavraAdversario || ''; // Palavra do adversário exibida
     turnoAtual = Number(dados.turno) || 1; // Garante que sempre tenha um turno inicial e seja um número
     categoria = dados.categoria || 'Geral';
-    vidas = dados.vidas || [2, 2]; // Vidas de cada jogador [J1, J2]
+    vidas = dados.vidas || [3, 3]; // Vidas de cada jogador [J1, J2]
     
     console.log(`📝 Palavras recebidas: Minha="${palavraExibida}", Adversário="${palavraAdversarioExibida}"`);
     console.log(`💚 Vidas iniciais: J1=${vidas[0]}, J2=${vidas[1]}`);
@@ -749,7 +749,7 @@ function atualizarVidasUI() {
     // Atualiza vidas do jogador 1
     if (vidasP1Container) {
         vidasP1Container.innerHTML = '';
-        for (let i = 0; i < 2; i++) {
+        for (let i = 0; i < 3; i++) {
             const vida = document.createElement('span');
             vida.className = 'vida';
             if (i < vidas[0]) {
@@ -765,7 +765,7 @@ function atualizarVidasUI() {
     // Atualiza vidas do jogador 2
     if (vidasP2Container) {
         vidasP2Container.innerHTML = '';
-        for (let i = 0; i < 2; i++) {
+        for (let i = 0; i < 3; i++) {
             const vida = document.createElement('span');
             vida.className = 'vida';
             if (i < vidas[1]) {
