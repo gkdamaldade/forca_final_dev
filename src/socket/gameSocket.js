@@ -542,6 +542,41 @@ module.exports = function(io) {
         }
       }
 
+      if (msg.tipo === 'tempoEsgotado') {
+        // Verifica se é o turno do jogador que enviou o evento
+        const jogadorAtual = game.players.find(p => p.id === socket.id);
+        if (!jogadorAtual) {
+          console.log(`❌ Jogador não encontrado: ${socket.id}`);
+          return;
+        }
+
+        const numeroJogador = jogadorAtual.numero;
+        
+        // Só passa o turno se for realmente o turno deste jogador e o jogo está ativo
+        if (numeroJogador === game.turno && game.gameInstance.status === 'jogando') {
+          console.log(`⏱️ Tempo esgotado para jogador ${numeroJogador}. Passando turno...`);
+          
+          // Troca o turno
+          game.turno = game.turno === 1 ? 2 : 1;
+          
+          const estado = game.gameInstance.getEstado();
+          
+          // Notifica todos na sala sobre a mudança de turno
+          io.to(roomId).emit('eventoJogo', {
+            tipo: 'turnoTrocado',
+            turno: game.turno,
+            palavra: estado.palavra,
+            erros: estado.erros,
+            letrasChutadas: estado.letrasChutadas,
+            status: estado.status
+          });
+          
+          console.log(`✅ Turno trocado para: ${game.turno}`);
+        } else {
+          console.log(`⚠️ Tentativa de passar turno inválida: jogador=${numeroJogador}, turno atual=${game.turno}`);
+        }
+      }
+
       if (msg.tipo === 'poder') {
         io.to(roomId).emit('eventoJogo', {
           tipo: 'poder',

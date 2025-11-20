@@ -287,6 +287,35 @@ function configurarListenersSocket() {
             console.log('✅ Jogo iniciado! meuNumeroJogador agora é:', meuNumeroJogador);
         } else if (evento.tipo === 'jogada') {
             processarJogada(evento);
+        } else if (evento.tipo === 'turnoTrocado') {
+            console.log('🔄 Evento TURNO TROCADO recebido:', evento);
+            // Atualiza o estado do jogo com os dados recebidos
+            turnoAtual = parseInt(evento.turno) || turnoAtual;
+            palavraExibida = evento.palavra || palavraExibida;
+            erros = evento.erros || erros;
+            letrasChutadas = new Set(evento.letrasChutadas || []);
+            
+            // Atualiza a UI
+            atualizarPalavraExibida();
+            atualizarBonecosUI();
+            atualizarTurnoUI();
+            atualizarTecladoDesabilitado();
+            
+            // Limpa o timer anterior e inicia novo se for meu turno
+            clearInterval(timerInterval);
+            const turnoAtualNum = Number(turnoAtual) || 0;
+            const meuNumeroNum = Number(meuNumeroJogador) || 0;
+            
+            if (turnoAtualNum === meuNumeroNum && meuNumeroNum > 0 && jogoEstaAtivo) {
+                console.log(`✓ É meu turno agora (jogador ${meuNumeroNum}), iniciando timer`);
+                iniciarTimer();
+            } else {
+                console.log(`✗ Não é meu turno (jogador ${meuNumeroNum}, turno atual: ${turnoAtualNum})`);
+                if (timerEl) {
+                    timerEl.textContent = 'Aguardando...';
+                    timerEl.style.color = '#888';
+                }
+            }
         } else if (evento.tipo === 'preparacao') {
             console.log('⏳ Evento PREPARACAO recebido - aguardando ambos estarem prontos...');
             console.log('📦 Dados do evento preparacao:', JSON.stringify(evento, null, 2));
@@ -484,11 +513,24 @@ function iniciarTimer() {
         if (segundos <= 0) {
             clearInterval(timerInterval);
             // Tempo esgotado - passa o turno automaticamente
-            // O servidor não precisa ser notificado, apenas passa visualmente
-            console.log('⏱️ Tempo esgotado!');
+            console.log('⏱️ Tempo esgotado! Passando turno automaticamente...');
             if (timerEl) {
                 timerEl.textContent = 'Tempo esgotado!';
                 timerEl.style.color = '#ff5555';
+            }
+            
+            // Envia evento ao servidor para passar o turno
+            if (jogoEstaAtivo && meuNumeroJogador) {
+                const turnoAtualNum = Number(turnoAtual) || 0;
+                const meuNumeroNum = Number(meuNumeroJogador) || 0;
+                
+                // Só passa o turno se for realmente o turno do jogador
+                if (turnoAtualNum === meuNumeroNum) {
+                    console.log(`⏱️ Enviando evento de tempo esgotado para passar o turno...`);
+                    enviarEvento({
+                        tipo: 'tempoEsgotado'
+                    });
+                }
             }
         }
     }, 1000);
