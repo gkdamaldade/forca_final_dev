@@ -70,10 +70,15 @@ module.exports = function(io) {
           const gameInstance1 = new Game(palavra1, categoriaUsada);
           const gameInstance2 = new Game(palavra2, categoriaUsada);
           
+          // Extrai as dicas das palavras (ordem 1, 2, 3)
+          const dicasJogador1 = wordObj1?.dicas || [];
+          const dicasJogador2 = wordObj2?.dicas || [];
+          
           activeGames.set(roomId, {
             players: [],
             words: [palavra1, palavra2], // Palavras para cada jogador
             palavrasUsadas: [palavra1, palavra2], // Rastreia todas as palavras já usadas no jogo
+            dicas: [dicasJogador1, dicasJogador2], // Dicas para cada jogador (ordem 1, 2, 3)
             turno: 1,
             turnoInicialRodada: 1, // Salva qual jogador começou a rodada atual
             categoria: categoriaUsada,
@@ -91,6 +96,7 @@ module.exports = function(io) {
             players: [],
             words: ['FORCA', 'JOGO'],
             palavrasUsadas: ['FORCA', 'JOGO'], // Rastreia todas as palavras já usadas no jogo
+            dicas: [[], []], // Sem dicas no fallback
             turno: 1,
             turnoInicialRodada: 1, // Salva qual jogador começou a rodada atual
             categoria: categoria || 'Geral',
@@ -109,6 +115,10 @@ module.exports = function(io) {
       // Garante que palavrasUsadas existe (para jogos criados antes dessa atualização)
       if (!game.palavrasUsadas) {
         game.palavrasUsadas = game.words ? [...game.words] : [];
+      }
+      // Garante que dicas existe (para jogos criados antes dessa atualização)
+      if (!game.dicas) {
+        game.dicas = [[], []];
       }
       
       // Verifica se o jogador já está na lista pelo socket.id (reconexão com mesmo socket)
@@ -289,7 +299,8 @@ module.exports = function(io) {
               categoria: game.categoria,
               meuSocketId: j1Corrigido.id,
               adversarioSocketId: j2Corrigido.id,
-              vidas: game.vidas
+              vidas: game.vidas,
+              dicas: game.dicas ? game.dicas[0] : [] // Dicas do jogador 1 (ordem 1, 2, 3)
             });
             
             console.log(`📤 Enviando evento 'inicio' para J2 (${j2Corrigido.id}): jogador=2, turno=${game.turno}`);
@@ -304,7 +315,8 @@ module.exports = function(io) {
               categoria: game.categoria,
               meuSocketId: j2Corrigido.id,
               adversarioSocketId: j1Corrigido.id,
-              vidas: game.vidas
+              vidas: game.vidas,
+              dicas: game.dicas ? game.dicas[1] : [] // Dicas do jogador 2 (ordem 1, 2, 3)
             });
           } else {
             console.log(`⏳ Aguardando prontos: ${game.players.length} jogadores, ${game.prontos.size} prontos`);
@@ -349,7 +361,8 @@ module.exports = function(io) {
             categoria: game.categoria,
             meuSocketId: j1.id,
             adversarioSocketId: j2.id,
-            vidas: game.vidas
+            vidas: game.vidas,
+            dicas: game.dicas ? game.dicas[0] : [] // Dicas do jogador 1 (ordem 1, 2, 3)
           });
           
           console.log(`📤 Enviando evento 'inicio' para J2 (${j2.id}): jogador=2, turno=${game.turno}, palavra="${estado2.palavra}"`);
@@ -364,7 +377,8 @@ module.exports = function(io) {
             categoria: game.categoria,
             meuSocketId: j2.id,
             adversarioSocketId: j1.id,
-            vidas: game.vidas
+            vidas: game.vidas,
+            dicas: game.dicas ? game.dicas[1] : [] // Dicas do jogador 2 (ordem 1, 2, 3)
           });
         } else {
           console.log(`⏳ Aguardando prontos: ${game.players.length} jogadores, ${game.prontos.size} prontos`);
@@ -495,7 +509,8 @@ module.exports = function(io) {
               meuSocketId: j1Corrigido.id,
               adversarioSocketId: j2Corrigido.id,
               vidas: game.vidas,
-              poderes: j1Corrigido.poderes || []
+              poderes: j1Corrigido.poderes || [],
+              dicas: game.dicas ? game.dicas[0] : [] // Dicas do jogador 1 (ordem 1, 2, 3)
             });
             
             console.log(`📤 Enviando evento 'inicio' para J2 (${j2Corrigido.id}): jogador=2, turno=${game.turno}`);
@@ -511,7 +526,8 @@ module.exports = function(io) {
               meuSocketId: j2Corrigido.id,
               adversarioSocketId: j1Corrigido.id,
               vidas: game.vidas,
-              poderes: j2Corrigido.poderes || []
+              poderes: j2Corrigido.poderes || [],
+              dicas: game.dicas ? game.dicas[1] : [] // Dicas do jogador 2 (ordem 1, 2, 3)
             });
             return;
           }
@@ -551,7 +567,8 @@ module.exports = function(io) {
             meuSocketId: j1.id, // Socket ID deste jogador para identificação única
             adversarioSocketId: j2.id, // Socket ID do adversário
             vidas: game.vidas,
-            poderes: j1.poderes || [] // Poderes selecionados pelo jogador 1
+            poderes: j1.poderes || [], // Poderes selecionados pelo jogador 1
+            dicas: game.dicas ? game.dicas[0] : [] // Dicas do jogador 1 (ordem 1, 2, 3)
           };
           
           const eventoInicioJ2 = {
@@ -566,7 +583,8 @@ module.exports = function(io) {
             meuSocketId: j2.id, // Socket ID deste jogador para identificação única
             adversarioSocketId: j1.id, // Socket ID do adversário
             vidas: game.vidas,
-            poderes: j2.poderes || [] // Poderes selecionados pelo jogador 2
+            poderes: j2.poderes || [], // Poderes selecionados pelo jogador 2
+            dicas: game.dicas ? game.dicas[1] : [] // Dicas do jogador 2 (ordem 1, 2, 3)
           };
 
           // Verifica se os sockets estão conectados ANTES de enviar
@@ -799,14 +817,20 @@ module.exports = function(io) {
                 game.palavrasUsadas.push(novaPalavra2);
               }
               
+              // Extrai as dicas das novas palavras (ordem 1, 2, 3)
+              const novasDicasJogador1 = novaPalavraObj1?.dicas || [];
+              const novasDicasJogador2 = novaPalavraObj2?.dicas || [];
+              
               // Reseta ambas as instâncias
               game.words[0] = novaPalavra1;
               game.words[1] = novaPalavra2;
               game.gameInstances[0] = new Game(novaPalavra1, game.categoria);
               game.gameInstances[1] = new Game(novaPalavra2, game.categoria);
+              game.dicas = [novasDicasJogador1, novasDicasJogador2]; // Atualiza dicas para nova rodada
               
               console.log(`✅ Novas palavras escolhidas: J1=${novaPalavra1}, J2=${novaPalavra2}`);
               console.log(`📋 Total de palavras usadas: ${game.palavrasUsadas.length}`);
+              console.log(`💡 Dicas atualizadas: J1=${novasDicasJogador1.length} dicas, J2=${novasDicasJogador2.length} dicas`);
               
               // Alterna o turno: quem começou a rodada anterior, o outro começa a próxima
               // Se a rodada anterior começou com o jogador 1, a próxima começa com o jogador 2
@@ -890,6 +914,9 @@ module.exports = function(io) {
           motivoPerdaVida: motivoPerdaVida,
           jogadorQueJogou: numeroJogador,
           novaRodada: alguemPerdeuVida && game.vidas[0] > 0 && game.vidas[1] > 0,
+          dicas: alguemPerdeuVida && game.vidas[0] > 0 && game.vidas[1] > 0 
+            ? (meuNumeroJogador === 1 ? game.dicas[0] : game.dicas[1]) 
+            : undefined, // Envia novas dicas apenas se começou nova rodada
           palpiteTransferido: palpiteTransferido,
           palpiteBeneficiado: palpiteBeneficiado,
           palpiteAcerto: palpiteTransferido ? palpiteAcerto : null,

@@ -539,6 +539,96 @@ header {
    =============  ESTILOS DO JOGO (preservados) ============
    ========================================================= */
 
+/* Container de dicas */
+.dica-container {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.5s ease;
+  pointer-events: none;
+}
+
+.dica-container.mostrar {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.dica-content {
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.25), rgba(0, 188, 212, 0.2));
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(0, 229, 255, 0.6);
+  border-radius: 20px;
+  padding: 16px 24px;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(0, 229, 255, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 300px;
+  max-width: 600px;
+  animation: slideDownFadeIn 0.5s ease;
+}
+
+@keyframes slideDownFadeIn {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.dica-icon {
+  font-size: 28px;
+  animation: pulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.dica-texto {
+  font-size: 16px;
+  font-weight: 500;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  line-height: 1.4;
+  flex: 1;
+}
+
+/* Responsividade para dicas */
+@media (max-width: 768px) {
+  .dica-content {
+    min-width: 280px;
+    max-width: 90%;
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+  
+  .dica-icon {
+    font-size: 24px;
+  }
+  
+  .dica-texto {
+    font-size: 14px;
+  }
+}
+
 .jogo-container {
   width: 100%;
   max-width: 100vw;

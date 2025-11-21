@@ -53,6 +53,8 @@ const MAX_PODERES = 3;
 let poderesDisponiveis = []; // Array com os poderes selecionados que podem ser usados no jogo
 let poderesUsados = new Set(); // Set com os poderes que já foram usados (não podem ser usados novamente)
 let poderUsadoNoTurno = null; // Rastreia qual poder foi usado no turno atual (null = nenhum usado)
+let dicas = []; // Array com as dicas da palavra (ordem 1, 2, 3)
+let dicaAtualExibida = 0; // Contador de qual dica está sendo exibida (0 = nenhuma, 1-3 = dica 1-3)
 
 // Mapeamento de nomes de poderes para nomes de imagens e descrições
 const MAPEAMENTO_PODERES = {
@@ -1197,6 +1199,8 @@ function iniciarJogo(dados) {
     turnoAtual = Number(dados.turno) || 1; // Garante que sempre tenha um turno inicial e seja um número
     categoria = dados.categoria || 'Geral';
     vidas = dados.vidas || [3, 3]; // Vidas de cada jogador [J1, J2]
+    dicas = dados.dicas || []; // Dicas da palavra (ordem 1, 2, 3)
+    dicaAtualExibida = 0; // Reseta contador de dicas
     
     console.log(`📝 Palavras recebidas: Minha="${palavraExibida}", Adversário="${palavraAdversarioExibida}"`);
     console.log(`💚 Vidas iniciais: J1=${vidas[0]}, J2=${vidas[1]}`);
@@ -1354,6 +1358,14 @@ function processarJogada(dados) {
             letrasChutadas = new Set();
             errosJogador1 = 0;
             errosJogador2 = 0;
+            // Atualiza dicas se fornecidas (novas palavras = novas dicas)
+            if (dados.dicas) {
+                dicas = dados.dicas;
+                console.log(`💡 Novas dicas recebidas: ${dicas.length} dicas`);
+            }
+            // Reseta contador de dicas para nova rodada
+            dicaAtualExibida = 0;
+            ocultarDica();
             
             // Atualiza palavras com as novas
             if (meuNumeroJogador === 1) {
@@ -1426,6 +1438,8 @@ function processarJogada(dados) {
     } else if (dados.resultado === 'erro' && dados.jogadorQueJogou === meuNumeroJogador) {
         // Só mostra erro se foi o próprio jogador que errou
         mostrarFeedback('✗ Letra incorreta!', 'red');
+        // Exibe a próxima dica quando o jogador erra
+        exibirProximaDica();
     } else if (dados.resultado === 'vitoria' && !dados.alguemPerdeuVida) {
         mostrarFeedback('🎯 Você completou a palavra!', 'green');
     }
@@ -2317,4 +2331,45 @@ function lidarComChuteDeTecladoFisico(e) {
     }
     
     processarChute(letra);
+}
+
+// Função para exibir a próxima dica quando o jogador erra
+function exibirProximaDica() {
+    // Verifica se há dicas disponíveis
+    if (!dicas || dicas.length === 0) {
+        return;
+    }
+    
+    // Incrementa o contador de dicas exibidas (1, 2, 3)
+    dicaAtualExibida++;
+    
+    // Verifica se há uma dica para exibir (máximo 3)
+    if (dicaAtualExibida > 3 || dicaAtualExibida > dicas.length) {
+        return; // Já exibiu todas as dicas
+    }
+    
+    // Encontra a dica com a ordem correspondente
+    const dica = dicas.find(d => d.ordem === dicaAtualExibida);
+    if (!dica || !dica.texto) {
+        return;
+    }
+    
+    // Exibe a dica
+    const dicaContainer = document.getElementById('dica-container');
+    const dicaTexto = document.getElementById('dica-texto');
+    
+    if (dicaContainer && dicaTexto) {
+        dicaTexto.textContent = dica.texto;
+        dicaContainer.classList.add('mostrar');
+        
+        console.log(`💡 Dica ${dicaAtualExibida} exibida: ${dica.texto}`);
+    }
+}
+
+// Função para ocultar a dica
+function ocultarDica() {
+    const dicaContainer = document.getElementById('dica-container');
+    if (dicaContainer) {
+        dicaContainer.classList.remove('mostrar');
+    }
 }

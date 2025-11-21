@@ -33,6 +33,14 @@ class Word extends Model {
 
     return Word;
   }
+
+  static associate(models) {
+    // Associação com Dica
+    Word.hasMany(models.Dica, {
+      foreignKey: 'palavra_id',
+      as: 'dicas'
+    });
+  }
 }
 
 module.exports = Word;

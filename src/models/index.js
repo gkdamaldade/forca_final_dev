@@ -9,6 +9,7 @@ const Sala = require('./Sala');
 const GameM = require('./GameM');
 const Inventario = require('./Inventario');
 const ItemLoja = require('./ItemLoja');
+const Dica = require('./Dica');
 
 
 const models = {};
@@ -20,6 +21,7 @@ models.Sala = Sala.initModel(sequelize);
 models.GameM = GameM.initModel(sequelize);
 models.Inventario = Inventario.initModel(sequelize);
 models.ItemLoja = ItemLoja.initModel(sequelize);
+models.Dica = Dica.initModel(sequelize);
 
 
 Object.values(models).forEach(model => {

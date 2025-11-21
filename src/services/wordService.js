@@ -71,9 +71,20 @@ async function getRandomWord({ categoria, excluirPalavras = [], dificuldade = nu
     };
   }
 
-  // Busca palavra aleatória
+  // Busca palavra aleatória com suas dicas (ordem 1, 2, 3)
   const palavra = await models.Word.findOne({
     where,
+    include: [{
+      model: models.Dica,
+      as: 'dicas',
+      where: {
+        ordem: {
+          [Op.in]: [1, 2, 3] // Apenas as primeiras 3 dicas
+        }
+      },
+      required: false, // LEFT JOIN - retorna palavra mesmo sem dicas
+      order: [['ordem', 'ASC']]
+    }],
     order: [sequelize.literal('RANDOM()')] // ORDER BY RANDOM() para PostgreSQL
   });
 
@@ -83,6 +94,18 @@ async function getRandomWord({ categoria, excluirPalavras = [], dificuldade = nu
       : `Nenhuma palavra encontrada no banco de dados${dificuldade ? ` com dificuldade: ${dificuldade}` : ''}${excluirPalavras.length > 0 ? ` (excluindo ${excluirPalavras.length} palavras já usadas)` : ''}`;
     throw new Error(mensagem);
   }
+
+  // Organiza as dicas por ordem
+  const dicas = palavra.dicas ? palavra.dicas
+    .sort((a, b) => a.ordem - b.ordem)
+    .map(d => ({
+      id: d.id,
+      texto: d.texto_dica,
+      ordem: d.ordem
+    })) : [];
+
+  // Adiciona as dicas ao objeto retornado
+  palavra.dicas = dicas;
 
   return palavra;
 }
