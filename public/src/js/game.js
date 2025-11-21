@@ -528,9 +528,20 @@ let ultimoTurnoReabilitado = null;
 
 function reabilitarPoderesNoTurno() {
     const containerPoderes = document.getElementById('poderes-jogador-container');
-    if (!containerPoderes) return;
+    if (!containerPoderes) {
+        log(`⚠️ Container de poderes não encontrado!`);
+        return;
+    }
+    
+    // Verifica se os valores estão definidos
+    if (meuNumeroJogador === null || turnoAtual === null) {
+        log(`⚠️ Valores não definidos ainda: meuNumeroJogador=${meuNumeroJogador}, turnoAtual=${turnoAtual}`);
+        return;
+    }
     
     const eMeuTurno = turnoAtual === meuNumeroJogador && jogoEstaAtivo;
+    
+    log(`🔍 reabilitarPoderesNoTurno: turnoAtual=${turnoAtual}, meuNumeroJogador=${meuNumeroJogador}, jogoEstaAtivo=${jogoEstaAtivo}, eMeuTurno=${eMeuTurno}, ultimoTurnoReabilitado=${ultimoTurnoReabilitado}, poderUsadoNoTurno=${poderUsadoNoTurno}`);
     
     // Se o turno mudou para o meu turno, reseta o poder usado no turno
     // Isso garante que quando o turno volta para o jogador, os poderes são liberados
@@ -549,6 +560,7 @@ function reabilitarPoderesNoTurno() {
     }
     
     const botoesPoderes = containerPoderes.querySelectorAll('.poder');
+    log(`🔍 Encontrados ${botoesPoderes.length} botões de poderes`);
     
     botoesPoderes.forEach(botao => {
         const poderId = botao.getAttribute('data-poder');
@@ -561,14 +573,17 @@ function reabilitarPoderesNoTurno() {
             botao.style.opacity = '1';
             botao.style.cursor = 'pointer';
             botao.classList.remove('desabilitado-turno', 'usado');
+            log(`✅ Poder ${poderId} HABILITADO`);
         } else {
             // Desabilita em outros casos
             botao.disabled = true;
             if (jaFoiUsado) {
                 botao.classList.add('usado');
+                log(`❌ Poder ${poderId} DESABILITADO (já foi usado permanentemente)`);
             } else {
                 botao.style.opacity = '0.5';
                 botao.style.cursor = 'not-allowed';
+                log(`❌ Poder ${poderId} DESABILITADO (não é meu turno ou já usou outro poder no turno)`);
             }
         }
     });
@@ -1023,6 +1038,40 @@ function configurarListenersSocket() {
         } else if (evento.tipo === 'poderUsado') {
             console.log('✅ Poder usado com sucesso:', evento);
             
+            // Se começou nova rodada, reseta completamente o estado
+            if (evento.novaRodada) {
+                console.log('🔄 Nova rodada iniciada após uso de poder');
+                clearInterval(timerInterval);
+                
+                // Reseta letras chutadas e erros completamente
+                letrasChutadas = new Set();
+                errosJogador1 = 0;
+                errosJogador2 = 0;
+                
+                // Atualiza palavras secretas se fornecidas
+                if (evento.novaPalavraJogador1 && evento.novaPalavraJogador2) {
+                    palavraSecreta = meuNumeroJogador === 1 ? evento.novaPalavraJogador1 : evento.novaPalavraJogador2;
+                    palavraExibida = '';
+                    palavraAdversarioExibida = '';
+                    
+                    // Reconstrói palavra exibida com underscores
+                    for (let i = 0; i < palavraSecreta.length; i++) {
+                        palavraExibida += palavraSecreta[i] === ' ' ? ' ' : '_';
+                    }
+                }
+                
+                // Atualiza dicas se fornecidas
+                if (evento.dicasJogador1 && evento.dicasJogador2) {
+                    dicas = meuNumeroJogador === 1 ? evento.dicasJogador1 : evento.dicasJogador2;
+                    dicaAtualExibida = 0;
+                    ocultarDica();
+                }
+                
+                atualizarPalavraExibida();
+                atualizarBonecosUI();
+                atualizarTecladoDesabilitado();
+            }
+            
             // Se o poder mantém o turno, atualiza o turno para o jogador que usou
             if (evento.manterTurno && evento.turno) {
                 turnoAtual = evento.turno;
@@ -1053,8 +1102,47 @@ function configurarListenersSocket() {
                 const mensagem = evento.resultado?.mensagem || `${poderInfo?.nome || evento.poderId} usado com sucesso!`;
                 mostrarFeedback(mensagem, evento.sucesso !== false ? 'green' : 'orange');
             }
+            
+            // Se começou nova rodada, inicia o timer se for o turno do jogador
+            if (evento.novaRodada && evento.turno === meuNumeroJogador) {
+                iniciarTimer();
+            }
         } else if (evento.tipo === 'poderUsadoGlobal') {
             console.log('🌐 Poder usado globalmente:', evento);
+            
+            // Se começou nova rodada, reseta completamente o estado
+            if (evento.novaRodada) {
+                console.log('🔄 Nova rodada iniciada após uso de poder (global)');
+                clearInterval(timerInterval);
+                
+                // Reseta letras chutadas e erros completamente
+                letrasChutadas = new Set();
+                errosJogador1 = 0;
+                errosJogador2 = 0;
+                
+                // Atualiza palavras secretas se fornecidas
+                if (evento.novaPalavraJogador1 && evento.novaPalavraJogador2) {
+                    palavraSecreta = meuNumeroJogador === 1 ? evento.novaPalavraJogador1 : evento.novaPalavraJogador2;
+                    palavraExibida = '';
+                    palavraAdversarioExibida = '';
+                    
+                    // Reconstrói palavra exibida com underscores
+                    for (let i = 0; i < palavraSecreta.length; i++) {
+                        palavraExibida += palavraSecreta[i] === ' ' ? ' ' : '_';
+                    }
+                }
+                
+                // Atualiza dicas se fornecidas
+                if (evento.dicasJogador1 && evento.dicasJogador2) {
+                    dicas = meuNumeroJogador === 1 ? evento.dicasJogador1 : evento.dicasJogador2;
+                    dicaAtualExibida = 0;
+                    ocultarDica();
+                }
+                
+                atualizarPalavraExibida();
+                atualizarBonecosUI();
+                atualizarTecladoDesabilitado();
+            }
             
             // Atualiza vidas se necessário
             if (evento.atualizarVidas && evento.vidas) {
@@ -1066,6 +1154,20 @@ function configurarListenersSocket() {
                     mostrarFeedback('Poder usado com sucesso!', 'green');
                 } else {
                     mostrarFeedback('Adversário usou um poder!', 'orange');
+                }
+            }
+            
+            // Atualiza turno se fornecido
+            if (evento.turno) {
+                turnoAtual = evento.turno;
+                atualizarTurnoUI();
+                atualizarTecladoDesabilitado();
+                reabilitarPoderesNoTurno();
+                atualizarEstadoBotaoDica();
+                
+                // Inicia o timer se for o turno do jogador
+                if (turnoAtual === meuNumeroJogador && jogoEstaAtivo) {
+                    iniciarTimer();
                 }
             }
         } else if (evento.tipo === 'adversarioUsouPoder') {
@@ -1366,8 +1468,10 @@ function iniciarJogo(dados) {
         renderizarPoderesNoJogo();
         // Garante que os poderes sejam habilitados corretamente após renderizar
         // Chama imediatamente e também após um pequeno delay para garantir que o turno está atualizado
+        log(`🔍 Antes de reabilitar poderes: turnoAtual=${turnoAtual}, meuNumeroJogador=${meuNumeroJogador}, jogoEstaAtivo=${jogoEstaAtivo}`);
         reabilitarPoderesNoTurno();
         setTimeout(() => {
+            log(`🔍 Após delay, reabilitando poderes: turnoAtual=${turnoAtual}, meuNumeroJogador=${meuNumeroJogador}, jogoEstaAtivo=${jogoEstaAtivo}`);
             reabilitarPoderesNoTurno();
         }, 200);
     }, 100);
@@ -1378,6 +1482,12 @@ function iniciarJogo(dados) {
     atualizarTurnoUI();
     atualizarTecladoDesabilitado(); // Desabilita letras já chutadas E bloqueia se não for o turno
     atualizarEstadoBotaoDica(); // Atualiza estado do botão de dica
+    
+    // Garante que os poderes sejam habilitados após todas as atualizações
+    setTimeout(() => {
+        log(`🔍 Após todas as atualizações, reabilitando poderes: turnoAtual=${turnoAtual}, meuNumeroJogador=${meuNumeroJogador}, jogoEstaAtivo=${jogoEstaAtivo}`);
+        reabilitarPoderesNoTurno();
+    }, 300);
     
     // Sempre inicia o timer se for o turno do jogador
     const turnoAtualNum = Number(turnoAtual) || 0;
@@ -1715,6 +1825,9 @@ function atualizarTurnoUI() {
     } else if (turnoAtual !== 1 && turnoAtual !== 2) {
         logWarn('⚠ Turno inválido:', turnoAtual);
     }
+    
+    // Reabilita poderes quando o turno muda
+    reabilitarPoderesNoTurno();
 }
 
 // --- 6. PROCESSAMENTO DE JOGADAS ---
