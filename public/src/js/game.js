@@ -513,12 +513,21 @@ function desabilitarTodosPoderesExceto(poderIdUsado) {
     const botoesPoderes = containerPoderes.querySelectorAll('.poder');
     botoesPoderes.forEach(botao => {
         const poderId = botao.getAttribute('data-poder');
-        // Se não é o poder usado e não foi usado permanentemente, desabilita
+        // Se não é o poder usado e não foi usado permanentemente, desabilita apenas para este turno
         if (poderId !== poderIdUsado && !poderesUsados.has(poderId)) {
             botao.disabled = true;
             botao.style.opacity = '0.5';
             botao.style.cursor = 'not-allowed';
             botao.classList.add('desabilitado-turno');
+        } else if (poderId === poderIdUsado) {
+            // O poder usado também é desabilitado (permanentemente se quantidade = 0, ou apenas neste turno)
+            botao.disabled = true;
+            botao.style.opacity = '0.5';
+            botao.style.cursor = 'not-allowed';
+            botao.classList.add('desabilitado-turno');
+            if (poderesUsados.has(poderId)) {
+                botao.classList.add('usado');
+            }
         }
     });
 }
@@ -547,9 +556,10 @@ function reabilitarPoderesNoTurno() {
     // Isso garante que quando o turno volta para o jogador, os poderes são liberados
     if (eMeuTurno && ultimoTurnoReabilitado !== turnoAtual) {
         // Turno mudou para o meu turno - reseta poder usado no turno
+        // Isso libera os outros poderes que não foram usados
         poderUsadoNoTurno = null;
         ultimoTurnoReabilitado = turnoAtual;
-        log(`🔄 Turno voltou para mim! Resetando poder usado no turno.`);
+        log(`🔄 Turno voltou para mim! Resetando poder usado no turno. Liberando outros poderes.`);
     }
     
     // Se é o primeiro turno do jogo e ainda não foi reabilitado, reseta
@@ -565,25 +575,47 @@ function reabilitarPoderesNoTurno() {
     botoesPoderes.forEach(botao => {
         const poderId = botao.getAttribute('data-poder');
         const jaFoiUsado = poderesUsados.has(poderId);
-        const jaUsouPoderNoTurno = poderUsadoNoTurno !== null && poderUsadoNoTurno !== poderId;
         
-        // Habilita se: não foi usado permanentemente E é meu turno E não usou outro poder no turno
-        if (!jaFoiUsado && eMeuTurno && !jaUsouPoderNoTurno) {
+        // Se é meu turno e o poder não foi usado permanentemente, habilita
+        // (mesmo que tenha usado outro poder no turno anterior, agora é um novo turno)
+        if (!jaFoiUsado && eMeuTurno) {
+            // Remove classes de desabilitado do turno anterior
+            botao.classList.remove('desabilitado-turno');
             botao.disabled = false;
             botao.style.opacity = '1';
             botao.style.cursor = 'pointer';
-            botao.classList.remove('desabilitado-turno', 'usado');
-            log(`✅ Poder ${poderId} HABILITADO`);
-        } else {
-            // Desabilita em outros casos
+            botao.classList.remove('usado');
+            log(`✅ Poder ${poderId} HABILITADO (é meu turno e não foi usado permanentemente)`);
+        } else if (jaFoiUsado) {
+            // Poder foi usado permanentemente (quantidade = 0)
             botao.disabled = true;
-            if (jaFoiUsado) {
-                botao.classList.add('usado');
-                log(`❌ Poder ${poderId} DESABILITADO (já foi usado permanentemente)`);
-            } else {
+            botao.style.opacity = '0.5';
+            botao.style.cursor = 'not-allowed';
+            botao.classList.add('usado');
+            log(`❌ Poder ${poderId} DESABILITADO (já foi usado permanentemente - quantidade = 0)`);
+        } else {
+            // Não é meu turno ou poder foi usado neste turno
+            if (poderId === poderUsadoNoTurno) {
+                // Este poder foi usado neste turno - desabilita
+                botao.disabled = true;
                 botao.style.opacity = '0.5';
                 botao.style.cursor = 'not-allowed';
-                log(`❌ Poder ${poderId} DESABILITADO (não é meu turno ou já usou outro poder no turno)`);
+                botao.classList.add('desabilitado-turno');
+                log(`❌ Poder ${poderId} DESABILITADO (foi usado neste turno)`);
+            } else if (!eMeuTurno) {
+                // Não é meu turno
+                botao.disabled = true;
+                botao.style.opacity = '0.5';
+                botao.style.cursor = 'not-allowed';
+                log(`❌ Poder ${poderId} DESABILITADO (não é meu turno)`);
+            } else {
+                // Caso especial: se é meu turno mas poderUsadoNoTurno não é null e não é este poder
+                // Isso não deveria acontecer, mas por segurança desabilita
+                botao.disabled = true;
+                botao.style.opacity = '0.5';
+                botao.style.cursor = 'not-allowed';
+                botao.classList.add('desabilitado-turno');
+                log(`❌ Poder ${poderId} DESABILITADO (outro poder foi usado neste turno)`);
             }
         }
     });
@@ -1048,6 +1080,11 @@ function configurarListenersSocket() {
                 errosJogador1 = 0;
                 errosJogador2 = 0;
                 
+                // Reseta poder usado no turno (nova rodada = novo turno)
+                // Isso permite que os poderes não usados sejam liberados
+                poderUsadoNoTurno = null;
+                ultimoTurnoReabilitado = null; // Força reabilitação no próximo turno
+                
                 // Atualiza palavras secretas se fornecidas
                 if (evento.novaPalavraJogador1 && evento.novaPalavraJogador2) {
                     palavraSecreta = meuNumeroJogador === 1 ? evento.novaPalavraJogador1 : evento.novaPalavraJogador2;
@@ -1257,14 +1294,29 @@ function configurarListenersSocket() {
                 // Reabilita o botão de chutar para a nova rodada
                 chutePalavraDisponivel = true;
                 
+                // Reseta poder usado no turno (nova rodada = novo turno)
+                // Isso permite que os poderes não usados sejam liberados
+                poderUsadoNoTurno = null;
+                ultimoTurnoReabilitado = null; // Força reabilitação no próximo turno
+                
                 // Se há novas palavras secretas, usa elas para criar a palavra exibida inicial
                 if (evento.novaPalavraJogador1 && evento.novaPalavraJogador2) {
                     console.log(`📝 Novas palavras recebidas: J1=${evento.novaPalavraJogador1}, J2=${evento.novaPalavraJogador2}`);
-                    // Atualiza palavra secreta local (se necessário)
+                    // Atualiza palavra secreta local
                     if (meuNumeroJogador === 1) {
                         palavraSecreta = evento.novaPalavraJogador1;
-                        palavraExibida = evento.palavraJogador1 || '_ '.repeat(evento.novaPalavraJogador1.length).trim();
-                        palavraAdversarioExibida = evento.palavraJogador2 || '_ '.repeat(evento.novaPalavraJogador2.length).trim();
+                        // Cria palavra exibida inicial com underscores (nova rodada = palavra vazia)
+                        let palavraInicial = '';
+                        for (let i = 0; i < palavraSecreta.length; i++) {
+                            palavraInicial += palavraSecreta[i] === ' ' ? '  ' : '_ ';
+                        }
+                        palavraExibida = palavraInicial.trim();
+                        // Cria palavra adversário inicial com underscores
+                        let palavraAdvInicial = '';
+                        for (let i = 0; i < evento.novaPalavraJogador2.length; i++) {
+                            palavraAdvInicial += evento.novaPalavraJogador2[i] === ' ' ? '  ' : '_ ';
+                        }
+                        palavraAdversarioExibida = palavraAdvInicial.trim();
                         // Atualiza dicas se fornecidas
                         if (evento.dicasJogador1) {
                             dicas = evento.dicasJogador1;
@@ -1272,8 +1324,18 @@ function configurarListenersSocket() {
                         }
                     } else {
                         palavraSecreta = evento.novaPalavraJogador2;
-                        palavraExibida = evento.palavraJogador2 || '_ '.repeat(evento.novaPalavraJogador2.length).trim();
-                        palavraAdversarioExibida = evento.palavraJogador1 || '_ '.repeat(evento.novaPalavraJogador1.length).trim();
+                        // Cria palavra exibida inicial com underscores (nova rodada = palavra vazia)
+                        let palavraInicial = '';
+                        for (let i = 0; i < palavraSecreta.length; i++) {
+                            palavraInicial += palavraSecreta[i] === ' ' ? '  ' : '_ ';
+                        }
+                        palavraExibida = palavraInicial.trim();
+                        // Cria palavra adversário inicial com underscores
+                        let palavraAdvInicial = '';
+                        for (let i = 0; i < evento.novaPalavraJogador1.length; i++) {
+                            palavraAdvInicial += evento.novaPalavraJogador1[i] === ' ' ? '  ' : '_ ';
+                        }
+                        palavraAdversarioExibida = palavraAdvInicial.trim();
                         // Atualiza dicas se fornecidas
                         if (evento.dicasJogador2) {
                             dicas = evento.dicasJogador2;
@@ -1281,7 +1343,7 @@ function configurarListenersSocket() {
                         }
                     }
                 } else {
-                    // Usa as palavras exibidas do evento
+                    // Fallback: usa as palavras exibidas do evento
                     if (meuNumeroJogador === 1) {
                         palavraExibida = evento.palavraJogador1 || palavraExibida;
                         palavraAdversarioExibida = evento.palavraJogador2 || palavraAdversarioExibida;
@@ -1358,20 +1420,63 @@ function configurarListenersSocket() {
             // Se o erro for "não é seu turno", não faz nada além de mostrar feedback
             // O turno será atualizado quando o servidor enviar o próximo evento 'jogada'
         } else if (evento.tipo === 'dicaPedida') {
+            console.log('💡 Evento dicaPedida recebido:', evento);
+            console.log('💡 meuNumeroJogador:', meuNumeroJogador, 'jogadorQuePediu:', evento.jogadorQuePediu);
+            
             // Se foi este jogador que pediu a dica, exibe a dica acima da palavra dele
             if (evento.jogadorQuePediu === meuNumeroJogador) {
                 // Incrementa o contador de dicas exibidas
                 dicaAtualExibida = evento.ordemDica || dicaAtualExibida + 1;
                 
                 // Exibe a dica acima da palavra do jogador
-                const dicaPalavraEl = meuNumeroJogador === 1 
-                    ? document.getElementById('dica-palavra-jogador1')
-                    : document.getElementById('dica-palavra-jogador2');
+                const dicaId = meuNumeroJogador === 1 ? 'dica-palavra-jogador1' : 'dica-palavra-jogador2';
+                let dicaPalavraEl = document.getElementById(dicaId);
+                
+                // Se não encontrou pelo ID, tenta pelo seletor de classe
+                if (!dicaPalavraEl) {
+                    const palavraContainer = meuNumeroJogador === 1 
+                        ? document.querySelector('.palavras .palavra-container:nth-child(1)')
+                        : document.querySelector('.palavras .palavra-container:nth-child(2)');
+                    if (palavraContainer) {
+                        dicaPalavraEl = palavraContainer.querySelector('.dica-palavra');
+                    }
+                }
+                
+                console.log('💡 Tentando exibir dica:', {
+                    dicaId: dicaId,
+                    elementoEncontrado: !!dicaPalavraEl,
+                    textoDica: evento.textoDica,
+                    ordemDica: evento.ordemDica
+                });
                 
                 if (dicaPalavraEl && evento.textoDica) {
+                    // Remove classe mostrar anterior se existir
+                    dicaPalavraEl.classList.remove('mostrar');
+                    
+                    // Define o texto da dica
                     dicaPalavraEl.textContent = evento.textoDica;
+                    
+                    // Força a exibição imediatamente
+                    dicaPalavraEl.style.opacity = '1';
+                    dicaPalavraEl.style.visibility = 'visible';
+                    dicaPalavraEl.style.transform = 'translateY(0)';
                     dicaPalavraEl.classList.add('mostrar');
+                    
                     console.log(`💡 Dica ${dicaAtualExibida} exibida: ${evento.textoDica}`);
+                    console.log('💡 Classes do elemento:', dicaPalavraEl.className);
+                    console.log('💡 Estilo do elemento:', {
+                        opacity: window.getComputedStyle(dicaPalavraEl).opacity,
+                        visibility: window.getComputedStyle(dicaPalavraEl).visibility,
+                        display: window.getComputedStyle(dicaPalavraEl).display,
+                        transform: window.getComputedStyle(dicaPalavraEl).transform
+                    });
+                } else {
+                    console.error('❌ Erro ao exibir dica:', {
+                        elementoEncontrado: !!dicaPalavraEl,
+                        temTextoDica: !!evento.textoDica,
+                        dicaId: dicaId,
+                        todosElementosDica: document.querySelectorAll('.dica-palavra').length
+                    });
                 }
                 
                 mostrarFeedback(`💡 Dica ${dicaAtualExibida} exibida! Você perdeu a vez.`, 'orange');

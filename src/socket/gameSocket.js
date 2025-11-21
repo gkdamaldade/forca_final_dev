@@ -698,6 +698,17 @@ module.exports = function(io) {
         
         console.log(`✅ É o turno do jogador ${numeroJogador}. Processando jogada...`);
 
+        // Verifica se o jogo ainda está em andamento (não terminou por chute de palavra)
+        const gameInstanceJogador = game.gameInstances[numeroJogador - 1];
+        if (gameInstanceJogador.status !== 'jogando') {
+          console.log(`⚠️ Jogo não está mais em andamento para jogador ${numeroJogador}. Status: ${gameInstanceJogador.status}`);
+          socket.emit('eventoJogo', {
+            tipo: 'erro',
+            mensagem: 'Esta rodada já terminou! Aguarde a próxima rodada.'
+          });
+          return;
+        }
+
         // Verifica se o adversário tem palpite ativo
         const adversarioNum = numeroJogador === 1 ? 2 : 1;
         const gameInstanceJogador = game.gameInstances[numeroJogador - 1];
@@ -1176,37 +1187,37 @@ module.exports = function(io) {
             // Verifica se o jogo acabou
             console.log(`📊 Verificando fim de jogo após chute de palavra: J1=${game.vidas[0]}, J2=${game.vidas[1]}`);
             if (game.vidas[0] <= 0 || game.vidas[1] <= 0) {
-            const vencedor = game.vidas[0] > 0 ? 1 : 2;
-            console.log(`🏆 Jogo finalizado! Vencedor: Jogador ${vencedor}`);
-            
-            // Registra vitória no banco de dados
-            try {
-              const jogadorVencedor = game.players.find(p => p.numero === vencedor);
-              if (jogadorVencedor && jogadorVencedor.playerId) {
-                const player = await models.Player.findByPk(jogadorVencedor.playerId);
-                if (player) {
-                  await player.increment('vitorias');
-                  await player.reload();
-                  console.log(`✅ Vitória registrada para ${jogadorVencedor.name} (ID: ${jogadorVencedor.playerId})! Total de vitórias: ${player.vitorias}`);
+              const vencedor = game.vidas[0] > 0 ? 1 : 2;
+              console.log(`🏆 Jogo finalizado! Vencedor: Jogador ${vencedor}`);
+              
+              // Registra vitória no banco de dados
+              try {
+                const jogadorVencedor = game.players.find(p => p.numero === vencedor);
+                if (jogadorVencedor && jogadorVencedor.playerId) {
+                  const player = await models.Player.findByPk(jogadorVencedor.playerId);
+                  if (player) {
+                    await player.increment('vitorias');
+                    await player.reload();
+                    console.log(`✅ Vitória registrada para ${jogadorVencedor.name} (ID: ${jogadorVencedor.playerId})! Total de vitórias: ${player.vitorias}`);
+                  }
                 }
+              } catch (error) {
+                console.error(`❌ Erro ao registrar vitória:`, error);
               }
-            } catch (error) {
-              console.error(`❌ Erro ao registrar vitória:`, error);
+              
+              // Envia evento de fim de jogo
+              io.to(roomId).emit('eventoJogo', {
+                tipo: 'fim',
+                vencedor: vencedor,
+                vidas: game.vidas
+              });
+              setTimeout(() => {
+                activeGames.delete(roomId);
+              }, 5000);
+              return;
             }
             
-            // Envia evento de fim de jogo
-            io.to(roomId).emit('eventoJogo', {
-              tipo: 'fim',
-              vencedor: vencedor,
-              vidas: game.vidas
-            });
-            setTimeout(() => {
-              activeGames.delete(roomId);
-            }, 5000);
-            return;
-            }
-          } else {
-            // Reseta AMBAS as palavras para nova rodada (ainda há vidas)
+            // Se chegou aqui, alguém perdeu vida mas o jogo continua - reseta AMBAS as palavras para nova rodada
             console.log(`🔄 Alguém perdeu vida! Resetando ambas as palavras para nova rodada...`);
             console.log(`📊 Vidas após perda: J1=${game.vidas[0]}, J2=${game.vidas[1]} - Continuando jogo`);
             console.log(`📋 Palavras já usadas no jogo: ${game.palavrasUsadas.join(', ')}`);
@@ -1285,6 +1296,7 @@ module.exports = function(io) {
               const dicasJogador1 = novaPalavraObj1?.dicas?.filter(d => d.ordem >= 1 && d.ordem <= 3) || [];
               const dicasJogador2 = novaPalavraObj2?.dicas?.filter(d => d.ordem >= 1 && d.ordem <= 3) || [];
               game.dicas = [dicasJogador1, dicasJogador2];
+              game.dicasPedidas = [0, 0]; // Reseta contador de dicas pedidas para nova rodada
               
               console.log(`✅ Novas palavras escolhidas: J1=${novaPalavra1}, J2=${novaPalavra2}`);
               console.log(`💡 Novas dicas: J1=${dicasJogador1.length} dicas, J2=${dicasJogador2.length} dicas`);
@@ -1294,7 +1306,7 @@ module.exports = function(io) {
               game.turno = turnoAnterior === 1 ? 2 : 1;
               game.turnoInicialRodada = game.turno;
               
-              console.log(`✅ Nova rodada iniciada! Palavra J1: ${novaPalavra1}, Palavra J2: ${novaPalavra2}, Turno: Jogador ${game.turno}`);
+              console.log(`✅ Nova rodada iniciada após chute de palavra! Palavra J1: ${novaPalavra1}, Palavra J2: ${novaPalavra2}, Turno: Jogador ${game.turno}`);
             } catch (error) {
               console.error('❌ Erro ao buscar novas palavras para nova rodada:', error);
               console.error('Stack trace:', error.stack);
