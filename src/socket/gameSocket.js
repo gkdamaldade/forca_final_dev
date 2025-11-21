@@ -711,7 +711,7 @@ module.exports = function(io) {
 
         // Verifica se o adversário tem palpite ativo
         const adversarioNum = numeroJogador === 1 ? 2 : 1;
-        const gameInstanceJogador = game.gameInstances[numeroJogador - 1];
+        // gameInstanceJogador já foi declarado acima na verificação de status
         const gameInstanceAdversario = game.gameInstances[adversarioNum - 1];
         const palpiteAtivoAdversario = game.palpiteAtivo[adversarioNum] || false;
         let palpiteTransferido = false;
