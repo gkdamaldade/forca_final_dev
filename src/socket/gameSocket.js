@@ -402,112 +402,36 @@ module.exports = function(io) {
           const j2Corrigido = game.players[1];
           console.log(`🔧 Usando correção de emergência: J1=${j1Corrigido.name}, J2=${j2Corrigido.name}`);
           
-          // Continua com os jogadores corrigidos
-          if (game.players.length === 2 && game.prontos.size === 2) {
-            const estado1 = game.gameInstances[0].getEstado();
-            const estado2 = game.gameInstances[1].getEstado();
-            game.turno = 1;
-            game.turnoInicialRodada = 1; // Primeira rodada sempre começa com jogador 1
-            
-            console.log(`📤 Enviando evento 'inicio' para J1 (${j1Corrigido.id}): jogador=1, turno=${game.turno}`);
-            io.to(j1Corrigido.id).emit('eventoJogo', { 
-              tipo: 'inicio', 
-              jogador: 1, 
-              adversario: j2Corrigido.name, 
-              palavra: estado1.palavra,
-              palavraAdversario: estado2.palavra,
-              palavraSecreta: game.words[0],
-              turno: game.turno, 
-              categoria: game.categoria,
-              meuSocketId: j1Corrigido.id,
-              adversarioSocketId: j2Corrigido.id,
-              vidas: game.vidas,
-              dicas: game.dicas ? game.dicas[0] : [] // Dicas do jogador 1 (ordem 1, 2, 3)
-            });
-            
-            console.log(`📤 Enviando evento 'inicio' para J2 (${j2Corrigido.id}): jogador=2, turno=${game.turno}`);
-            io.to(j2Corrigido.id).emit('eventoJogo', { 
-              tipo: 'inicio', 
-              jogador: 2, 
-              adversario: j1Corrigido.name, 
-              palavra: estado2.palavra,
-              palavraAdversario: estado1.palavra,
-              palavraSecreta: game.words[1],
-              turno: game.turno, 
-              categoria: game.categoria,
-              meuSocketId: j2Corrigido.id,
-              adversarioSocketId: j1Corrigido.id,
-              vidas: game.vidas,
-              dicas: game.dicas ? game.dicas[1] : [] // Dicas do jogador 2 (ordem 1, 2, 3)
-            });
-          } else {
-            console.log(`⏳ Aguardando prontos: ${game.players.length} jogadores, ${game.prontos.size} prontos`);
-            console.log(`📤 Enviando evento 'preparacao' para J1 (${j1Corrigido.id}) e J2 (${j2Corrigido.id})`);
-            io.to(j1Corrigido.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
-            io.to(j2Corrigido.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
-          }
+          // NUNCA inicia o jogo automaticamente quando o segundo jogador entra
+          // O jogo só deve iniciar quando ambos clicarem em "pronto" (evento 'pronto')
+          // Limpa o set de prontos para garantir que ambos precisem clicar em "pronto" novamente
+          console.log(`⏳ Limpando estado de prontos para garantir que ambos cliquem em "pronto" novamente`);
+          game.prontos.clear();
+          game.players.forEach(p => p.wasReady = false);
+          
+          console.log(`📤 Enviando evento 'preparacao' para J1 (${j1Corrigido.id}) e J2 (${j2Corrigido.id})`);
+          io.to(j1Corrigido.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
+          io.to(j2Corrigido.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
           return;
         }
         
         console.log(`👥 Dois jogadores na sala: J1=${j1.name} (${j1.id}, numero=${j1.numero}), J2=${j2.name} (${j2.id}, numero=${j2.numero})`);
-        console.log(`📊 Prontos: ${game.prontos.size}/2`);
+        console.log(`📊 Prontos antes de limpar: ${game.prontos.size}/2`);
         console.log(`📋 IDs dos prontos:`, Array.from(game.prontos));
         console.log(`📋 IDs dos jogadores:`, game.players.map(p => p.id));
         
-        // Verifica se ambos estão prontos ANTES de enviar eventos
-        const ambosProntos = game.players.length === 2 && game.prontos.size === 2;
-        const j1Pronto = game.prontos.has(j1.id);
-        const j2Pronto = game.prontos.has(j2.id);
+        // SEMPRE limpa o estado de prontos quando o segundo jogador entra
+        // Isso garante que ambos precisem clicar em "pronto" novamente, mesmo se houver estado residual
+        console.log(`⏳ Limpando estado de prontos para garantir que ambos cliquem em "pronto" novamente`);
+        game.prontos.clear();
+        game.players.forEach(p => p.wasReady = false);
         
-        console.log(`🔍 Verificação de prontos (joinRoom): ambosProntos=${ambosProntos}, j1Pronto=${j1Pronto}, j2Pronto=${j2Pronto}`);
-        console.log(`📋 IDs dos prontos (joinRoom):`, Array.from(game.prontos));
-        console.log(`📋 IDs dos jogadores (joinRoom):`, game.players.map(p => `${p.name} (${p.id})`));
-        
-        if (ambosProntos && j1Pronto && j2Pronto) {
-          // Ambos estão prontos, inicia o jogo imediatamente
-          console.log(`🎮 Ambos os jogadores estão prontos! Iniciando jogo...`);
-          const estado1 = game.gameInstances[0].getEstado();
-          const estado2 = game.gameInstances[1].getEstado();
-          game.turno = 1; // Garante que o turno inicial seja sempre 1
-          game.turnoInicialRodada = 1; // Primeira rodada sempre começa com jogador 1
-          
-          console.log(`📤 Enviando evento 'inicio' para J1 (${j1.id}): jogador=1, turno=${game.turno}, palavra="${estado1.palavra}"`);
-          io.to(j1.id).emit('eventoJogo', { 
-            tipo: 'inicio', 
-            jogador: 1, 
-            adversario: j2.name, 
-            palavra: estado1.palavra,
-            palavraAdversario: estado2.palavra,
-            palavraSecreta: game.words[0],
-            turno: game.turno, 
-            categoria: game.categoria,
-            meuSocketId: j1.id,
-            adversarioSocketId: j2.id,
-            vidas: game.vidas,
-            dicas: game.dicas ? game.dicas[0] : [] // Dicas do jogador 1 (ordem 1, 2, 3)
-          });
-          
-          console.log(`📤 Enviando evento 'inicio' para J2 (${j2.id}): jogador=2, turno=${game.turno}, palavra="${estado2.palavra}"`);
-          io.to(j2.id).emit('eventoJogo', { 
-            tipo: 'inicio', 
-            jogador: 2, 
-            adversario: j1.name, 
-            palavra: estado2.palavra,
-            palavraAdversario: estado1.palavra,
-            palavraSecreta: game.words[1],
-            turno: game.turno, 
-            categoria: game.categoria,
-            meuSocketId: j2.id,
-            adversarioSocketId: j1.id,
-            vidas: game.vidas,
-            dicas: game.dicas ? game.dicas[1] : [] // Dicas do jogador 2 (ordem 1, 2, 3)
-          });
-        } else {
-          console.log(`⏳ Aguardando prontos: ${game.players.length} jogadores, ${game.prontos.size} prontos`);
-          console.log(`📤 Enviando evento 'preparacao' para J1 (${j1.id}) e J2 (${j2.id})`);
-          io.to(j1.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
-          io.to(j2.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
-        }
+        // SEMPRE envia evento de preparação quando o segundo jogador entra
+        // O jogo só deve iniciar quando ambos clicarem em "pronto" (evento 'pronto')
+        console.log(`⏳ Aguardando ambos os jogadores clicarem em "pronto": ${game.players.length} jogadores, ${game.prontos.size} prontos`);
+        console.log(`📤 Enviando evento 'preparacao' para J1 (${j1.id}) e J2 (${j2.id})`);
+        io.to(j1.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
+        io.to(j2.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
       } else if (game.players.length === 1) {
         console.log(`⏳ Aguardando segundo jogador na sala ${roomId}`);
       }
