@@ -36,6 +36,10 @@ let letrasChutadas = new Set();
 let vidas = [3, 3]; // [vidas jogador 1, vidas jogador 2]
 let jogoEstaAtivo = false;
 let timerInterval = null;
+let timerChutePalavra = null; // Timer específico para o modal de chute de palavra
+let segundosRestantesRodada = 15; // Armazena os segundos restantes do timer da rodada
+let timerRodadaPausado = false; // Indica se o timer da rodada está pausado
+let chutePalavraDisponivel = true; // Indica se o jogador pode chutar palavra nesta rodada
 let sala = '';
 let categoria = '';
 let nomeJogador = '';
@@ -933,10 +937,55 @@ function configurarListenersSocket() {
                 }
             }
             
-            // Se começou nova rodada
+            // Se começou nova rodada, reseta completamente o estado
             if (evento.novaRodada) {
                 console.log('🔄 Nova rodada iniciada após chute de palavra');
                 clearInterval(timerInterval);
+                
+                // Reseta letras chutadas e erros completamente
+                letrasChutadas = new Set();
+                errosJogador1 = 0;
+                errosJogador2 = 0;
+                
+                // Reabilita o botão de chutar para a nova rodada
+                chutePalavraDisponivel = true;
+                
+                // Se há novas palavras secretas, usa elas para criar a palavra exibida inicial
+                if (evento.novaPalavraJogador1 && evento.novaPalavraJogador2) {
+                    console.log(`📝 Novas palavras recebidas: J1=${evento.novaPalavraJogador1}, J2=${evento.novaPalavraJogador2}`);
+                    // Atualiza palavra secreta local (se necessário)
+                    if (meuNumeroJogador === 1) {
+                        palavraSecreta = evento.novaPalavraJogador1;
+                        palavraExibida = evento.palavraJogador1 || '_ '.repeat(evento.novaPalavraJogador1.length).trim();
+                        palavraAdversarioExibida = evento.palavraJogador2 || '_ '.repeat(evento.novaPalavraJogador2.length).trim();
+                    } else {
+                        palavraSecreta = evento.novaPalavraJogador2;
+                        palavraExibida = evento.palavraJogador2 || '_ '.repeat(evento.novaPalavraJogador2.length).trim();
+                        palavraAdversarioExibida = evento.palavraJogador1 || '_ '.repeat(evento.novaPalavraJogador1.length).trim();
+                    }
+                } else {
+                    // Usa as palavras exibidas do evento
+                    if (meuNumeroJogador === 1) {
+                        palavraExibida = evento.palavraJogador1 || palavraExibida;
+                        palavraAdversarioExibida = evento.palavraJogador2 || palavraAdversarioExibida;
+                    } else {
+                        palavraExibida = evento.palavraJogador2 || palavraExibida;
+                        palavraAdversarioExibida = evento.palavraJogador1 || palavraAdversarioExibida;
+                    }
+                }
+                
+                // Atualiza letras chutadas (deve estar vazio para nova rodada)
+                letrasChutadas = new Set();
+                
+                // Atualiza UI imediatamente
+                atualizarPalavraExibida();
+                atualizarBonecosUI();
+                atualizarTecladoDesabilitado();
+                
+                // Atualiza o estado do botão de chutar
+                if (typeof atualizarEstadoBotaoChute === 'function') {
+                    atualizarEstadoBotaoChute();
+                }
                 
                 const turnoAtualNum = Number(turnoAtual) || 0;
                 const meuNumeroNum = Number(meuNumeroJogador) || 0;
@@ -952,6 +1001,7 @@ function configurarListenersSocket() {
                     }
                 }
             } else {
+                // Se não é nova rodada, apenas atualiza o timer baseado no turno
                 if (evento.turno === meuNumeroJogador && jogoEstaAtivo) {
                     iniciarTimer();
                 } else {
@@ -1190,6 +1240,9 @@ function processarJogada(dados) {
                 letrasChutadas = new Set(dados.letrasChutadasJogador2 || []);
             }
             
+            // Reabilita o botão de chutar para a nova rodada
+            chutePalavraDisponivel = true;
+            
             // Reseta o teclado para nova rodada
             atualizarTecladoDesabilitado();
             
@@ -1270,14 +1323,29 @@ function processarJogada(dados) {
 }
 
 // --- 5. LÓGICA DE TEMPO E TURNO ---
-function iniciarTimer() {
+function iniciarTimer(tempoInicial = null) {
     if (!timerEl) {
         console.error('❌ timerEl não encontrado! Não é possível iniciar o timer.');
         return;
     }
     
     clearInterval(timerInterval);
-    let segundos = 15;
+    
+    // Se foi fornecido um tempo inicial, usa ele
+    // Se o timer estava pausado, usa o tempo restante salvo
+    // Caso contrário, inicia com 15 segundos
+    let segundos;
+    if (tempoInicial !== null) {
+        segundos = tempoInicial;
+    } else if (timerRodadaPausado && segundosRestantesRodada > 0) {
+        segundos = segundosRestantesRodada;
+    } else {
+        segundos = 15;
+    }
+    
+    segundosRestantesRodada = segundos;
+    timerRodadaPausado = false; // Remove o estado de pausado ao iniciar
+    
     timerEl.textContent = `${segundos}s`;
     timerEl.style.color = 'white';
     timerEl.classList.remove('timer-urgente'); // Remove classe urgente ao resetar
@@ -1285,7 +1353,14 @@ function iniciarTimer() {
     console.log(`⏱️ Timer iniciado: ${segundos}s`);
     
     timerInterval = setInterval(() => {
+        // Se o timer está pausado, não decrementa
+        if (timerRodadaPausado) {
+            return;
+        }
+        
         segundos--;
+        segundosRestantesRodada = segundos;
+        
         if (timerEl) {
             timerEl.textContent = `${segundos}s`;
         }
@@ -1322,6 +1397,21 @@ function iniciarTimer() {
             }
         }
     }, 1000);
+}
+
+function pausarTimerRodada() {
+    if (timerInterval && !timerRodadaPausado) {
+        timerRodadaPausado = true;
+        console.log(`⏸️ Timer da rodada pausado. Tempo restante: ${segundosRestantesRodada}s`);
+    }
+}
+
+function retomarTimerRodada() {
+    if (timerRodadaPausado && segundosRestantesRodada > 0) {
+        timerRodadaPausado = false;
+        console.log(`▶️ Timer da rodada retomado. Tempo restante: ${segundosRestantesRodada}s`);
+        // O timer já está rodando, só precisa retomar a contagem
+    }
 }
 
 function atualizarTurnoUI() {
@@ -1636,6 +1726,17 @@ function finalizarJogo(status) {
 }
 
 // --- 8. EVENT LISTENERS ---
+// Função para desabilitar o botão de chutar
+function desabilitarBotaoChutar() {
+    const btnChutarPalavra = document.getElementById('btn-chutar-palavra');
+    if (btnChutarPalavra) {
+        btnChutarPalavra.disabled = true;
+        btnChutarPalavra.style.opacity = '0.5';
+        btnChutarPalavra.style.cursor = 'not-allowed';
+        btnChutarPalavra.title = 'Você já tentou chutar nesta rodada';
+    }
+}
+
 // Configuração do botão de chutar palavra completa
 function configurarChutePalavra() {
     const btnChutarPalavra = document.getElementById('btn-chutar-palavra');
@@ -1662,24 +1763,52 @@ function configurarChutePalavra() {
             return;
         }
         
+        // Verifica se o chute ainda está disponível nesta rodada
+        if (!chutePalavraDisponivel) {
+            mostrarFeedback('Você já tentou chutar nesta rodada!', 'orange');
+            return;
+        }
+        
+        // Pausa o timer da rodada antes de abrir o modal
+        pausarTimerRodada();
+        
         modalChutePalavra.classList.add('active');
         inputChutePalavra.value = '';
         inputChutePalavra.focus();
+        
+        // Inicia timer de 15 segundos para o chute de palavra
+        iniciarTimerChutePalavra();
     });
     
     // Fecha o modal ao clicar em cancelar
     if (btnCancelarChute) {
         btnCancelarChute.addEventListener('click', () => {
+            pararTimerChutePalavra();
             modalChutePalavra.classList.remove('active');
             inputChutePalavra.value = '';
+            
+            // Marca o chute como indisponível para esta rodada
+            chutePalavraDisponivel = false;
+            desabilitarBotaoChutar();
+            
+            // Retoma o timer da rodada de onde parou
+            retomarTimerRodada();
         });
     }
     
     // Fecha o modal ao clicar fora
     modalChutePalavra.addEventListener('click', (e) => {
         if (e.target === modalChutePalavra) {
+            pararTimerChutePalavra();
             modalChutePalavra.classList.remove('active');
             inputChutePalavra.value = '';
+            
+            // Marca o chute como indisponível para esta rodada
+            chutePalavraDisponivel = false;
+            desabilitarBotaoChutar();
+            
+            // Retoma o timer da rodada de onde parou
+            retomarTimerRodada();
         }
     });
     
@@ -1691,6 +1820,12 @@ function configurarChutePalavra() {
                 mostrarFeedback('Digite uma palavra!', 'orange');
                 return;
             }
+            
+            pararTimerChutePalavra();
+            
+            // Marca o chute como indisponível para esta rodada (será reabilitado na próxima rodada)
+            chutePalavraDisponivel = false;
+            desabilitarBotaoChutar();
             
             enviarChutePalavra(palavraChutada);
             modalChutePalavra.classList.remove('active');
@@ -1713,6 +1848,12 @@ function configurarChutePalavra() {
             e.preventDefault();
             const palavraChutada = inputChutePalavra.value.trim();
             if (palavraChutada) {
+                pararTimerChutePalavra();
+                
+                // Marca o chute como indisponível para esta rodada (será reabilitado na próxima rodada)
+                chutePalavraDisponivel = false;
+                desabilitarBotaoChutar();
+                
                 enviarChutePalavra(palavraChutada);
                 modalChutePalavra.classList.remove('active');
                 inputChutePalavra.value = '';
@@ -1725,22 +1866,39 @@ function configurarChutePalavra() {
         if (e.key === 'Escape') {
             e.stopPropagation();
             e.preventDefault();
+            pararTimerChutePalavra();
             modalChutePalavra.classList.remove('active');
             inputChutePalavra.value = '';
+            
+            // Marca o chute como indisponível para esta rodada
+            chutePalavraDisponivel = false;
+            desabilitarBotaoChutar();
+            
+            // Retoma o timer da rodada de onde parou
+            retomarTimerRodada();
         }
     });
     
-    // Atualiza o estado do botão baseado no turno
+    // Atualiza o estado do botão baseado no turno e disponibilidade
     function atualizarEstadoBotaoChute() {
         if (btnChutarPalavra) {
             const eMeuTurno = turnoAtual === meuNumeroJogador && jogoEstaAtivo;
-            btnChutarPalavra.disabled = !eMeuTurno;
-            if (!eMeuTurno) {
+            const podeChutar = eMeuTurno && chutePalavraDisponivel;
+            
+            btnChutarPalavra.disabled = !podeChutar;
+            
+            if (btnChutarPalavra.disabled) {
                 btnChutarPalavra.style.opacity = '0.5';
                 btnChutarPalavra.style.cursor = 'not-allowed';
+                if (!eMeuTurno) {
+                    btnChutarPalavra.title = 'Não é seu turno';
+                } else if (!chutePalavraDisponivel) {
+                    btnChutarPalavra.title = 'Você já tentou chutar nesta rodada';
+                }
             } else {
                 btnChutarPalavra.style.opacity = '1';
                 btnChutarPalavra.style.cursor = 'pointer';
+                btnChutarPalavra.title = 'Chutar palavra completa';
             }
         }
     }
@@ -1762,6 +1920,12 @@ function enviarChutePalavra(palavra) {
         mostrarFeedback('Não foi possível enviar o chute', 'red');
         return;
     }
+    
+    // Para o timer do chute
+    pararTimerChutePalavra();
+    
+    // Não retoma o timer da rodada aqui porque o servidor vai processar o chute
+    // e pode mudar o turno ou iniciar nova rodada, então o timer será gerenciado pelo servidor
     
     console.log(`📤 Enviando chute de palavra: "${palavra}"`);
     

@@ -1134,7 +1134,8 @@ module.exports = function(io) {
         const estado1Final = game.gameInstances[0].getEstado();
         const estado2Final = game.gameInstances[1].getEstado();
         
-        io.to(roomId).emit('eventoJogo', {
+        // Se houve nova rodada, envia também as palavras secretas para resetar corretamente
+        const eventoChutePalavra = {
           tipo: 'chutePalavra',
           palavraChutada: palavraChutada,
           resultado: resultado, // 'vitoria' ou 'derrota'
@@ -1153,7 +1154,16 @@ module.exports = function(io) {
           motivoPerdaVida: motivoPerdaVida,
           jogadorQueJogou: numeroJogador,
           novaRodada: alguemPerdeuVida && game.vidas[0] > 0 && game.vidas[1] > 0
-        });
+        };
+        
+        // Se é nova rodada, adiciona informações sobre as novas palavras
+        if (eventoChutePalavra.novaRodada) {
+          eventoChutePalavra.novaPalavraJogador1 = game.words[0];
+          eventoChutePalavra.novaPalavraJogador2 = game.words[1];
+          console.log(`📤 Enviando nova rodada com palavras: J1=${game.words[0]}, J2=${game.words[1]}`);
+        }
+        
+        io.to(roomId).emit('eventoJogo', eventoChutePalavra);
       }
 
       if (msg.tipo === 'tempoEsgotado') {

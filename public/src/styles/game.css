@@ -846,6 +846,28 @@ header {
   font-size: clamp(0.9rem, 2vw, 1.1rem);
   color: #b8e5f0;
   opacity: 0.9;
+  margin-bottom: 12px;
+}
+
+.timer-chute-palavra-container {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.timer-chute-palavra {
+  font-family: "Orbitron", sans-serif;
+  font-size: clamp(1.2rem, 3vw, 1.8rem);
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(180deg, rgba(0, 229, 255, 0.2), rgba(0, 150, 200, 0.2));
+  border: 2px solid rgba(0, 229, 255, 0.5);
+  border-radius: 12px;
+  padding: 8px 16px;
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.8);
+  box-shadow: 0 4px 12px rgba(0, 229, 255, 0.3);
+  transition: all 0.3s ease;
 }
 
 .modal-chute-palavra-input-container {
