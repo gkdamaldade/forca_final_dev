@@ -1796,9 +1796,13 @@ function configurarChutePalavra() {
         });
     }
     
-    // Fecha o modal ao clicar fora
+    // Fecha o modal ao clicar fora (no backdrop)
     modalChutePalavra.addEventListener('click', (e) => {
+        // Verifica se o clique foi no backdrop (fora do conteúdo do modal)
+        // O modal-chute-palavra é o backdrop, e modal-chute-palavra-content é o conteúdo
         if (e.target === modalChutePalavra) {
+            e.preventDefault();
+            e.stopPropagation();
             pararTimerChutePalavra();
             modalChutePalavra.classList.remove('active');
             inputChutePalavra.value = '';
@@ -1811,6 +1815,14 @@ function configurarChutePalavra() {
             retomarTimerRodada();
         }
     });
+    
+    // Previne que cliques dentro do conteúdo do modal fechem o modal
+    const modalContent = modalChutePalavra.querySelector('.modal-chute-palavra-content');
+    if (modalContent) {
+        modalContent.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+    }
     
     // Confirma o chute
     if (btnConfirmarChute) {
@@ -1911,6 +1923,77 @@ function configurarChutePalavra() {
     };
     
     atualizarEstadoBotaoChute();
+}
+
+// Inicia o timer de 15 segundos para o chute de palavra
+function iniciarTimerChutePalavra() {
+    // Limpa timer anterior se existir
+    if (timerChutePalavra) {
+        clearInterval(timerChutePalavra);
+    }
+    
+    const timerChuteEl = document.getElementById('timer-chute-palavra');
+    if (!timerChuteEl) {
+        console.warn('⚠️ Elemento timer-chute-palavra não encontrado');
+        return;
+    }
+    
+    let segundos = 15;
+    timerChuteEl.textContent = `${segundos}s`;
+    timerChuteEl.style.color = 'white';
+    timerChuteEl.style.display = 'block';
+    
+    timerChutePalavra = setInterval(() => {
+        segundos--;
+        if (timerChuteEl) {
+            timerChuteEl.textContent = `${segundos}s`;
+        }
+        
+        if (segundos <= 5 && timerChuteEl) {
+            timerChuteEl.style.color = '#ff5555';
+        } else if (segundos > 5 && timerChuteEl) {
+            timerChuteEl.style.color = 'white';
+        }
+        
+        if (segundos <= 0) {
+            clearInterval(timerChutePalavra);
+            timerChutePalavra = null;
+            if (timerChuteEl) {
+                timerChuteEl.style.display = 'none';
+            }
+            
+            // Fecha o modal automaticamente
+            const modalChutePalavra = document.getElementById('modal-chute-palavra');
+            const inputChutePalavra = document.getElementById('input-chute-palavra');
+            if (modalChutePalavra) {
+                modalChutePalavra.classList.remove('active');
+            }
+            if (inputChutePalavra) {
+                inputChutePalavra.value = '';
+            }
+            mostrarFeedback('Tempo esgotado para chutar a palavra!', 'orange');
+            
+            // Marca o chute como indisponível para esta rodada
+            chutePalavraDisponivel = false;
+            desabilitarBotaoChutar();
+            
+            // Retoma o timer da rodada de onde parou
+            retomarTimerRodada();
+        }
+    }, 1000);
+}
+
+// Para o timer do chute de palavra
+function pararTimerChutePalavra() {
+    if (timerChutePalavra) {
+        clearInterval(timerChutePalavra);
+        timerChutePalavra = null;
+    }
+    
+    const timerChuteEl = document.getElementById('timer-chute-palavra');
+    if (timerChuteEl) {
+        timerChuteEl.style.display = 'none';
+    }
 }
 
 // Envia o chute de palavra completa para o servidor
