@@ -752,8 +752,9 @@ module.exports = function(io) {
             }, 5000);
             return; // Não processa mais nada se o jogo acabou
           } else {
-            // Reseta AMBAS as palavras para nova rodada
+            // Reseta AMBAS as palavras para nova rodada (ainda há vidas)
             console.log(`🔄 Alguém perdeu vida! Resetando ambas as palavras para nova rodada...`);
+            console.log(`📊 Vidas após perda: J1=${game.vidas[0]}, J2=${game.vidas[1]} - Continuando jogo`);
             console.log(`📋 Palavras já usadas no jogo: ${game.palavrasUsadas.join(', ')}`);
             
             try {
@@ -1075,8 +1076,9 @@ module.exports = function(io) {
             }, 5000);
             return;
           } else {
-            // Reseta AMBAS as palavras para nova rodada
+            // Reseta AMBAS as palavras para nova rodada (ainda há vidas)
             console.log(`🔄 Alguém perdeu vida! Resetando ambas as palavras para nova rodada...`);
+            console.log(`📊 Vidas após perda: J1=${game.vidas[0]}, J2=${game.vidas[1]} - Continuando jogo`);
             console.log(`📋 Palavras já usadas no jogo: ${game.palavrasUsadas.join(', ')}`);
             
             try {

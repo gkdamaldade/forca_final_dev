@@ -534,12 +534,13 @@ function reabilitarPoderesNoTurno() {
     
     const eMeuTurno = turnoAtual === meuNumeroJogador && jogoEstaAtivo;
     
-    // Se o turno mudou, reseta o poder usado no turno
-    // Compara com o último turno registrado para detectar mudança
-    if (ultimoTurnoReabilitado !== turnoAtual) {
-        // Turno mudou - sempre reseta poder usado no turno
+    // Se o turno mudou para o meu turno, reseta o poder usado no turno
+    // Isso garante que quando o turno volta para o jogador, os poderes são liberados
+    if (eMeuTurno && ultimoTurnoReabilitado !== turnoAtual) {
+        // Turno mudou para o meu turno - reseta poder usado no turno
         poderUsadoNoTurno = null;
         ultimoTurnoReabilitado = turnoAtual;
+        log(`🔄 Turno voltou para mim! Resetando poder usado no turno.`);
     }
     
     const botoesPoderes = containerPoderes.querySelectorAll('.poder');
@@ -1310,6 +1311,10 @@ function iniciarJogo(dados) {
     dicaAtualExibida = 0; // Reseta contador de dicas
     ocultarDica(); // Limpa dicas anteriores
     
+    // Reseta poder usado no turno quando inicia novo jogo
+    poderUsadoNoTurno = null;
+    ultimoTurnoReabilitado = null;
+    
     console.log(`📝 Palavras recebidas: Minha="${palavraExibida}", Adversário="${palavraAdversarioExibida}"`);
     console.log(`💚 Vidas iniciais: J1=${vidas[0]}, J2=${vidas[1]}`);
     
@@ -1476,6 +1481,10 @@ function processarJogada(dados) {
             ocultarDica();
             atualizarEstadoBotaoDica();
             
+            // Reseta poder usado no turno quando começa nova rodada
+            poderUsadoNoTurno = null;
+            ultimoTurnoReabilitado = null;
+            
             // Atualiza palavras com as novas
             if (meuNumeroJogador === 1) {
                 palavraExibida = dados.palavraJogador1 || palavraExibida;
@@ -1497,6 +1506,9 @@ function processarJogada(dados) {
             
             // Reseta o teclado para nova rodada
             atualizarTecladoDesabilitado();
+            
+            // Reabilita poderes quando começa nova rodada
+            reabilitarPoderesNoTurno();
             
             // Se começou nova rodada e é meu turno, inicia o timer
             const turnoAtualNum = Number(turnoAtual) || 0;
