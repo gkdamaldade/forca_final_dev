@@ -72,4 +72,19 @@ router.post('/comprar-moedas', verificarToken, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// Comprar poder (requer autenticação)
+router.post('/comprar-poder', verificarToken, async (req, res, next) => {
+  try {
+    const { poderId, preco } = req.body;
+    if (!poderId) {
+      return res.status(400).json({ message: 'ID do poder é obrigatório.' });
+    }
+    if (!preco || preco <= 0) {
+      return res.status(400).json({ message: 'Preço inválido.' });
+    }
+    const resultado = await playerController.comprarPoder(req.user.id, poderId, preco);
+    res.json(resultado);
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

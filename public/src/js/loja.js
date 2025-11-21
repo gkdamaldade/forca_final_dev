@@ -105,23 +105,61 @@ async function carregarMoedasUsuario() {
 /**
  * 2. Lógica de Compra de Habilidade
  */
-function comprarHabilidade(item) {
+async function comprarHabilidade(item) {
     const moedasNecessarias = item.preco;
     
-    if (moedasAtuais >= moedasNecessarias) {
-        if (confirm(`Deseja realmente comprar ${item.nome} por ${item.preco.toLocaleString('pt-BR')} moedas?`)) {
-            
-            // ⚠️ SIMULAÇÃO: Chamar API para registrar compra e deduzir saldo.
-            // Ex: fetch('/api/comprar', { method: 'POST', body: JSON.stringify({ userId, itemId: item.id }) });
-            
-            const novoSaldo = moedasAtuais - moedasNecessarias;
-            setSaldoMoedas(novoSaldo);
-            localStorage.setItem('saldo_moedas', novoSaldo); // Salva a simulação
-            
-            alert(`Parabéns! Você comprou ${item.nome}. Novo saldo: ${novoSaldo.toLocaleString('pt-BR')} moedas.`);
-        }
-    } else {
+    if (moedasAtuais < moedasNecessarias) {
         alert(`Você precisa de mais moedas para comprar ${item.nome}. Saldo atual: ${moedasAtuais.toLocaleString('pt-BR')}.`);
+        return;
+    }
+    
+    if (!confirm(`Deseja realmente comprar ${item.nome} por ${item.preco.toLocaleString('pt-BR')} moedas?`)) {
+        return;
+    }
+    
+    const token = localStorage.getItem('token');
+    if (!token) {
+        alert('Sessão expirada. Por favor, faça login novamente.');
+        window.location.href = 'login.html';
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/players/comprar-poder', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                poderId: item.id,
+                preco: item.preco
+            })
+        });
+        
+        if (!response.ok) {
+            if (response.status === 401) {
+                localStorage.removeItem('token');
+                alert('Sessão expirada. Por favor, faça login novamente.');
+                window.location.href = 'login.html';
+                return;
+            }
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Erro ao processar compra: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Atualiza o saldo com o novo valor retornado pela API
+        setSaldoMoedas(data.novoSaldo);
+        
+        // Re-atualiza o estado do botão 'Comprar' no card
+        atualizarCard();
+        
+        alert(`Parabéns! Você comprou ${item.nome}. Novo saldo: ${data.novoSaldo.toLocaleString('pt-BR')} moedas.`);
+    } catch (error) {
+        console.error('Erro ao comprar poder:', error);
+        alert(`Erro ao processar a compra: ${error.message}`);
     }
 }
 
@@ -190,10 +228,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 3. Listeners de Evento do Carrossel ---
     
     // Botão de Compra de Habilidade
-    btnComprar.addEventListener("click", () => {
+    btnComprar.addEventListener("click", async () => {
         const index = parseInt(btnComprar.dataset.index);
         if (!isNaN(index)) {
-            comprarHabilidade(habilidades[index]);
+            await comprarHabilidade(habilidades[index]);
             // Re-atualiza o card e o estado do botão "Comprar" após a tentativa
             atualizarCard(); 
         }

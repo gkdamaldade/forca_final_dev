@@ -85,11 +85,59 @@ async function adicionarMoedas(userId, quantidade) {
     };
 }
 
+async function comprarPoder(userId, poderId, preco) {
+    if (!userId) throw new Error("ID do usuário necessário.");
+    if (!poderId) throw new Error("ID do poder necessário.");
+    if (!preco || preco <= 0) throw new Error("Preço inválido.");
+    
+    const player = await models.Player.findByPk(userId);
+    if (!player) throw new Error("Jogador não encontrado.");
+    
+    const moedasAtuais = player.moedas || 0;
+    
+    // Verifica se o usuário tem moedas suficientes
+    if (moedasAtuais < preco) {
+        throw new Error("Moedas insuficientes para comprar este poder.");
+    }
+    
+    // Deduz as moedas do usuário
+    const novoSaldo = moedasAtuais - preco;
+    await player.update({ moedas: novoSaldo });
+    
+    // Adiciona ou atualiza o poder no inventário
+    const [inventarioItem, created] = await models.Inventario.findOrCreate({
+        where: {
+            usuario_id: userId,
+            poder_id: poderId
+        },
+        defaults: {
+            usuario_id: userId,
+            poder_id: poderId,
+            quantidade: 1
+        }
+    });
+    
+    // Se o poder já existia, incrementa a quantidade
+    if (!created) {
+        await inventarioItem.increment('quantidade');
+    }
+    
+    return {
+        mensagem: "Poder comprado com sucesso!",
+        poderId: poderId,
+        moedasGastas: preco,
+        moedasAnteriores: moedasAtuais,
+        novoSaldo: novoSaldo,
+        quantidade: inventarioItem.quantidade + (created ? 0 : 1)
+    };
+}
+
 module.exports = { 
     lidarCadastro,
     lidarLogin,
     listarRanking,
     registrarVitoria,
     obterMoedasUsuario,
-    adicionarMoedas
+    adicionarMoedas,
+    comprarPoder
 };

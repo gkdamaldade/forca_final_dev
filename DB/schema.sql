@@ -44,3 +44,17 @@ CREATE INDEX IF NOT EXISTS idx_words_category ON words(category_id);
 CREATE INDEX IF NOT EXISTS idx_results_player ON results(player_id);
 CREATE INDEX IF NOT EXISTS idx_results_word ON results(word_id);
 CREATE INDEX IF NOT EXISTS idx_results_created_at ON results(created_at);
+
+-- Tabela de inventário para armazenar os poderes comprados pelos usuários
+CREATE TABLE IF NOT EXISTS inventario (
+  id SERIAL PRIMARY KEY,
+  usuario_id INTEGER NOT NULL REFERENCES usuario(id) ON DELETE CASCADE,
+  poder_id VARCHAR(50) NOT NULL,
+  quantidade INTEGER NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(usuario_id, poder_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventario_usuario ON inventario(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_inventario_poder ON inventario(poder_id);
