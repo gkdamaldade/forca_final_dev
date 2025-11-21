@@ -72,17 +72,22 @@ router.post('/comprar-moedas', verificarToken, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// Listar itens da loja (público)
+router.get('/loja/itens', async (req, res, next) => {
+  try {
+    const itens = await playerController.listarItensLoja();
+    res.json(itens);
+  } catch (err) { next(err); }
+});
+
 // Comprar poder (requer autenticação)
 router.post('/comprar-poder', verificarToken, async (req, res, next) => {
   try {
-    const { poderId, preco } = req.body;
-    if (!poderId) {
-      return res.status(400).json({ message: 'ID do poder é obrigatório.' });
+    const { itemlojaId } = req.body;
+    if (!itemlojaId) {
+      return res.status(400).json({ message: 'ID do item da loja é obrigatório.' });
     }
-    if (!preco || preco <= 0) {
-      return res.status(400).json({ message: 'Preço inválido.' });
-    }
-    const resultado = await playerController.comprarPoder(req.user.id, poderId, preco);
+    const resultado = await playerController.comprarPoder(req.user.id, itemlojaId);
     res.json(resultado);
   } catch (err) { next(err); }
 });

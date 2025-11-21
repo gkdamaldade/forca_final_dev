@@ -85,15 +85,28 @@ async function adicionarMoedas(userId, quantidade) {
     };
 }
 
-async function comprarPoder(userId, poderId, preco) {
+async function listarItensLoja() {
+    const itens = await models.ItemLoja.findAll({
+        where: { ativo: true },
+        order: [['custo_moedas', 'ASC']]
+    });
+    return itens;
+}
+
+async function comprarPoder(userId, itemlojaId) {
     if (!userId) throw new Error("ID do usuário necessário.");
-    if (!poderId) throw new Error("ID do poder necessário.");
-    if (!preco || preco <= 0) throw new Error("Preço inválido.");
+    if (!itemlojaId) throw new Error("ID do item da loja necessário.");
     
     const player = await models.Player.findByPk(userId);
     if (!player) throw new Error("Jogador não encontrado.");
     
+    // Busca o item na loja
+    const itemLoja = await models.ItemLoja.findByPk(itemlojaId);
+    if (!itemLoja) throw new Error("Item não encontrado na loja.");
+    if (!itemLoja.ativo) throw new Error("Este item não está mais disponível.");
+    
     const moedasAtuais = player.moedas || 0;
+    const preco = itemLoja.custo_moedas;
     
     // Verifica se o usuário tem moedas suficientes
     if (moedasAtuais < preco) {
@@ -108,11 +121,11 @@ async function comprarPoder(userId, poderId, preco) {
     const [inventarioItem, created] = await models.Inventario.findOrCreate({
         where: {
             usuario_id: userId,
-            poder_id: poderId
+            itemloja_id: itemlojaId
         },
         defaults: {
             usuario_id: userId,
-            poder_id: poderId,
+            itemloja_id: itemlojaId,
             quantidade: 1
         }
     });
@@ -120,15 +133,20 @@ async function comprarPoder(userId, poderId, preco) {
     // Se o poder já existia, incrementa a quantidade
     if (!created) {
         await inventarioItem.increment('quantidade');
+        await inventarioItem.reload();
     }
     
     return {
         mensagem: "Poder comprado com sucesso!",
-        poderId: poderId,
+        itemLoja: {
+            id: itemLoja.id,
+            nome: itemLoja.nome,
+            tipo_poder: itemLoja.tipo_poder
+        },
         moedasGastas: preco,
         moedasAnteriores: moedasAtuais,
         novoSaldo: novoSaldo,
-        quantidade: inventarioItem.quantidade + (created ? 0 : 1)
+        quantidade: inventarioItem.quantidade
     };
 }
 
@@ -139,5 +157,6 @@ module.exports = {
     registrarVitoria,
     obterMoedasUsuario,
     adicionarMoedas,
+    listarItensLoja,
     comprarPoder
 };

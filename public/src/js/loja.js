@@ -4,52 +4,8 @@
  * exibição de moedas e simulação de compra.
  */
 
-// Array de habilidades (dados brutos)
-const habilidades = [
-    {
-        nome: "Vida extra",
-        descricao: "Ganha uma vida adicional.",
-        preco: 2500,
-        id: "vida_extra",
-        imagem: "/public/assets/images/vida_extra.png"
-    },
-    {
-        nome: "Tirar vida",
-        descricao: "Remove uma vida do adversário.",
-        preco: 2500,
-        id: "tirar_vida",
-        imagem: "/public/assets/images/Tirar_vida.png"
-    },
-    {
-        nome: "Ocultar letra",
-        descricao: "Oculta uma letra correta da palavra.",
-        preco: 2500,
-        id: "ocultar_letra",
-        imagem: "/public/assets/images/ocultar_letra.png"
-    },
-    {
-        nome: "Ocultar dica",
-        descricao: "Remove a dica da rodada.",
-        preco: 2500,
-        id: "ocultar_dica",
-        imagem: "/public/assets/images/ocultar_dica.png"
-    },
-    {
-        nome: "Liberar letra",
-        descricao: "Revela uma letra correta da palavra.",
-        preco: 2500,
-        id: "liberar_letra",
-        imagem: "/public/assets/images/liberar_letra.png"
-    },
-    {
-        nome: "Palpite",
-        descricao: "Habilidade especial para virar o jogo.",
-        preco: 2500,
-        id: "palpite",
-        imagem: "/public/assets/images/palpite.png"
-    }
-];
-
+// Array de habilidades (será carregado do banco)
+let habilidades = [];
 let indiceAtual = 0;
 let moedasAtuais = 0; // Variável para rastrear o saldo atual.
 
@@ -63,7 +19,45 @@ function setSaldoMoedas(saldo) {
 }
 
 /**
- * 1. Carrega e exibe o saldo de moedas do usuário do banco de dados.
+ * 1. Carrega os itens da loja do banco de dados.
+ */
+async function carregarItensLoja() {
+    try {
+        const response = await fetch('/api/players/loja/itens', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Erro ao carregar itens da loja: ${response.status}`);
+        }
+
+        const itens = await response.json();
+        
+        // Converte os itens do banco para o formato esperado pelo frontend
+        habilidades = itens.map(item => ({
+            id: item.id, // ID do banco
+            nome: item.nome,
+            descricao: item.descricao,
+            preco: item.custo_moedas,
+            tipo_poder: item.tipo_poder,
+            imagem: item.imagem || `/public/assets/images/${item.tipo_poder}.png`
+        }));
+        
+        console.log('Itens da loja carregados:', habilidades.length);
+        
+        return habilidades;
+    } catch (error) {
+        console.error('Erro ao carregar itens da loja:', error);
+        // Em caso de erro, retorna array vazio
+        return [];
+    }
+}
+
+/**
+ * 2. Carrega e exibe o saldo de moedas do usuário do banco de dados.
  */
 async function carregarMoedasUsuario() {
     const token = localStorage.getItem('token');
@@ -103,7 +97,7 @@ async function carregarMoedasUsuario() {
 }
 
 /**
- * 2. Lógica de Compra de Habilidade
+ * 3. Lógica de Compra de Habilidade
  */
 async function comprarHabilidade(item) {
     const moedasNecessarias = item.preco;
@@ -132,8 +126,7 @@ async function comprarHabilidade(item) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                poderId: item.id,
-                preco: item.preco
+                itemlojaId: item.id // Agora usa o ID do banco (itemloja)
             })
         });
         
@@ -389,6 +382,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- 5. Inicialização ---
-    carregarMoedasUsuario(); // Carrega o saldo e define moedasAtuais
-    atualizarCard();        // Exibe o primeiro card e atualiza os indicadores
+    // Carrega os itens da loja primeiro, depois as moedas e atualiza o card
+    carregarItensLoja().then(() => {
+        if (habilidades.length > 0) {
+            carregarMoedasUsuario(); // Carrega o saldo e define moedasAtuais
+            atualizarCard();        // Exibe o primeiro card e atualiza os indicadores
+        } else {
+            console.error('Nenhum item encontrado na loja.');
+            alert('Erro ao carregar itens da loja. Por favor, recarregue a página.');
+        }
+    });
 });

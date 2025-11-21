@@ -17,9 +17,13 @@ class Inventario extends Model {
           key: 'id'
         }
       },
-      poder_id: {
-        type: DataTypes.STRING(50),
-        allowNull: false
+      itemloja_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'itemloja',
+          key: 'id'
+        }
       },
       quantidade: {
         type: DataTypes.INTEGER,
@@ -42,6 +46,10 @@ class Inventario extends Model {
     Inventario.belongsTo(models.Player, {
       foreignKey: 'usuario_id',
       as: 'usuario'
+    });
+    Inventario.belongsTo(models.ItemLoja, {
+      foreignKey: 'itemloja_id',
+      as: 'itemLoja'
     });
   }
 }
