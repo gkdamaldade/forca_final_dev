@@ -130,8 +130,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 console.log(`✅ Sala criada com sucesso: ${data.sala}, categoria: ${data.categoria}`);
                 
-                // Mostra opções de navegação após criar a sala
-                mostrarOpcoesNavegacao(data.sala, data.categoria);
+                // Redirecionamento após sucesso
+                const params = new URLSearchParams({ sala: data.sala, categoria: data.categoria });
+                window.location.href = `/public/pages/sessao_host.html?${params.toString()}`;
 
             } catch (e) {
                 console.error(`❌ Erro ao criar sala para ${categoria}:`, e);
@@ -141,48 +142,4 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
-    
-    // ----------------------------------------------------------------------
-    // 5. Função para mostrar opções de navegação após criar sala
-    // ----------------------------------------------------------------------
-    function mostrarOpcoesNavegacao(codigoSala, categoria) {
-        // Remove opções anteriores se existirem
-        const opcoesAnteriores = document.querySelector('.opcoes-navegacao');
-        if (opcoesAnteriores) {
-            opcoesAnteriores.remove();
-        }
-        
-        // Cria container para as opções
-        const containerOpcoes = document.createElement('div');
-        containerOpcoes.className = 'opcoes-navegacao';
-        containerOpcoes.innerHTML = `
-            <div class="opcoes-navegacao-content">
-                <p class="opcoes-titulo">Sala criada com sucesso!</p>
-                <p class="opcoes-codigo">Código da sala: <strong>${codigoSala}</strong></p>
-                <div class="opcoes-botoes">
-                    <button class="opcao-botao opcao-botao-host" onclick="window.location.href='/public/pages/sessao_host.html?sala=${codigoSala}&categoria=${encodeURIComponent(categoria)}'">
-                        <i class="fa fa-home"></i> Criar Sala
-                    </button>
-                    <button class="opcao-botao opcao-botao-guest" onclick="window.location.href='/public/pages/sessao_guest.html'">
-                        <i class="fa fa-sign-in-alt"></i> Entrar na Sala
-                    </button>
-                    <button class="opcao-botao opcao-botao-voltar" onclick="window.location.reload()">
-                        <i class="fa fa-arrow-left"></i> Voltar
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        // Adiciona ao container principal
-        const menuContainer = document.querySelector('.menu-container');
-        if (menuContainer) {
-            menuContainer.appendChild(containerOpcoes);
-            
-            // Animação de entrada
-            setTimeout(() => {
-                containerOpcoes.style.opacity = '1';
-                containerOpcoes.style.transform = 'translateY(0)';
-            }, 100);
-        }
-    }
 });
