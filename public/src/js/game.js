@@ -803,8 +803,11 @@ function configurarListenersSocket() {
             const turnoAtualNum = Number(turnoAtual) || 0;
             const meuNumeroNum = Number(meuNumeroJogador) || 0;
             
+            // Se é meu turno agora, reabilita o botão de chute
             if (turnoAtualNum === meuNumeroNum && meuNumeroNum > 0 && jogoEstaAtivo) {
                 console.log(`✓ É meu turno agora (jogador ${meuNumeroNum}), iniciando timer`);
+                // Reabilita o botão de chute quando o turno volta para o jogador
+                chutePalavraDisponivel = true;
                 iniciarTimer();
             } else {
                 console.log(`✗ Não é meu turno (jogador ${meuNumeroNum}, turno atual: ${turnoAtualNum})`);
@@ -1003,6 +1006,8 @@ function configurarListenersSocket() {
             } else {
                 // Se não é nova rodada, apenas atualiza o timer baseado no turno
                 if (evento.turno === meuNumeroJogador && jogoEstaAtivo) {
+                    // Reabilita o botão de chute quando o turno volta para o jogador
+                    chutePalavraDisponivel = true;
                     iniciarTimer();
                 } else {
                     clearInterval(timerInterval);
@@ -1309,6 +1314,8 @@ function processarJogada(dados) {
         
         if (turnoAtualNum === meuNumeroNum && meuNumeroNum > 0 && jogoEstaAtivo) {
             console.log(`✓ É meu turno agora (jogador ${meuNumeroNum}), iniciando timer`);
+            // Reabilita o botão de chute quando o turno volta para o jogador
+            chutePalavraDisponivel = true;
             iniciarTimer();
         } else {
             console.log(`✗ Não é meu turno (jogador ${meuNumeroNum}, turno atual: ${turnoAtualNum})`);
