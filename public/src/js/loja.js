@@ -53,33 +53,53 @@ const habilidades = [
 let indiceAtual = 0;
 let moedasAtuais = 0; // Variável para rastrear o saldo atual.
 
-// Função auxiliar para obter/converter moedas do DOM
-function carregarMoedasUsuario() {
-    // SIMULAÇÃO: 
-    // Garante que o valor inicial seja alto (e sem formatação de milhar) para o teste.
-    const saldoSimulado = localStorage.getItem('saldo_moedas') ? 
-                          parseInt(localStorage.getItem('saldo_moedas')) : 
-                          15000; // MUDANÇA: Coloque aqui o valor COMPLETO.
-    setSaldoMoedas(saldoSimulado);
-}
 // Função auxiliar para formatar e exibir moedas
 function setSaldoMoedas(saldo) {
     moedasAtuais = saldo;
-    document.getElementById('moedas-atual').textContent = saldo.toLocaleString('pt-BR');
-    localStorage.setItem('saldo_moedas', saldo); 
+    const moedasEl = document.getElementById('moedas-atual');
+    if (moedasEl) {
+        moedasEl.textContent = saldo.toLocaleString('pt-BR');
+    }
 }
 
 /**
- * 1. Carrega e exibe o saldo de moedas do usuário.
- * ⚠️ Em um projeto real, aqui você faria uma chamada API para o backend.
+ * 1. Carrega e exibe o saldo de moedas do usuário do banco de dados.
  */
-function carregarMoedasUsuario() {
-    // SIMULAÇÃO: Carrega um saldo inicial (ex: do localStorage ou um valor padrão)
-    const saldoSimulado = localStorage.getItem('saldo_moedas') ? 
-                          parseInt(localStorage.getItem('saldo_moedas')) : 
-                          1500; 
+async function carregarMoedasUsuario() {
+    const token = localStorage.getItem('token');
+    
+    if (!token) {
+        console.error('Token não encontrado. Redirecionando para login...');
+        window.location.href = 'login.html';
+        return;
+    }
 
-    setSaldoMoedas(saldoSimulado);
+    try {
+        const response = await fetch('/api/players/moedas', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                // Token inválido ou expirado
+                localStorage.removeItem('token');
+                window.location.href = 'login.html';
+                return;
+            }
+            throw new Error(`Erro ao carregar moedas: ${response.status}`);
+        }
+
+        const data = await response.json();
+        setSaldoMoedas(data.moedas || 0);
+    } catch (error) {
+        console.error('Erro ao carregar moedas do usuário:', error);
+        // Em caso de erro, mantém o valor padrão de 0
+        setSaldoMoedas(0);
+    }
 }
 
 /**
@@ -194,33 +214,94 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 4. Listeners de Evento do Modal de Compra de Moedas ---
 
     // Ação do Botão "Confirmar compra"
-    modalBtnConfirmar.addEventListener('click', (e) => {
+    if (!modalBtnConfirmar) {
+        console.error("ERRO: Botão de confirmar compra não encontrado.");
+    } else {
+    modalBtnConfirmar.addEventListener('click', async (e) => {
         e.preventDefault();
         
-        const pacoteSelecionadoEl = document.querySelector('input[name="pacote"]:checked').closest('.pacote-box');
+        const pacoteSelecionadoEl = document.querySelector('input[name="pacote"]:checked')?.closest('.pacote-box');
         
         if (!pacoteSelecionadoEl) {
             alert('Por favor, selecione um pacote de moedas.');
             return;
         }
 
-        const moedasGanhaStr = pacoteSelecionadoEl.querySelector('.pacote-moedas').textContent.replace('.', '').trim();
+        const metodoPagamentoEl = document.querySelector('input[name="metodo"]:checked');
+        if (!metodoPagamentoEl) {
+            alert('Por favor, selecione um método de pagamento.');
+            return;
+        }
+
+        const moedasGanhaStr = pacoteSelecionadoEl.querySelector('.pacote-moedas').textContent.replace(/[^\d]/g, '').trim();
         const moedasGanha = parseInt(moedasGanhaStr);
         const precoReal = pacoteSelecionadoEl.querySelector('.pacote-preco').textContent;
         
-        // SIMULAÇÃO: Sucesso na compra (ignorando o método de pagamento real)
-        const novoSaldo = moedasAtuais + moedasGanha;
-        setSaldoMoedas(novoSaldo);
-        localStorage.setItem('saldo_moedas', novoSaldo); // Salva a simulação
-        
-        // Re-atualiza o estado do botão 'Comprar' no card
-        atualizarCard(); 
+        if (isNaN(moedasGanha) || moedasGanha <= 0) {
+            alert('Erro ao processar a quantidade de moedas. Tente novamente.');
+            return;
+        }
 
-        alert(`COMPRA SIMULADA CONCLUÍDA: Você comprou ${moedasGanha.toLocaleString('pt-BR')} moedas por ${precoReal}. Novo saldo: ${novoSaldo.toLocaleString('pt-BR')} moedas.`);
-        
-        // Fecha o modal após a simulação de compra
-        window.location.hash = '';
+        const token = localStorage.getItem('token');
+        if (!token) {
+            alert('Sessão expirada. Por favor, faça login novamente.');
+            window.location.href = 'login.html';
+            return;
+        }
+
+        // Desabilita o botão durante o processamento
+        const textoOriginal = modalBtnConfirmar.textContent;
+        modalBtnConfirmar.style.pointerEvents = 'none';
+        modalBtnConfirmar.style.opacity = '0.6';
+        modalBtnConfirmar.textContent = 'Processando...';
+
+        try {
+            const response = await fetch('/api/players/comprar-moedas', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    quantidade: moedasGanha
+                })
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    alert('Sessão expirada. Por favor, faça login novamente.');
+                    window.location.href = 'login.html';
+                    return;
+                }
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `Erro ao processar compra: ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            // Atualiza o saldo com o novo valor retornado pela API
+            setSaldoMoedas(data.novoSaldo);
+            
+            // Re-atualiza o estado do botão 'Comprar' no card
+            atualizarCard(); 
+
+            alert(`Compra concluída! Você comprou ${moedasGanha.toLocaleString('pt-BR')} moedas por ${precoReal}. Novo saldo: ${data.novoSaldo.toLocaleString('pt-BR')} moedas.`);
+            
+            // Fecha o modal após a compra
+            window.location.hash = '';
+        } catch (error) {
+            console.error('Erro ao comprar moedas:', error);
+            alert(`Erro ao processar a compra: ${error.message}`);
+        } finally {
+            // Reabilita o botão
+            modalBtnConfirmar.style.pointerEvents = '';
+            modalBtnConfirmar.style.pointerEvents = '';
+            modalBtnConfirmar.style.opacity = '';
+            modalBtnConfirmar.textContent = textoOriginal;
+        }
     });
+    }
 
     // Ação do botão "Cancelar" no modal
     modalBtnCancelar.addEventListener('click', (e) => {

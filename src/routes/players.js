@@ -1,6 +1,24 @@
 const express = require('express');
 const router = express.Router();
 const playerController = require('../controllers/playerController');
+const jwt = require('jsonwebtoken');
+
+// Middleware simples para verificar token JWT
+function verificarToken(req, res, next) {
+  const token = req.headers.authorization?.replace('Bearer ', '') || req.headers['x-access-token'];
+  
+  if (!token) {
+    return res.status(401).json({ message: 'Token não fornecido.' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded; // Adiciona os dados do usuário decodificados ao request
+    next();
+  } catch (error) {
+    return res.status(401).json({ message: 'Token inválido ou expirado.' });
+  }
+}
 
 // Cadastro
 router.post('/register', async (req, res, next) => {
@@ -30,6 +48,26 @@ router.get('/ranking', async (req, res, next) => {
 router.post('/victory', async (req, res, next) => {
   try {
     const resultado = await playerController.registrarVitoria(req.body);
+    res.json(resultado);
+  } catch (err) { next(err); }
+});
+
+// Obter moedas do usuário (requer autenticação)
+router.get('/moedas', verificarToken, async (req, res, next) => {
+  try {
+    const resultado = await playerController.obterMoedasUsuario(req.user.id);
+    res.json(resultado);
+  } catch (err) { next(err); }
+});
+
+// Comprar moedas (requer autenticação)
+router.post('/comprar-moedas', verificarToken, async (req, res, next) => {
+  try {
+    const { quantidade } = req.body;
+    if (!quantidade || quantidade <= 0) {
+      return res.status(400).json({ message: 'Quantidade de moedas inválida.' });
+    }
+    const resultado = await playerController.adicionarMoedas(req.user.id, quantidade);
     res.json(resultado);
   } catch (err) { next(err); }
 });
