@@ -190,11 +190,31 @@ header{
 }
 
 /* ===== Responsividade ===== */
+@media (max-width: 1366px){
+  .sessao-container{ 
+    max-width: 95vw; 
+    min-height: auto; 
+    padding: 24px 20px; 
+  }
+  .fonte_titulo{ font-size: clamp(1.8rem, 7vw, 5.5rem); }
+  .icon-img img{ width: clamp(70px, 8vw, 100px); }
+  .sessao-botao{ 
+    width: clamp(280px, 55%, 360px);
+    font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+    padding: clamp(14px, 2vw, 18px);
+  }
+}
+
 @media (max-width: 720px){
   .btn-voltar{ left: 12px; font-size: 2rem; }
-  .sessao-botao{ width: 100%; }   /* em telas menores, preenche a largura do painel */
-  .sessao-container{ max-width: 94vw; min-height: 480px; padding: 28px 20px; }
+  .sessao-botao{ width: 100%; }
+  .sessao-container{ max-width: 94vw; min-height: auto; padding: 24px 18px; }
+  .fonte_titulo{ font-size: clamp(1.5rem, 6vw, 4rem); }
+  .icon-img img{ width: clamp(60px, 7vw, 90px); }
 }
 @media (max-width: 420px){
   .sessao-botoes{ gap: 20px; }
+  .sessao-container{ padding: 20px 15px; }
+  .fonte_titulo{ font-size: clamp(1.2rem, 5vw, 3rem); }
+  .icon-img img{ width: clamp(50px, 6vw, 80px); }
 }

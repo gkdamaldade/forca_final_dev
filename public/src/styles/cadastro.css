@@ -285,9 +285,34 @@ header {
 }
 
 /* Responsivo */
+@media (max-width: 1366px){
+  .login-container{ 
+    max-width: 95vw; 
+    padding: 24px 20px; 
+    min-height: auto;
+  }
+  .fonte_titulo{ font-size: clamp(1.8rem, 7vw, 5.5rem); }
+  .icon-img img{ width: clamp(70px, 8vw, 100px); }
+  .login-button{ 
+    width: clamp(260px, 58%, 360px);
+    font-size: clamp(1.2rem, 2.8vw, 1.5rem);
+    padding: clamp(14px, 2vw, 18px);
+  }
+  .input-field{ 
+    font-size: clamp(0.95rem, 2.2vw, 1.1rem);
+    padding: clamp(12px, 1.8vw, 16px);
+  }
+}
+
 @media (max-width: 520px){
-  .login-container{ max-width: 94vw; padding: 28px 20px; }
+  .login-container{ max-width: 94vw; padding: 24px 18px; }
+  .fonte_titulo{ font-size: clamp(1.5rem, 6vw, 4rem); }
+  .icon-img img{ width: clamp(60px, 7vw, 90px); }
+  .login-button{ width: 100%; }
 }
 @media (max-width: 380px){
-  .login-button{ width: 100%; font-size: 22px; }
+  .login-button{ width: 100%; font-size: clamp(1rem, 2.3vw, 1.3rem); }
+  .login-container{ padding: 20px 15px; }
+  .fonte_titulo{ font-size: clamp(1.2rem, 5vw, 3rem); }
+  .icon-img img{ width: clamp(50px, 6vw, 80px); }
 }

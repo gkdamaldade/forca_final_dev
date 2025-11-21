@@ -630,13 +630,33 @@ header {
 }
 
 /* ===== Responsividade geral ===== */
+@media (max-width: 1366px){
+  .loja-container { 
+    width: min(95vw, 920px); 
+    padding: 22px 18px; 
+    min-height: auto;
+  }
+  .fonte_titulo{ font-size: clamp(1.8rem, 7vw, 5.5rem); }
+  .icon-img img{ width: clamp(70px, 8vw, 100px); }
+  .card { 
+    min-height: auto; 
+    padding: clamp(16px, 2vw, 20px); 
+  }
+  .btn-comprar, .btn-modal { 
+    font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+    padding: clamp(14px, 2vw, 18px);
+  }
+}
+
 @media (max-width: 980px){
   .loja-container { width: min(96vw, 920px); padding: 20px 20px; }
 }
 @media (max-width: 640px){
   .loja-container { width: 94vw; padding: 24px 18px; gap: 20px; }
-  .card { width: 100%; min-height: 300px; padding: 18px; }
-  .btn-comprar, .btn-modal { width: 100%; font-size: 22px; }
+  .card { width: 100%; min-height: auto; padding: 18px; }
+  .btn-comprar, .btn-modal { width: 100%; font-size: clamp(1rem, 2.3vw, 1.3rem); }
+  .fonte_titulo{ font-size: clamp(1.5rem, 6vw, 4rem); }
+  .icon-img img{ width: clamp(60px, 7vw, 90px); }
 }
 @media (max-width: 420px){
   .arrow-btn { display: none; }

@@ -473,6 +473,33 @@ header {
 /* ==============================
    Responsividade (mobile)
    ============================== */
+/* Notebook menor */
+@media (max-width: 1366px) {
+  .menu-container {
+    max-width: 95vw;
+    min-height: auto;
+    padding: 24px 22px;
+  }
+  .fonte_titulo{ font-size: clamp(1.8rem, 7vw, 5.5rem); }
+  .icon-img img{ width: clamp(70px, 8vw, 100px); }
+  .saudacao-container {
+    gap: 10px;
+    padding: 14px 18px;
+    margin-bottom: 18px;
+  }
+  .saudacao-icone {
+    font-size: clamp(1.1rem, 2.3vw, 1.5rem);
+  }
+  .saudacao-texto {
+    font-size: clamp(0.95rem, 2.8vw, 1.4rem);
+  }
+  .menu-button{
+    width: clamp(280px, 55%, 360px);
+    font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+    padding: clamp(14px, 2vw, 18px);
+  }
+}
+
 /* Responsividade da Saudação */
 @media (max-width: 768px) {
   .saudacao-container {
@@ -509,6 +536,16 @@ header {
     gap: 4px;
     padding: 0;
   }
+  
+  .menu-container {
+    max-width: 94vw;
+    min-height: auto;
+    padding: 24px 18px;
+  }
+  .menu-button{
+    width: 100%;
+    font-size: clamp(1rem, 2.3vw, 1.3rem);
+  }
 }
 
 @media (max-width: 420px){
@@ -530,15 +567,13 @@ header {
   
   .menu-container {
     max-width: 94vw;
-    /* Em mobile a altura pode reduzir um pouco para caber melhor */
-    min-height: 440px;
-    padding: 28px 20px;
+    min-height: auto;
+    padding: 20px 15px;
   }
   .menu-button{
-    width: 100%; /* no mobile, preenche o container */
+    width: 100%;
+    font-size: clamp(0.9rem, 2vw, 1.2rem);
+    padding: 12px 16px;
   }
-}
-
-@media (max-width: 420px){
   .circle-buttons{ gap: 36px; }
 }

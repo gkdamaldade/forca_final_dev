@@ -340,16 +340,35 @@ header {
 }
 
 /* ===== Responsividade ===== */
+/* Notebook menor */
+@media (max-width: 1366px){
+  .menu-container{ 
+    max-width: 95vw; 
+    min-height: auto; 
+    padding: 24px 20px; 
+  }
+  .fonte_titulo{ font-size: clamp(1.8rem, 7vw, 5.5rem); }
+  .icon-img img{ width: clamp(70px, 8vw, 100px); }
+  .saudacao-categorias{ font-size: clamp(0.9rem, 2.3vw, 1.3rem); margin-bottom: 20px; }
+}
+
 /* Tablet: 2 colunas (centralizadas) */
 @media (max-width: 860px){
-  .menu-container{ max-width: 94vw; min-height: 520px; padding: 28px 20px; }
+  .menu-container{ max-width: 94vw; min-height: auto; padding: 24px 18px; }
   .grid-buttons{
     max-width: calc(var(--tile) * 2 + 28px); /* 2 colunas + 1 gap */
+    gap: 20px;
   }
+  .fonte_titulo{ font-size: clamp(1.5rem, 6vw, 4rem); }
+  .icon-img img{ width: clamp(60px, 7vw, 90px); }
 }
 /* Mobile: 1 coluna (centralizada) */
 @media (max-width: 520px){
+  .menu-container{ padding: 20px 15px; }
   .grid-buttons{
     max-width: var(--tile);
+    gap: 16px;
   }
+  .fonte_titulo{ font-size: clamp(1.2rem, 5vw, 3rem); }
+  .icon-img img{ width: clamp(50px, 6vw, 80px); }
 }

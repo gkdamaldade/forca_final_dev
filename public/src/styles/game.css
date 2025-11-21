@@ -767,15 +767,20 @@ header {
 @media (max-width: 1366px), (max-height: 900px){
   .jogo-container{ 
     gap: 2px;
-    padding: 4px 12px;
+    padding: 4px 10px;
   }
-  .jogo-top{ font-size: clamp(1rem, 2vw, 1.4rem); }
-  .boneco img{ width: min(80px, 15vw); }
+  .jogo-top{ font-size: clamp(0.9rem, 1.8vw, 1.3rem); }
+  .boneco img{ width: min(70px, 14vw); }
   .info-central{ gap: 2px; margin-top: -4px; }
-  .palavras{ font-size: clamp(1rem, 3vw, 1.6rem); gap: 12px; margin: 2px 0; }
-  .area-inferior{ gap: 8px; margin-top: 0; }
-  .tecla{ padding: 12px 18px; font-size: clamp(1rem, 2.5vw, 1.4rem); }
-  .poder{ width: 60px; height: 60px; }
+  .palavras{ font-size: clamp(0.9rem, 2.8vw, 1.5rem); gap: 10px; margin: 2px 0; padding: 0 6px; }
+  .area-inferior{ gap: 10px; margin-top: 4px; }
+  .tecla{ 
+    padding: clamp(5px, 1vw, 10px) clamp(8px, 1.4vw, 16px); 
+    font-size: clamp(0.8rem, 2.2vw, 1.2rem); 
+    min-width: clamp(38px, 6.5vw, 50px);
+  }
+  .poder{ width: clamp(50px, 8vw, 60px); height: clamp(50px, 8vw, 60px); }
+  .poderes-section{ min-width: 120px; padding: 10px 12px; }
 }
 
 /* Área inferior — PODERES + TECLADO MAIS PARA BAIXO */
@@ -805,12 +810,9 @@ header {
 .area-inferior:has(#poderes-jogador-container:not(:empty)) .teclado {
   flex-grow: 1;
   max-width: calc(100% - 180px);
-}
-
-/* Teclado sempre centralizado */
-.teclado {
   margin: 0 auto;
 }
+
 
 /* Seção de Poderes - Container completo */
 .poderes-section {
@@ -1006,26 +1008,31 @@ header {
   align-items: center;
   justify-content: center;
   gap: 6px;                             /* espaçamento vertical reduzido */
-  width: min(980px, 100%);               /* bloco mais largo */
+  width: 100%;
+  max-width: min(980px, 100%);          /* bloco mais largo */
   flex-shrink: 1;
   flex-grow: 1;
-  min-width: 300px;
+  min-width: 0;
+  margin: 0 auto;
+  padding: 0 8px;
+  box-sizing: border-box;
 }
 
 .linha-teclado {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 6px;                             /* espaçamento horizontal reduzido */
+  gap: clamp(4px, 1vw, 6px);            /* espaçamento horizontal responsivo */
+  width: 100%;
 }
 
 .tecla {
   background: linear-gradient(180deg, var(--aqua), var(--aqua-dark));
   color: white;
   border: none;
-  padding: clamp(8px, 1.5vw, 16px) clamp(12px, 2vw, 22px);
-  border-radius: 8px;
-  font-size: clamp(1rem, 2.5vw, 1.4rem);
+  padding: clamp(6px, 1.2vw, 14px) clamp(10px, 1.8vw, 20px);
+  border-radius: clamp(6px, 1vw, 8px);
+  font-size: clamp(0.85rem, 2.2vw, 1.3rem);
   font-weight: 800;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1033,7 +1040,9 @@ header {
     0 12px 26px rgba(0, 229, 255, 0.3),
     0 7px 0 rgba(0, 0, 0, 0.28);
   letter-spacing: .04em;
-  min-width: 58px;
+  min-width: clamp(45px, 8vw, 58px);
+  max-width: 100%;
+  flex: 0 1 auto;
   position: relative;
   overflow: hidden;
   font-family: "Orbitron", sans-serif;
@@ -1103,6 +1112,34 @@ header {
   opacity: 0.7;
 }
 
+/* Ajustes responsivos do jogo - Notebook menor */
+@media (max-width: 1366px){
+  .jogo-container { padding: 0 10px; }
+  .area-inferior { 
+    gap: 12px;
+    padding: 0 4px;
+    margin-top: 8px;
+  }
+  .teclado{ 
+    width: 100%;
+    max-width: 100%;
+    gap: 5px;
+  }
+  .linha-teclado{ gap: 4px; }
+  .tecla{ 
+    padding: clamp(5px, 1vw, 10px) clamp(8px, 1.4vw, 16px); 
+    font-size: clamp(0.8rem, 2.2vw, 1.2rem); 
+    min-width: clamp(38px, 6.5vw, 50px);
+  }
+  .poderes-section{ 
+    min-width: 120px; 
+    padding: 10px 12px; 
+  }
+  .poder{ 
+    width: clamp(50px, 8vw, 60px); 
+    height: clamp(50px, 8vw, 60px); 
+  }
+}
 
 /* Ajustes responsivos do jogo */
 @media (max-width: 860px){
