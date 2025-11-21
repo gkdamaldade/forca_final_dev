@@ -537,12 +537,23 @@ header {
   transition: filter .2s ease, transform .06s ease, border-color .2s ease;
   user-select: none;
 }
-.pacote-box:hover  { filter: brightness(1.05) saturate(1.02); border-color: #fff; }
+.pacote-box:hover  { filter: brightness(1.05) saturate(1.02); border-color: rgba(255,255,255,.4); }
 .pacote-box:active { transform: translateY(2px); }
 
-.pacote input:checked + .pacote-box {
-  border-color: #fff;
-  filter: brightness(1.06);
+.pacote input:checked + .pacote-box,
+.pacote-box.destaque {
+  border: 3px solid #00e5ff;
+  border-color: #00e5ff;
+  background:
+    radial-gradient(140% 200% at 30% 20%, rgba(0,229,255,.35), rgba(0,229,255,.15) 55%, rgba(0,229,255,.05) 60%),
+    linear-gradient(180deg, rgba(0,229,255,.25), rgba(0,229,255,.10));
+  filter: brightness(1.15) saturate(1.1);
+  box-shadow: 
+    0 0 20px rgba(0,229,255,.4),
+    0 14px 30px rgba(0,0,0,.28), 
+    0 6px 0 rgba(0,0,0,.22);
+  transform: scale(1.02);
+  transition: all .3s ease;
 }
 
 .pacote-box .pacote-top {

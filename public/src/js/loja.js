@@ -11,42 +11,42 @@ const habilidades = [
         descricao: "Ganha uma vida adicional.",
         preco: 2500,
         id: "vida_extra",
-        imagem: "public/assets/images/vida_extra.png"
+        imagem: "/public/assets/images/vida_extra.png"
     },
     {
         nome: "Tirar vida",
         descricao: "Remove uma vida do adversário.",
         preco: 2500,
         id: "tirar_vida",
-        imagem: "public/assets/images/Tirar_vida.png"
+        imagem: "/public/assets/images/Tirar_vida.png"
     },
     {
         nome: "Ocultar letra",
         descricao: "Oculta uma letra correta da palavra.",
         preco: 2500,
         id: "ocultar_letra",
-        imagem: "public/assets/images/ocultar_letra.png"
+        imagem: "/public/assets/images/ocultar_letra.png"
     },
     {
         nome: "Ocultar dica",
         descricao: "Remove a dica da rodada.",
         preco: 2500,
         id: "ocultar_dica",
-        imagem: "public/assets/images/ocultar_dica.png"
+        imagem: "/public/assets/images/ocultar_dica.png"
     },
     {
         nome: "Liberar letra",
         descricao: "Revela uma letra correta da palavra.",
         preco: 2500,
         id: "liberar_letra",
-        imagem: "public/assets/images/liberar_letra.png"
+        imagem: "/public/assets/images/liberar_letra.png"
     },
     {
         nome: "Palpite",
         descricao: "Habilidade especial para virar o jogo.",
         preco: 2500,
         id: "palpite",
-        imagem: "public/assets/images/palpite.png"
+        imagem: "/public/assets/images/palpite.png"
     }
 ];
 
@@ -220,10 +220,19 @@ document.addEventListener('DOMContentLoaded', () => {
     modalBtnConfirmar.addEventListener('click', async (e) => {
         e.preventDefault();
         
-        const pacoteSelecionadoEl = document.querySelector('input[name="pacote"]:checked')?.closest('.pacote-box');
+        const pacoteInputChecked = document.querySelector('input[name="pacote"]:checked');
+        
+        if (!pacoteInputChecked) {
+            alert('Por favor, selecione um pacote de moedas.');
+            return;
+        }
+        
+        // Encontra o pacote-box dentro do label que contém o input checked
+        const pacoteLabel = pacoteInputChecked.closest('.pacote');
+        const pacoteSelecionadoEl = pacoteLabel?.querySelector('.pacote-box');
         
         if (!pacoteSelecionadoEl) {
-            alert('Por favor, selecione um pacote de moedas.');
+            alert('Erro ao processar o pacote selecionado. Tente novamente.');
             return;
         }
 
@@ -296,7 +305,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             // Reabilita o botão
             modalBtnConfirmar.style.pointerEvents = '';
-            modalBtnConfirmar.style.pointerEvents = '';
             modalBtnConfirmar.style.opacity = '';
             modalBtnConfirmar.textContent = textoOriginal;
         }
@@ -304,9 +312,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Ação do botão "Cancelar" no modal
-    modalBtnCancelar.addEventListener('click', (e) => {
-        e.preventDefault();
-        window.location.hash = ''; // Remove a âncora para fechar o modal
+    if (modalBtnCancelar) {
+        modalBtnCancelar.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.location.hash = ''; // Remove a âncora para fechar o modal
+        });
+    }
+    
+    // Atualiza o destaque dos pacotes quando um é selecionado
+    const pacoteInputs = document.querySelectorAll('input[name="pacote"]');
+    pacoteInputs.forEach(input => {
+        // Adiciona destaque ao pacote inicialmente selecionado
+        if (input.checked) {
+            const selectedBox = input.closest('.pacote')?.querySelector('.pacote-box');
+            if (selectedBox) {
+                selectedBox.classList.add('destaque');
+            }
+        }
+        
+        input.addEventListener('change', () => {
+            // Remove a classe destaque de todos os pacotes
+            document.querySelectorAll('.pacote-box').forEach(box => {
+                box.classList.remove('destaque');
+            });
+            // Adiciona destaque ao pacote selecionado
+            const selectedBox = input.closest('.pacote')?.querySelector('.pacote-box');
+            if (selectedBox) {
+                selectedBox.classList.add('destaque');
+            }
+        });
     });
     
     // Configura o botão para abrir o modal via âncora (se necessário, o HTML já deve fazer isso)
