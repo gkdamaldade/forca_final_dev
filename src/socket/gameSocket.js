@@ -413,9 +413,9 @@ module.exports = function(io) {
           game.prontos.clear();
           game.players.forEach(p => p.wasReady = false);
           
-          console.log(`📤 Enviando evento 'preparacao' para J1 (${j1Corrigido.id}) e J2 (${j2Corrigido.id})`);
-          io.to(j1Corrigido.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
-          io.to(j2Corrigido.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
+            console.log(`📤 Enviando evento 'preparacao' para J1 (${j1Corrigido.id}) e J2 (${j2Corrigido.id})`);
+            io.to(j1Corrigido.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
+            io.to(j2Corrigido.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
           return;
         }
         
@@ -433,9 +433,9 @@ module.exports = function(io) {
         // SEMPRE envia evento de preparação quando o segundo jogador entra
         // O jogo só deve iniciar quando ambos clicarem em "pronto" (evento 'pronto')
         console.log(`⏳ Aguardando ambos os jogadores clicarem em "pronto": ${game.players.length} jogadores, ${game.prontos.size} prontos`);
-        console.log(`📤 Enviando evento 'preparacao' para J1 (${j1.id}) e J2 (${j2.id})`);
-        io.to(j1.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
-        io.to(j2.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
+          console.log(`📤 Enviando evento 'preparacao' para J1 (${j1.id}) e J2 (${j2.id})`);
+          io.to(j1.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
+          io.to(j2.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
       } else if (game.players.length === 1) {
         console.log(`⏳ Aguardando segundo jogador na sala ${roomId}`);
       }
@@ -1094,11 +1094,19 @@ module.exports = function(io) {
         console.log(`💡 Jogador ${numeroJogador} pediu dica ${ordemDica}. Turno passou para: ${game.turno}`);
         
         // Emite evento para ambos os jogadores com a dica
+        // Nota: as dicas vêm do wordService com a propriedade 'texto', não 'texto_dica'
+        const textoDica = dica.texto || dica.texto_dica;
+        console.log(`💡 Enviando dica ${ordemDica} para jogador ${numeroJogador}:`, {
+          ordemDica: ordemDica,
+          textoDica: textoDica,
+          estruturaDica: dica
+        });
+        
         io.to(roomId).emit('eventoJogo', {
           tipo: 'dicaPedida',
           jogadorQuePediu: numeroJogador,
           ordemDica: ordemDica,
-          textoDica: dica.texto_dica,
+          textoDica: textoDica,
           turno: game.turno
         });
         
