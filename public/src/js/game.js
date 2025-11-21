@@ -149,6 +149,9 @@ document.addEventListener('DOMContentLoaded', () => {
     configurarTecladoVirtual();
     document.addEventListener('keydown', lidarComChuteDeTecladoFisico);
     
+    // Configura botão de chutar palavra completa
+    configurarChutePalavra();
+    
     console.log('✅ Inicialização completa');
 });
 
@@ -868,6 +871,84 @@ function configurarListenersSocket() {
         } else if (evento.tipo === 'adversarioUsouPoder') {
             console.log('⚠️ Adversário usou um poder:', evento);
             mostrarFeedback('Adversário usou um poder!', 'orange');
+        } else if (evento.tipo === 'chutePalavra') {
+            console.log('📥 Chute de palavra processado:', evento);
+            
+            // Atualiza o estado do jogo
+            if (evento.palavraJogador1 && evento.palavraJogador2) {
+                palavraExibida = evento.jogadorQueJogou === meuNumeroJogador 
+                    ? (meuNumeroJogador === 1 ? evento.palavraJogador1 : evento.palavraJogador2)
+                    : palavraExibida;
+                palavraAdversarioExibida = evento.jogadorQueJogou === meuNumeroJogador
+                    ? (meuNumeroJogador === 1 ? evento.palavraJogador2 : evento.palavraJogador1)
+                    : palavraAdversarioExibida;
+                atualizarPalavraExibida();
+            }
+            
+            // Atualiza erros
+            if (evento.errosJogador1 !== undefined && evento.errosJogador2 !== undefined) {
+                errosJogador1 = evento.errosJogador1;
+                errosJogador2 = evento.errosJogador2;
+                atualizarBonecosUI();
+            }
+            
+            // Atualiza vidas
+            if (evento.vidas) {
+                vidas = evento.vidas;
+                atualizarVidasUI(false, null);
+            }
+            
+            // Atualiza turno
+            if (evento.turno) {
+                turnoAtual = evento.turno;
+                atualizarTurnoUI();
+                atualizarTecladoDesabilitado();
+            }
+            
+            // Feedback baseado no resultado
+            if (evento.jogadorQueJogou === meuNumeroJogador) {
+                if (evento.resultado === 'vitoria') {
+                    mostrarFeedback(`🎯 Você acertou a palavra "${evento.palavraChutada}"! Adversário perde uma vida!`, 'green');
+                } else if (evento.resultado === 'derrota') {
+                    mostrarFeedback(`❌ Você errou a palavra "${evento.palavraChutada}"! Você perde uma vida!`, 'red');
+                }
+            } else {
+                if (evento.resultado === 'vitoria') {
+                    mostrarFeedback(`⚠️ Adversário acertou a palavra! Você perde uma vida!`, 'orange');
+                } else if (evento.resultado === 'derrota') {
+                    mostrarFeedback(`✅ Adversário errou a palavra!`, 'green');
+                }
+            }
+            
+            // Se começou nova rodada
+            if (evento.novaRodada) {
+                console.log('🔄 Nova rodada iniciada após chute de palavra');
+                clearInterval(timerInterval);
+                
+                const turnoAtualNum = Number(turnoAtual) || 0;
+                const meuNumeroNum = Number(meuNumeroJogador) || 0;
+                
+                if (turnoAtualNum === meuNumeroNum && meuNumeroNum > 0 && jogoEstaAtivo) {
+                    console.log(`✓ É meu turno agora (jogador ${meuNumeroNum}), iniciando timer`);
+                    iniciarTimer();
+                } else {
+                    console.log(`✗ Não é meu turno (jogador ${meuNumeroNum}, turno atual: ${turnoAtualNum})`);
+                    if (timerEl) {
+                        timerEl.textContent = 'Aguardando...';
+                        timerEl.style.color = '#888';
+                    }
+                }
+            } else {
+                if (evento.turno === meuNumeroJogador && jogoEstaAtivo) {
+                    iniciarTimer();
+                } else {
+                    clearInterval(timerInterval);
+                    if (timerEl) {
+                        timerEl.textContent = 'Aguardando...';
+                        timerEl.style.color = '#888';
+                    }
+                }
+            }
         } else if (evento.tipo === 'erro') {
             console.warn('❌ Erro do servidor:', evento.mensagem);
             mostrarFeedback(evento.mensagem || 'Erro no servidor', 'red');
@@ -1542,6 +1623,123 @@ function finalizarJogo(status) {
 }
 
 // --- 8. EVENT LISTENERS ---
+// Configuração do botão de chutar palavra completa
+function configurarChutePalavra() {
+    const btnChutarPalavra = document.getElementById('btn-chutar-palavra');
+    const modalChutePalavra = document.getElementById('modal-chute-palavra');
+    const inputChutePalavra = document.getElementById('input-chute-palavra');
+    const btnConfirmarChute = document.getElementById('btn-confirmar-chute');
+    const btnCancelarChute = document.getElementById('btn-cancelar-chute');
+    
+    if (!btnChutarPalavra || !modalChutePalavra || !inputChutePalavra) {
+        console.warn('⚠️ Elementos do modal de chute de palavra não encontrados');
+        return;
+    }
+    
+    // Abre o modal
+    btnChutarPalavra.addEventListener('click', () => {
+        if (!jogoEstaAtivo) {
+            mostrarFeedback('O jogo não está ativo', 'orange');
+            return;
+        }
+        
+        // Verifica se é o turno do jogador
+        if (turnoAtual !== meuNumeroJogador) {
+            mostrarFeedback('Não é seu turno!', 'orange');
+            return;
+        }
+        
+        modalChutePalavra.classList.add('active');
+        inputChutePalavra.value = '';
+        inputChutePalavra.focus();
+    });
+    
+    // Fecha o modal ao clicar em cancelar
+    if (btnCancelarChute) {
+        btnCancelarChute.addEventListener('click', () => {
+            modalChutePalavra.classList.remove('active');
+            inputChutePalavra.value = '';
+        });
+    }
+    
+    // Fecha o modal ao clicar fora
+    modalChutePalavra.addEventListener('click', (e) => {
+        if (e.target === modalChutePalavra) {
+            modalChutePalavra.classList.remove('active');
+            inputChutePalavra.value = '';
+        }
+    });
+    
+    // Confirma o chute
+    if (btnConfirmarChute) {
+        btnConfirmarChute.addEventListener('click', () => {
+            const palavraChutada = inputChutePalavra.value.trim();
+            if (!palavraChutada) {
+                mostrarFeedback('Digite uma palavra!', 'orange');
+                return;
+            }
+            
+            enviarChutePalavra(palavraChutada);
+            modalChutePalavra.classList.remove('active');
+            inputChutePalavra.value = '';
+        });
+    }
+    
+    // Confirma com Enter
+    inputChutePalavra.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const palavraChutada = inputChutePalavra.value.trim();
+            if (palavraChutada) {
+                enviarChutePalavra(palavraChutada);
+                modalChutePalavra.classList.remove('active');
+                inputChutePalavra.value = '';
+            }
+        } else if (e.key === 'Escape') {
+            modalChutePalavra.classList.remove('active');
+            inputChutePalavra.value = '';
+        }
+    });
+    
+    // Atualiza o estado do botão baseado no turno
+    function atualizarEstadoBotaoChute() {
+        if (btnChutarPalavra) {
+            const eMeuTurno = turnoAtual === meuNumeroJogador && jogoEstaAtivo;
+            btnChutarPalavra.disabled = !eMeuTurno;
+            if (!eMeuTurno) {
+                btnChutarPalavra.style.opacity = '0.5';
+                btnChutarPalavra.style.cursor = 'not-allowed';
+            } else {
+                btnChutarPalavra.style.opacity = '1';
+                btnChutarPalavra.style.cursor = 'pointer';
+            }
+        }
+    }
+    
+    // Atualiza o estado quando o turno muda
+    const originalAtualizarTurnoUI = atualizarTurnoUI;
+    atualizarTurnoUI = function() {
+        originalAtualizarTurnoUI();
+        atualizarEstadoBotaoChute();
+    };
+    
+    atualizarEstadoBotaoChute();
+}
+
+// Envia o chute de palavra completa para o servidor
+function enviarChutePalavra(palavra) {
+    if (!socket || !jogoEstaAtivo) {
+        mostrarFeedback('Não foi possível enviar o chute', 'red');
+        return;
+    }
+    
+    console.log(`📤 Enviando chute de palavra: "${palavra}"`);
+    
+    socket.emit('eventoJogo', {
+        tipo: 'chutarPalavra',
+        palavra: palavra
+    });
+}
+
 function configurarTecladoVirtual() {
     if (!tecladoContainer) return;
     tecladoContainer.addEventListener('click', e => {

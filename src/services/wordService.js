@@ -41,8 +41,9 @@ function normalizarCategoria(categoria) {
  * @param {Object} options - Opções para busca
  * @param {string} options.categoria - Categoria para filtrar
  * @param {Array<string>} options.excluirPalavras - Array de palavras (em maiúsculas) para excluir da busca
+ * @param {string} options.dificuldade - Dificuldade para filtrar (opcional)
  */
-async function getRandomWord({ categoria, excluirPalavras = [] }) {
+async function getRandomWord({ categoria, excluirPalavras = [], dificuldade = null }) {
   const { Op } = require('sequelize');
   const where = {};
 
@@ -51,6 +52,13 @@ async function getRandomWord({ categoria, excluirPalavras = [] }) {
     const categoriaNormalizada = normalizarCategoria(categoria);
     where.categoria = {
       [Op.iLike]: categoriaNormalizada
+    };
+  }
+
+  // Se veio dificuldade, filtra por dificuldade
+  if (dificuldade) {
+    where.dificuldade = {
+      [Op.iLike]: dificuldade
     };
   }
 
@@ -71,8 +79,8 @@ async function getRandomWord({ categoria, excluirPalavras = [] }) {
 
   if (!palavra) {
     const mensagem = categoria 
-      ? `Nenhuma palavra encontrada para a categoria: ${categoria}${excluirPalavras.length > 0 ? ` (excluindo ${excluirPalavras.length} palavras já usadas)` : ''}`
-      : `Nenhuma palavra encontrada no banco de dados${excluirPalavras.length > 0 ? ` (excluindo ${excluirPalavras.length} palavras já usadas)` : ''}`;
+      ? `Nenhuma palavra encontrada para a categoria: ${categoria}${dificuldade ? ` com dificuldade: ${dificuldade}` : ''}${excluirPalavras.length > 0 ? ` (excluindo ${excluirPalavras.length} palavras já usadas)` : ''}`
+      : `Nenhuma palavra encontrada no banco de dados${dificuldade ? ` com dificuldade: ${dificuldade}` : ''}${excluirPalavras.length > 0 ? ` (excluindo ${excluirPalavras.length} palavras já usadas)` : ''}`;
     throw new Error(mensagem);
   }
 

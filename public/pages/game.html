@@ -96,6 +96,9 @@
             <div class="categoria">Categoria X</div>
             <div class="tempo">15s</div>
             <div class="versus">Vs</div>
+            <button class="btn-chutar-palavra" id="btn-chutar-palavra" title="Chutar palavra completa" aria-label="Chutar palavra completa">
+                <i class="fa fa-keyboard"></i>
+            </button>
         </div>
 
         <!-- Palavras -->
@@ -156,6 +159,35 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal de chute de palavra completa -->
+    <div class="modal-chute-palavra" id="modal-chute-palavra">
+        <div class="modal-chute-palavra-content">
+            <div class="modal-chute-palavra-header">
+                <h3 class="modal-chute-palavra-title">Chutar Palavra Completa</h3>
+                <p class="modal-chute-palavra-subtitle">Digite a palavra que você acha que está na forca</p>
+            </div>
+            <div class="modal-chute-palavra-input-container">
+                <input 
+                    type="text" 
+                    id="input-chute-palavra" 
+                    class="modal-chute-palavra-input" 
+                    placeholder="Digite a palavra..."
+                    maxlength="50"
+                    autocomplete="off"
+                />
+            </div>
+            <div class="modal-chute-palavra-actions">
+                <button class="modal-chute-palavra-btn modal-chute-palavra-btn-confirmar" id="btn-confirmar-chute">
+                    Confirmar
+                </button>
+                <button class="modal-chute-palavra-btn modal-chute-palavra-btn-cancelar" id="btn-cancelar-chute">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script type="module" src="/public/src/js/socket.js"></script>
     <script type="module" src="/public/src/js/game.js"></script>

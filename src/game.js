@@ -121,6 +121,52 @@ class Game {
         return this.erros >= Game.MAX_ERROS_BONECO;
     }
 
+    /**
+     * Normaliza uma palavra removendo acentos, tils e convertendo para maiúscula
+     * @param {string} palavra - Palavra a ser normalizada
+     * @returns {string} - Palavra normalizada
+     */
+    normalizarPalavra(palavra) {
+        if (!palavra) return '';
+        // Remove acentos, tils e outros diacríticos
+        return palavra
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '') // Remove diacríticos (acentos, tils, etc)
+            .toUpperCase()
+            .trim()
+            .replace(/\s+/g, ' '); // Normaliza espaços múltiplos para um único espaço
+    }
+
+    /**
+     * Chuta a palavra completa
+     * @param {string} palavraChutada - Palavra que o jogador acha que é
+     * @returns {string} - 'vitoria' se acertou, 'derrota' se errou
+     */
+    chutarPalavraCompleta(palavraChutada) {
+        if (this.status !== "jogando") return this.status;
+        
+        // Normaliza ambas as palavras (remove acentos, tils, converte para maiúscula, normaliza espaços)
+        const palavraChutadaNormalizada = this.normalizarPalavra(palavraChutada);
+        const palavraSecretaNormalizada = this.normalizarPalavra(this.palavraSecreta);
+        
+        // Compara as palavras normalizadas
+        if (palavraChutadaNormalizada === palavraSecretaNormalizada) {
+            // Acertou! Marca todas as letras como chutadas e vence
+            for (const letra of this.palavraSecreta) {
+                if (letra !== ' ') {
+                    this.letrasChutadas.add(letra);
+                }
+            }
+            this.status = "vitoria";
+            return "vitoria";
+        } else {
+            // Errou! Perde uma vida (marca como derrota)
+            this.erros = Game.MAX_ERROS_BONECO; // Força derrota
+            this.status = "derrota";
+            return "derrota";
+        }
+    }
+
      //* NOVO MÉTODO: Poder "Mago Negro"
      //* Encontra a letra mais comum na palavra que AINDA não foi chutada.
      //*/

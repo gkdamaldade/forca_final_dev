@@ -19,20 +19,52 @@ module.exports = function(io) {
       
       if (!activeGames.has(roomId)) {
         try {
-          // Busca duas palavras aleatórias (uma para cada jogador)
+          // Busca primeira palavra aleatória
           const wordObj1 = await getRandomWord({ categoria: categoria, excluirPalavras: [] });
           const palavra1 = (wordObj1?.palavra || 'FORCA').toUpperCase();
           const categoriaUsada = wordObj1?.categoria || categoria;
+          const dificuldade = wordObj1?.dificuldade || null; // Pega a dificuldade da primeira palavra
           
-          // Busca segunda palavra excluindo a primeira (garante que sejam diferentes)
+          // Busca segunda palavra com a MESMA dificuldade e excluindo a primeira (garante que sejam diferentes mas com mesma dificuldade)
           let wordObj2;
           let palavra2;
           let tentativas = 0;
-          do {
+          
+          // Tenta encontrar palavra com a mesma dificuldade
+          if (dificuldade) {
+            do {
+              try {
+                wordObj2 = await getRandomWord({ 
+                  categoria: categoria, 
+                  excluirPalavras: [palavra1],
+                  dificuldade: dificuldade // Usa a mesma dificuldade da primeira palavra
+                });
+                
+                if (wordObj2) {
+                  palavra2 = (wordObj2?.palavra || 'FORCA').toUpperCase();
+                  // Se encontrou palavra diferente, sai do loop
+                  if (palavra1 !== palavra2) {
+                    break;
+                  }
+                }
+              } catch (error) {
+                // Se não encontrou palavra com essa dificuldade, tenta sem filtro
+                console.warn(`⚠️ Não foi possível encontrar palavra com dificuldade ${dificuldade}. Tentando sem filtro...`);
+                wordObj2 = null;
+                break;
+              }
+              tentativas++;
+            } while (palavra1 === palavra2 && tentativas < 5);
+          }
+          
+          // Se não encontrou palavra com a mesma dificuldade, tenta sem filtro de dificuldade (fallback)
+          if (!wordObj2) {
+            if (dificuldade) {
+              console.warn(`⚠️ Não foi possível encontrar palavra com dificuldade ${dificuldade}. Buscando sem filtro de dificuldade...`);
+            }
             wordObj2 = await getRandomWord({ categoria: categoria, excluirPalavras: [palavra1] });
             palavra2 = (wordObj2?.palavra || 'FORCA').toUpperCase();
-            tentativas++;
-          } while (palavra1 === palavra2 && tentativas < 5); // Tenta pegar palavras diferentes (fallback)
+          }
           
           // Cria instâncias de Game separadas para cada jogador
           const gameInstance1 = new Game(palavra1, categoriaUsada);
@@ -688,30 +720,62 @@ module.exports = function(io) {
             console.log(`📋 Palavras já usadas no jogo: ${game.palavrasUsadas.join(', ')}`);
             
             try {
-              // Busca duas novas palavras excluindo todas as palavras já usadas no jogo
+              // Busca primeira nova palavra excluindo todas as palavras já usadas no jogo
               const novaPalavraObj1 = await getRandomWord({ 
                 categoria: game.categoria, 
                 excluirPalavras: game.palavrasUsadas || [] 
               });
               const novaPalavra1 = (novaPalavraObj1?.palavra || 'FORCA').toUpperCase();
+              const dificuldadeNova = novaPalavraObj1?.dificuldade || null; // Pega a dificuldade da primeira palavra
               
-              // Busca segunda palavra excluindo a primeira E todas as palavras já usadas
+              // Busca segunda palavra com a MESMA dificuldade, excluindo a primeira E todas as palavras já usadas
               let novaPalavraObj2;
               let novaPalavra2;
               let tentativas = 0;
               const palavrasParaExcluir = [...(game.palavrasUsadas || []), novaPalavra1];
-              do {
+              
+              // Tenta encontrar palavra com a mesma dificuldade
+              if (dificuldadeNova) {
+                do {
+                  try {
+                    novaPalavraObj2 = await getRandomWord({ 
+                      categoria: game.categoria, 
+                      excluirPalavras: palavrasParaExcluir,
+                      dificuldade: dificuldadeNova // Usa a mesma dificuldade da primeira palavra
+                    });
+                    
+                    if (novaPalavraObj2) {
+                      novaPalavra2 = (novaPalavraObj2?.palavra || 'FORCA').toUpperCase();
+                      // Se encontrou palavra diferente, sai do loop
+                      if (novaPalavra1 !== novaPalavra2) {
+                        break;
+                      }
+                      // Se ainda assim for igual, adiciona à lista de exclusão e tenta novamente
+                      if (novaPalavra1 === novaPalavra2 && tentativas < 5) {
+                        palavrasParaExcluir.push(novaPalavra2);
+                      }
+                    }
+                  } catch (error) {
+                    // Se não encontrou palavra com essa dificuldade, tenta sem filtro
+                    console.warn(`⚠️ Não foi possível encontrar palavra com dificuldade ${dificuldadeNova}. Tentando sem filtro...`);
+                    novaPalavraObj2 = null;
+                    break;
+                  }
+                  tentativas++;
+                } while (novaPalavra1 === novaPalavra2 && tentativas < 5);
+              }
+              
+              // Se não encontrou palavra com a mesma dificuldade, tenta sem filtro de dificuldade (fallback)
+              if (!novaPalavraObj2) {
+                if (dificuldadeNova) {
+                  console.warn(`⚠️ Não foi possível encontrar palavra com dificuldade ${dificuldadeNova}. Buscando sem filtro de dificuldade...`);
+                }
                 novaPalavraObj2 = await getRandomWord({ 
                   categoria: game.categoria, 
                   excluirPalavras: palavrasParaExcluir 
                 });
                 novaPalavra2 = (novaPalavraObj2?.palavra || 'FORCA').toUpperCase();
-                tentativas++;
-                // Se ainda assim for igual (fallback), adiciona à lista de exclusão e tenta novamente
-                if (novaPalavra1 === novaPalavra2 && tentativas < 5) {
-                  palavrasParaExcluir.push(novaPalavra2);
-                }
-              } while (novaPalavra1 === novaPalavra2 && tentativas < 5);
+              }
               
               // Adiciona as novas palavras à lista de palavras usadas
               if (!game.palavrasUsadas) {
@@ -819,6 +883,268 @@ module.exports = function(io) {
           palpiteLetra: palpiteTransferido ? letraProcessada : null
         });
 
+      }
+
+      if (msg.tipo === 'chutarPalavra') {
+        // Verifica se é o turno do jogador
+        const jogadorAtual = game.players.find(p => p.id === socket.id);
+        if (!jogadorAtual) {
+          console.log(`❌ Jogador não encontrado: ${socket.id}`);
+          socket.emit('eventoJogo', {
+            tipo: 'erro',
+            mensagem: 'Jogador não encontrado na sala!'
+          });
+          return;
+        }
+        
+        const numeroJogador = jogadorAtual.numero;
+        
+        console.log(`🎯 Verificando turno para chute de palavra: jogador=${numeroJogador}, turno atual=${game.turno}`);
+        
+        if (numeroJogador !== game.turno) {
+          console.log(`❌ Não é o turno do jogador ${numeroJogador}. Turno atual: ${game.turno}`);
+          socket.emit('eventoJogo', {
+            tipo: 'erro',
+            mensagem: 'Não é seu turno!'
+          });
+          return;
+        }
+        
+        const palavraChutada = (msg.palavra || '').trim();
+        if (!palavraChutada) {
+          socket.emit('eventoJogo', {
+            tipo: 'erro',
+            mensagem: 'Palavra não pode estar vazia!'
+          });
+          return;
+        }
+        
+        console.log(`✅ É o turno do jogador ${numeroJogador}. Processando chute de palavra: "${palavraChutada}"`);
+        
+        const gameInstanceJogador = game.gameInstances[numeroJogador - 1];
+        const gameInstanceAdversario = game.gameInstances[(numeroJogador === 1 ? 2 : 1) - 1];
+        const adversarioNum = numeroJogador === 1 ? 2 : 1;
+        
+        let alguemPerdeuVida = false;
+        let jogadorQuePerdeuVida = null;
+        let motivoPerdaVida = '';
+        
+        // Chuta a palavra completa
+        const resultado = gameInstanceJogador.chutarPalavraCompleta(palavraChutada);
+        console.log(`Chute de palavra processado: palavra="${palavraChutada}", resultado=${resultado}`);
+        
+        if (resultado === 'vitoria') {
+          // Acertou! Adversário perde vida
+          game.vidas[adversarioNum - 1]--;
+          alguemPerdeuVida = true;
+          jogadorQuePerdeuVida = adversarioNum;
+          motivoPerdaVida = 'vitoria';
+          console.log(`🎯 Jogador ${numeroJogador} acertou a palavra "${palavraChutada}"! Jogador ${adversarioNum} perde uma vida. Vidas restantes: J1=${game.vidas[0]}, J2=${game.vidas[1]}`);
+        } else if (resultado === 'derrota') {
+          // Errou! Jogador perde vida
+          game.vidas[numeroJogador - 1]--;
+          alguemPerdeuVida = true;
+          jogadorQuePerdeuVida = numeroJogador;
+          motivoPerdaVida = 'erro_palavra';
+          console.log(`❌ Jogador ${numeroJogador} errou a palavra "${palavraChutada}"! Ele perde uma vida. Vidas restantes: J1=${game.vidas[0]}, J2=${game.vidas[1]}`);
+        }
+        
+        const estadoJogador = gameInstanceJogador.getEstado();
+        const estadoAdversario = gameInstanceAdversario.getEstado();
+        
+        // Se alguém perdeu vida, reseta AMBAS as palavras e começa nova rodada
+        if (alguemPerdeuVida) {
+          // Verifica se o jogo acabou
+          if (game.vidas[0] <= 0 || game.vidas[1] <= 0) {
+            const vencedor = game.vidas[0] > 0 ? 1 : 2;
+            console.log(`🏆 Jogo finalizado! Vencedor: Jogador ${vencedor}`);
+            
+            // Registra vitória no banco de dados
+            try {
+              const jogadorVencedor = game.players.find(p => p.numero === vencedor);
+              if (jogadorVencedor && jogadorVencedor.playerId) {
+                const player = await models.Player.findByPk(jogadorVencedor.playerId);
+                if (player) {
+                  await player.increment('vitorias');
+                  await player.reload();
+                  console.log(`✅ Vitória registrada para ${jogadorVencedor.name} (ID: ${jogadorVencedor.playerId})! Total de vitórias: ${player.vitorias}`);
+                }
+              }
+            } catch (error) {
+              console.error(`❌ Erro ao registrar vitória:`, error);
+            }
+            
+            // Envia evento de fim de jogo
+            io.to(roomId).emit('eventoJogo', {
+              tipo: 'fim',
+              vencedor: vencedor,
+              vidas: game.vidas
+            });
+            setTimeout(() => {
+              activeGames.delete(roomId);
+            }, 5000);
+            return;
+          } else {
+            // Reseta AMBAS as palavras para nova rodada
+            console.log(`🔄 Alguém perdeu vida! Resetando ambas as palavras para nova rodada...`);
+            console.log(`📋 Palavras já usadas no jogo: ${game.palavrasUsadas.join(', ')}`);
+            
+            try {
+              // Busca primeira nova palavra excluindo todas as palavras já usadas no jogo
+              const novaPalavraObj1 = await getRandomWord({ 
+                categoria: game.categoria, 
+                excluirPalavras: game.palavrasUsadas || [] 
+              });
+              const novaPalavra1 = (novaPalavraObj1?.palavra || 'FORCA').toUpperCase();
+              const dificuldadeNova = novaPalavraObj1?.dificuldade || null;
+              
+              // Busca segunda palavra com a MESMA dificuldade, excluindo a primeira E todas as palavras já usadas
+              let novaPalavraObj2;
+              let novaPalavra2;
+              let tentativas = 0;
+              const palavrasParaExcluir = [...(game.palavrasUsadas || []), novaPalavra1];
+              
+              // Tenta encontrar palavra com a mesma dificuldade
+              if (dificuldadeNova) {
+                do {
+                  try {
+                    novaPalavraObj2 = await getRandomWord({ 
+                      categoria: game.categoria, 
+                      excluirPalavras: palavrasParaExcluir,
+                      dificuldade: dificuldadeNova
+                    });
+                    
+                    if (novaPalavraObj2) {
+                      novaPalavra2 = (novaPalavraObj2?.palavra || 'FORCA').toUpperCase();
+                      if (novaPalavra1 !== novaPalavra2) {
+                        break;
+                      }
+                      if (novaPalavra1 === novaPalavra2 && tentativas < 5) {
+                        palavrasParaExcluir.push(novaPalavra2);
+                      }
+                    }
+                  } catch (error) {
+                    console.warn(`⚠️ Não foi possível encontrar palavra com dificuldade ${dificuldadeNova}. Tentando sem filtro...`);
+                    novaPalavraObj2 = null;
+                    break;
+                  }
+                  tentativas++;
+                } while (novaPalavra1 === novaPalavra2 && tentativas < 5);
+              }
+              
+              // Se não encontrou palavra com a mesma dificuldade, tenta sem filtro de dificuldade (fallback)
+              if (!novaPalavraObj2) {
+                if (dificuldadeNova) {
+                  console.warn(`⚠️ Não foi possível encontrar palavra com dificuldade ${dificuldadeNova}. Buscando sem filtro de dificuldade...`);
+                }
+                novaPalavraObj2 = await getRandomWord({ 
+                  categoria: game.categoria, 
+                  excluirPalavras: palavrasParaExcluir 
+                });
+                novaPalavra2 = (novaPalavraObj2?.palavra || 'FORCA').toUpperCase();
+              }
+              
+              // Adiciona as novas palavras à lista de palavras usadas
+              if (!game.palavrasUsadas) {
+                game.palavrasUsadas = [];
+              }
+              game.palavrasUsadas.push(novaPalavra1);
+              if (novaPalavra1 !== novaPalavra2) {
+                game.palavrasUsadas.push(novaPalavra2);
+              }
+              
+              // Reseta ambas as instâncias
+              game.words[0] = novaPalavra1;
+              game.words[1] = novaPalavra2;
+              game.gameInstances[0] = new Game(novaPalavra1, game.categoria);
+              game.gameInstances[1] = new Game(novaPalavra2, game.categoria);
+              
+              console.log(`✅ Novas palavras escolhidas: J1=${novaPalavra1}, J2=${novaPalavra2}`);
+              
+              // Alterna o turno: quem começou a rodada anterior, o outro começa a próxima
+              const turnoAnterior = game.turnoInicialRodada || 1;
+              game.turno = turnoAnterior === 1 ? 2 : 1;
+              game.turnoInicialRodada = game.turno;
+              
+              console.log(`✅ Nova rodada iniciada! Palavra J1: ${novaPalavra1}, Palavra J2: ${novaPalavra2}, Turno: Jogador ${game.turno}`);
+            } catch (error) {
+              console.error('Erro ao buscar novas palavras:', error);
+              // Fallback
+              const palavrasFallback = ['FORCA', 'JOGO', 'TESTE', 'LIVRO', 'CASA', 'GATO', 'CARRO', 'MESA'];
+              let palavraFallback1 = 'FORCA';
+              let palavraFallback2 = 'JOGO';
+              
+              const palavrasDisponiveis = palavrasFallback.filter(p => 
+                !game.palavrasUsadas || !game.palavrasUsadas.includes(p)
+              );
+              
+              if (palavrasDisponiveis.length >= 2) {
+                palavraFallback1 = palavrasDisponiveis[0];
+                palavraFallback2 = palavrasDisponiveis[1];
+              } else if (palavrasDisponiveis.length >= 1) {
+                palavraFallback1 = palavrasDisponiveis[0];
+                palavraFallback2 = palavrasFallback.find(p => p !== palavraFallback1) || 'JOGO';
+              }
+              
+              game.words[0] = palavraFallback1;
+              game.words[1] = palavraFallback2;
+              game.gameInstances[0] = new Game(palavraFallback1, game.categoria);
+              game.gameInstances[1] = new Game(palavraFallback2, game.categoria);
+              
+              // Garante que ambas as instâncias estão com status 'jogando'
+              if (game.gameInstances[0].status !== 'jogando') {
+                game.gameInstances[0].status = 'jogando';
+              }
+              if (game.gameInstances[1].status !== 'jogando') {
+                game.gameInstances[1].status = 'jogando';
+              }
+              
+              if (!game.palavrasUsadas) {
+                game.palavrasUsadas = [];
+              }
+              if (!game.palavrasUsadas.includes(palavraFallback1)) {
+                game.palavrasUsadas.push(palavraFallback1);
+              }
+              if (palavraFallback1 !== palavraFallback2 && !game.palavrasUsadas.includes(palavraFallback2)) {
+                game.palavrasUsadas.push(palavraFallback2);
+              }
+              const turnoAnterior = game.turnoInicialRodada || 1;
+              game.turno = turnoAnterior === 1 ? 2 : 1;
+              game.turnoInicialRodada = game.turno;
+            }
+          }
+        }
+        
+        // Controle de turno - se não perdeu vida, troca o turno normalmente
+        if (!alguemPerdeuVida && gameInstanceJogador.status === 'jogando') {
+          game.turno = game.turno === 1 ? 2 : 1;
+          console.log(`Turno trocado para: ${game.turno}`);
+        }
+        
+        // Envia o resultado para todos na sala
+        const estado1Final = game.gameInstances[0].getEstado();
+        const estado2Final = game.gameInstances[1].getEstado();
+        
+        io.to(roomId).emit('eventoJogo', {
+          tipo: 'chutePalavra',
+          palavraChutada: palavraChutada,
+          resultado: resultado, // 'vitoria' ou 'derrota'
+          palavraJogador1: estado1Final.palavra,
+          palavraJogador2: estado2Final.palavra,
+          errosJogador1: estado1Final.erros,
+          errosJogador2: estado2Final.erros,
+          letrasChutadasJogador1: estado1Final.letrasChutadas,
+          letrasChutadasJogador2: estado2Final.letrasChutadas,
+          turno: game.turno,
+          statusJogador1: estado1Final.status,
+          statusJogador2: estado2Final.status,
+          vidas: game.vidas,
+          alguemPerdeuVida: alguemPerdeuVida,
+          jogadorQuePerdeuVida: jogadorQuePerdeuVida,
+          motivoPerdaVida: motivoPerdaVida,
+          jogadorQueJogou: numeroJogador,
+          novaRodada: alguemPerdeuVida && game.vidas[0] > 0 && game.vidas[1] > 0
+        });
       }
 
       if (msg.tipo === 'tempoEsgotado') {
