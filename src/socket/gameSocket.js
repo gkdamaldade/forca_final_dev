@@ -2,7 +2,7 @@ const { getRandomWord } = require('../services/wordService');
 const { Game } = require('../game');
 const { models } = require('../models');
 
-const RECONNECT_GRACE_MS = 15000;
+const RECONNECT_GRACE_MS = 20000; // 20 segundos para reconectar
 const activeGames = new Map();
 
 module.exports = function(io) {
@@ -122,6 +122,13 @@ module.exports = function(io) {
           clearTimeout(jogadorExistentePorSocket.remocaoTimeout);
           jogadorExistentePorSocket.remocaoTimeout = null;
         }
+        
+        // Notifica que o jogador reconectou
+        io.to(roomId).emit('eventoJogo', {
+          tipo: 'jogadorReconectado',
+          jogadorReconectado: jogadorExistentePorSocket.numero
+        });
+        
         // Envia evento de preparação se necessário
         if (game.players.length === 2) {
           const j1 = game.players.find(p => p.numero === 1);
@@ -160,6 +167,12 @@ module.exports = function(io) {
           clearTimeout(jogadorExistentePorNome.remocaoTimeout);
           jogadorExistentePorNome.remocaoTimeout = null;
         }
+        
+        // Notifica que o jogador reconectou
+        io.to(roomId).emit('eventoJogo', {
+          tipo: 'jogadorReconectado',
+          jogadorReconectado: jogadorExistentePorNome.numero
+        });
 
         // Se o jogador já estava marcado como pronto, atualiza o set com o novo socket.id
         if (estavaProntoAntes) {
@@ -1569,13 +1582,69 @@ module.exports = function(io) {
         }
 
         const socketIdParaRemocao = socket.id;
-        jogador.remocaoTimeout = setTimeout(() => {
+        const numeroJogadorDesconectado = jogador.numero;
+        
+        // Envia evento de desconexão para ambos os jogadores
+        io.to(roomId).emit('eventoJogo', {
+          tipo: 'jogadorDesconectado',
+          jogadorDesconectado: numeroJogadorDesconectado,
+          tempoReconexao: RECONNECT_GRACE_MS / 1000
+        });
+        
+        jogador.remocaoTimeout = setTimeout(async () => {
           const aindaExiste = game.players.find(p => p.name === jogador.name);
           if (!aindaExiste || !aindaExiste.desconectado || aindaExiste.id !== socketIdParaRemocao) {
             return; // Jogador já reconectou ou foi removido
           }
 
-          console.log(`🗑️ Removendo jogador ${jogador.name} da sala ${roomId} após ${RECONNECT_GRACE_MS / 1000}s desconectado`);
+          console.log(`⏱️ Tempo de reconexão esgotado para jogador ${jogador.name} (${numeroJogadorDesconectado}) na sala ${roomId}`);
+          
+          // Verifica se o jogo está ativo (já começou)
+          const jogoEstaAtivo = game.gameInstances && game.gameInstances.length === 2 && 
+                                (game.gameInstances[0].status === 'jogando' || 
+                                 game.gameInstances[1].status === 'jogando');
+          
+          if (jogoEstaAtivo) {
+            // Jogo está ativo - declara vitória do outro jogador por W.O.
+            const adversarioNum = numeroJogadorDesconectado === 1 ? 2 : 1;
+            const adversario = game.players.find(p => p.numero === adversarioNum);
+            
+            if (adversario) {
+              console.log(`🏆 Jogador ${adversario.name} (${adversarioNum}) venceu por W.O. - adversário desconectou`);
+              
+              // Registra vitória no banco de dados
+              try {
+                if (adversario.playerId) {
+                  const player = await models.Player.findByPk(adversario.playerId);
+                  if (player) {
+                    await player.increment('vitorias');
+                    await player.reload();
+                    console.log(`✅ Vitória por W.O. registrada para ${adversario.name} (ID: ${adversario.playerId})! Total de vitórias: ${player.vitorias}`);
+                  }
+                }
+              } catch (error) {
+                console.error(`❌ Erro ao registrar vitória por W.O.:`, error);
+              }
+              
+              // Envia evento de fim de jogo com vitória por W.O.
+              io.to(adversario.id).emit('eventoJogo', {
+                tipo: 'fim',
+                vencedor: adversarioNum,
+                motivo: 'wo', // Walkover
+                vidas: game.vidas
+              });
+              
+              // Envia evento para o jogador desconectado também (caso esteja tentando reconectar)
+              io.to(roomId).emit('eventoJogo', {
+                tipo: 'fim',
+                vencedor: adversarioNum,
+                motivo: 'wo',
+                vidas: game.vidas
+              });
+            }
+          }
+          
+          // Remove o jogador desconectado
           game.players = game.players.filter(p => p.name !== jogador.name);
 
           if (game.players.length === 0) {

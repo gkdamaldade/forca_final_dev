@@ -40,6 +40,7 @@ let timerChutePalavra = null; // Timer específico para o modal de chute de pala
 let segundosRestantesRodada = 15; // Armazena os segundos restantes do timer da rodada
 let timerRodadaPausado = false; // Indica se o timer da rodada está pausado
 let chutePalavraDisponivel = true; // Indica se o jogador pode chutar palavra nesta rodada
+let timerReconexao = null; // Timer para contador de reconexão
 let sala = '';
 let categoria = '';
 let nomeJogador = '';
@@ -816,12 +817,67 @@ function configurarListenersSocket() {
                     timerEl.style.color = '#888';
                 }
             }
+        } else if (evento.tipo === 'jogadorDesconectado') {
+            console.log('⚠️ Jogador desconectado:', evento);
+            const jogadorDesconectado = evento.jogadorDesconectado;
+            const tempoReconexao = evento.tempoReconexao || 20;
+            
+            if (jogadorDesconectado !== meuNumeroJogador) {
+                // Adversário desconectou
+                mostrarFeedback(`⚠️ Adversário desconectou! Aguardando reconexão (${tempoReconexao}s)...`, 'orange');
+                
+                // Inicia contador visual de reconexão
+                iniciarContadorReconexao(tempoReconexao);
+            } else {
+                // Eu desconectei (mas reconectei)
+                mostrarFeedback('Você reconectou!', 'green');
+            }
+        } else if (evento.tipo === 'jogadorReconectado') {
+            console.log('✅ Jogador reconectado:', evento);
+            const jogadorReconectado = evento.jogadorReconectado;
+            
+            // Para o contador de reconexão
+            pararContadorReconexao();
+            
+            if (jogadorReconectado !== meuNumeroJogador) {
+                // Adversário reconectou
+                mostrarFeedback('✅ Adversário reconectou!', 'green');
+                
+                // Retoma o timer normal se for meu turno
+                if (turnoAtual === meuNumeroJogador && jogoEstaAtivo) {
+                    iniciarTimer();
+                } else if (timerEl) {
+                    timerEl.textContent = 'Aguardando...';
+                    timerEl.style.color = '#888';
+                }
+            } else {
+                // Eu reconectei
+                mostrarFeedback('✅ Você reconectou!', 'green');
+                
+                // Retoma o timer se for meu turno
+                if (turnoAtual === meuNumeroJogador && jogoEstaAtivo) {
+                    iniciarTimer();
+                } else if (timerEl) {
+                    timerEl.textContent = 'Aguardando...';
+                    timerEl.style.color = '#888';
+                }
+            }
         } else if (evento.tipo === 'fim') {
             console.log('🏆 Evento FIM recebido:', evento);
             const vencedor = evento.vencedor;
+            
+            // Para o contador de reconexão se estiver rodando
+            pararContadorReconexao();
+            
             if (vencedor === meuNumeroJogador) {
+                if (evento.motivo === 'wo') {
+                    mostrarFeedback('🏆 Você venceu por W.O.! Adversário desconectou.', 'green');
+                }
                 finalizarJogo('vitoria');
             } else {
+                if (evento.motivo === 'wo') {
+                    mostrarFeedback('❌ Você perdeu por W.O.! Você desconectou.', 'red');
+                }
                 finalizarJogo('derrota');
             }
         } else if (evento.tipo === 'preparacao') {
@@ -1717,9 +1773,50 @@ function mostrarFeedback(mensagem, cor) {
     }, 1500);
 }
 
+// Inicia contador visual de reconexão
+function iniciarContadorReconexao(segundos) {
+    pararContadorReconexao();
+    
+    let segundosRestantes = segundos;
+    
+    // Atualiza o timer principal para mostrar o contador de reconexão
+    if (timerEl) {
+        timerEl.textContent = `${segundosRestantes}s`;
+        timerEl.style.color = '#ff9800';
+    }
+    
+    timerReconexao = setInterval(() => {
+        segundosRestantes--;
+        
+        if (timerEl) {
+            timerEl.textContent = `${segundosRestantes}s`;
+            if (segundosRestantes <= 5) {
+                timerEl.style.color = '#ff5555';
+            }
+        }
+        
+        if (segundosRestantes <= 0) {
+            pararContadorReconexao();
+            if (timerEl) {
+                timerEl.textContent = 'Aguardando...';
+                timerEl.style.color = '#888';
+            }
+        }
+    }, 1000);
+}
+
+// Para o contador de reconexão
+function pararContadorReconexao() {
+    if (timerReconexao) {
+        clearInterval(timerReconexao);
+        timerReconexao = null;
+    }
+}
+
 function finalizarJogo(status) {
     jogoEstaAtivo = false;
     clearInterval(timerInterval);
+    pararContadorReconexao();
     
     if (status === 'vitoria') {
         mostrarFeedback('Você venceu!', 'green');

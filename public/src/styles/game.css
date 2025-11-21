@@ -1048,14 +1048,14 @@ header {
 .area-inferior {
   display: flex;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center;
   gap: 20px;
   width: 100%;
   padding: 0 8px;
   box-sizing: border-box;
   margin-top: 8px;
   flex-shrink: 0;
-  flex-wrap: wrap;
+  flex-wrap: nowrap; /* Evita quebra de linha */
 }
 
 /* Quando não há poderes, centraliza o teclado */
@@ -1064,18 +1064,34 @@ header {
 }
 
 /* Quando há poderes, ajusta o layout para distribuir espaço */
+.area-inferior:has(#poderes-jogador-container:not(:empty)) {
+  justify-content: flex-start;
+  align-items: center;
+}
+
 .area-inferior:has(#poderes-jogador-container:not(:empty)) .poderes-section {
   flex-shrink: 0;
+  flex-basis: auto;
 }
 
 .area-inferior:has(#poderes-jogador-container:not(:empty)) .teclado-container-wrapper {
-  flex-grow: 1;
-  max-width: calc(100% - 180px);
-  margin: 0 auto;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
 }
 
 .area-inferior:has(#poderes-jogador-container:not(:empty)) .teclado {
-  flex-grow: 1;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.area-inferior:has(#poderes-jogador-container:not(:empty)) .btn-chutar-palavra {
+  flex-shrink: 0;
+  flex-basis: auto;
 }
 
 
@@ -1086,6 +1102,9 @@ header {
   align-items: center;
   gap: 10px;
   min-width: 140px;
+  max-width: 200px;
+  width: auto;
+  flex-shrink: 0;
   padding: 12px 14px;
   border-radius: 16px;
   background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
@@ -1134,6 +1153,7 @@ header {
   justify-content: center;
   min-height: 60px;
   width: 100%;
+  max-width: 200px; /* Limita a largura máxima para evitar que quebre o layout */
 }
 
 .poderes-jogador:empty::before {
@@ -1426,6 +1446,9 @@ header {
     gap: 16px;
     align-items: center;
   }
+  .area-inferior:has(#poderes-jogador-container:not(:empty)) {
+    justify-content: center;
+  }
   .poderes-section {
     width: 100%;
     max-width: 100%;
@@ -1434,6 +1457,7 @@ header {
     flex-direction: row; 
     justify-content: center;
     flex-wrap: wrap;
+    max-width: 100%;
   }
   .poder {
     width: 56px;
