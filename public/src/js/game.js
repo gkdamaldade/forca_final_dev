@@ -241,70 +241,72 @@ async function configurarSelecaoPoderes() {
         
         const inventario = await response.json();
         
-        if (inventario.length === 0) {
-            containerPoderes.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Você não possui poderes. Compre na loja!</p>';
-            return;
-        }
-        
-        // Cria botões apenas para os poderes que o usuário tem no inventário
+        // Cria um mapa do inventário por tipo_poder para acesso rápido
+        const inventarioMap = {};
         inventario.forEach(item => {
-            if (item.quantidade > 0 && item.tipo_poder) {
-                const poderInfo = MAPEAMENTO_PODERES[item.tipo_poder];
-                if (!poderInfo) {
-                    console.warn(`[${instanceId}] ⚠️ Poder desconhecido no inventário: ${item.tipo_poder}`);
-                    return;
-                }
-                
-                const botaoPoder = document.createElement('button');
-                botaoPoder.className = 'poder';
-                botaoPoder.setAttribute('data-poder', item.tipo_poder);
-                botaoPoder.setAttribute('data-quantidade', item.quantidade);
-                botaoPoder.setAttribute('aria-label', poderInfo.nome);
-                botaoPoder.disabled = false;
-                
-                // Container para imagem e contador
-                const containerImg = document.createElement('div');
-                containerImg.style.position = 'relative';
-                containerImg.style.display = 'inline-block';
-                
-                const imgPoder = document.createElement('img');
-                imgPoder.src = item.imagem || poderInfo.imagem;
-                imgPoder.alt = poderInfo.nome;
-                
-                // Badge com quantidade
-                const badgeQuantidade = document.createElement('span');
-                badgeQuantidade.className = 'badge-quantidade';
-                badgeQuantidade.textContent = item.quantidade;
-                badgeQuantidade.style.cssText = `
-                    position: absolute;
-                    top: -8px;
-                    right: -8px;
-                    background: #00e5ff;
-                    color: white;
-                    border-radius: 50%;
-                    width: 24px;
-                    height: 24px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 12px;
-                    font-weight: bold;
-                    border: 2px solid #fff;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-                `;
-                
-                containerImg.appendChild(imgPoder);
-                containerImg.appendChild(badgeQuantidade);
-                botaoPoder.appendChild(containerImg);
-                
-                // Adiciona listener
-                botaoPoder.addEventListener('click', lidarComCliquePoder);
-                
-                containerPoderes.appendChild(botaoPoder);
+            if (item.tipo_poder && item.quantidade > 0) {
+                inventarioMap[item.tipo_poder] = item.quantidade;
             }
         });
         
-        console.log(`[${instanceId}] ✅ ${inventario.length} poderes carregados do inventário`);
+        // Cria botões para TODOS os poderes disponíveis
+        Object.keys(MAPEAMENTO_PODERES).forEach(tipoPoder => {
+            const poderInfo = MAPEAMENTO_PODERES[tipoPoder];
+            const quantidade = inventarioMap[tipoPoder] || 0;
+            const temPoder = quantidade > 0;
+            
+            const botaoPoder = document.createElement('button');
+            botaoPoder.className = 'poder';
+            botaoPoder.setAttribute('data-poder', tipoPoder);
+            botaoPoder.setAttribute('data-quantidade', quantidade);
+            botaoPoder.setAttribute('aria-label', poderInfo.nome);
+            botaoPoder.disabled = !temPoder; // Desabilita se não tiver o poder
+            
+            // Adiciona classe para poderes sem estoque
+            if (!temPoder) {
+                botaoPoder.classList.add('sem-estoque');
+            }
+            
+            // Container para imagem e contador
+            const containerImg = document.createElement('div');
+            containerImg.className = 'poder-img-container';
+            containerImg.style.cssText = `
+                position: relative;
+                display: block;
+                width: 100%;
+                height: 100%;
+            `;
+            
+            const imgPoder = document.createElement('img');
+            imgPoder.src = poderInfo.imagem;
+            imgPoder.alt = poderInfo.nome;
+            imgPoder.style.cssText = `
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+                padding: 8px;
+            `;
+            
+            // Badge com quantidade (só mostra se tiver o poder)
+            if (temPoder) {
+                const badgeQuantidade = document.createElement('span');
+                badgeQuantidade.className = 'badge-quantidade-poder';
+                badgeQuantidade.textContent = quantidade;
+                containerImg.appendChild(badgeQuantidade);
+            }
+            
+            containerImg.appendChild(imgPoder);
+            botaoPoder.appendChild(containerImg);
+            
+            // Adiciona listener apenas se tiver o poder
+            if (temPoder) {
+                botaoPoder.addEventListener('click', lidarComCliquePoder);
+            }
+            
+            containerPoderes.appendChild(botaoPoder);
+        });
+        
+        console.log(`[${instanceId}] ✅ Poderes carregados. ${Object.keys(inventarioMap).length} tipos no inventário`);
     } catch (error) {
         console.error(`[${instanceId}] ❌ Erro ao carregar inventário:`, error);
         containerPoderes.innerHTML = '<p style="color: #ff6b6b; text-align: center; padding: 20px;">Erro ao carregar poderes. Recarregue a página.</p>';
@@ -821,6 +823,14 @@ function configurarListenersSocket() {
             registrarEventoPronto(evento);
         } else if (evento.tipo === 'poderUsado') {
             console.log('✅ Poder usado com sucesso:', evento);
+            
+            // Se o poder mantém o turno, atualiza o turno para o jogador que usou
+            if (evento.manterTurno && evento.turno) {
+                turnoAtual = evento.turno;
+                console.log(`🔄 Poder mantém turno: turno atualizado para ${turnoAtual}`);
+                atualizarTurnoUI();
+                atualizarTecladoDesabilitado();
+            }
             
             // Processa o resultado do poder
             if (evento.resultado) {

@@ -999,43 +999,59 @@ module.exports = function(io) {
           }
             
           case 'liberar_letra': {
-            // Revela uma letra da palavra do jogador
+            // Revela uma letra da palavra do jogador (todas as ocorrências)
             const gameInstance = game.gameInstances[numeroJogador - 1];
             if (gameInstance && gameInstance.status === 'jogando') {
-              // Encontra uma letra ainda não revelada na palavra
+              // Encontra letras que estão na palavra mas ainda não foram reveladas
               const palavraSecreta = game.words[numeroJogador - 1];
-              const palavraAtual = gameInstance.getEstado().palavra;
-              const letrasNaoReveladas = [];
               
-              for (let i = 0; i < palavraSecreta.length; i++) {
-                if (palavraAtual[i] === '_' || palavraAtual[i] === ' ') {
-                  letrasNaoReveladas.push({
-                    letra: palavraSecreta[i],
-                    posicao: i
-                  });
+              // Conta frequência de cada letra não revelada na palavra
+              const contagemLetras = {};
+              for (const letra of palavraSecreta) {
+                if (letra !== ' ' && !gameInstance.letrasChutadas.has(letra)) {
+                  contagemLetras[letra] = (contagemLetras[letra] || 0) + 1;
                 }
               }
               
-              if (letrasNaoReveladas.length > 0) {
-                const escolhida = letrasNaoReveladas[Math.floor(Math.random() * letrasNaoReveladas.length)];
-                // Força a letra a ser revelada
-                gameInstance.letrasChutadas.add(escolhida.letra);
+              // Encontra a letra mais frequente que ainda não foi revelada
+              let letraEscolhida = null;
+              let maxFrequencia = 0;
+              
+              for (const letra in contagemLetras) {
+                if (contagemLetras[letra] > maxFrequencia) {
+                  maxFrequencia = contagemLetras[letra];
+                  letraEscolhida = letra;
+                }
+              }
+              
+              // Se não encontrou letra mais frequente, escolhe qualquer uma disponível
+              if (!letraEscolhida && Object.keys(contagemLetras).length > 0) {
+                const letrasDisponiveis = Object.keys(contagemLetras);
+                letraEscolhida = letrasDisponiveis[Math.floor(Math.random() * letrasDisponiveis.length)];
+              }
+              
+              if (letraEscolhida) {
+                // Adiciona a letra ao conjunto de letras chutadas
+                // Isso automaticamente revela TODAS as ocorrências da letra na palavra
+                gameInstance.letrasChutadas.add(letraEscolhida);
                 const novoEstado = gameInstance.getEstado();
                 
                 resultadoPoder = {
                   tipo: 'liberarLetra',
                   jogador: numeroJogador,
-                  letra: escolhida.letra,
+                  letra: letraEscolhida,
                   palavraAtualizada: novoEstado.palavra,
-                  sucesso: true
+                  sucesso: true,
+                  manterTurno: true // Mantém o turno para o jogador continuar chutando
                 };
-                console.log(`🔓 Letra '${escolhida.letra}' revelada para jogador ${numeroJogador}`);
+                console.log(`🔓 Letra '${letraEscolhida}' revelada (todas as ${maxFrequencia} ocorrências) para jogador ${numeroJogador}`);
               } else {
                 resultadoPoder = {
                   tipo: 'liberarLetra',
                   jogador: numeroJogador,
                   sucesso: false,
-                  mensagem: 'Todas as letras já foram reveladas'
+                  mensagem: 'Todas as letras já foram reveladas',
+                  manterTurno: true
                 };
               }
             }
@@ -1104,9 +1120,10 @@ module.exports = function(io) {
               tipo: 'palpite',
               jogador: numeroJogador,
               sucesso: true,
-              mensagem: 'Palpite ativado! Letras do adversário contarão como erro na sua forca'
+              mensagem: 'Palpite ativado! Letras do adversário contarão como erro na sua forca',
+              manterTurno: true // Indica que o turno deve ser mantido
             };
-            console.log(`🎯 Poder de palpite ativado para jogador ${numeroJogador}`);
+            console.log(`🎯 Poder de palpite ativado para jogador ${numeroJogador}. Turno mantido.`);
             break;
           }
             
@@ -1125,6 +1142,12 @@ module.exports = function(io) {
         jogadorAtual.poderes = jogadorAtual.poderes.filter(p => p !== poderId);
         console.log(`✅ Poder ${poderId} removido da lista de poderes disponíveis do jogador ${numeroJogador}`);
         
+        // Se o poder deve manter o turno, não altera o turno
+        // Caso contrário, o turno será trocado normalmente após o poder
+        if (resultadoPoder?.manterTurno) {
+          console.log(`🔄 Poder ${poderId} mantém o turno do jogador ${numeroJogador}`);
+        }
+        
         // Envia resultado do poder para o jogador que usou
         socket.emit('eventoJogo', {
           tipo: 'poderUsado',
@@ -1132,7 +1155,9 @@ module.exports = function(io) {
           jogador: numeroJogador,
           resultado: resultadoPoder,
           vidas: vidasAtualizadas,
-          sucesso: resultadoPoder?.sucesso !== false
+          sucesso: resultadoPoder?.sucesso !== false,
+          manterTurno: resultadoPoder?.manterTurno || false,
+          turno: game.turno // Envia o turno atual
         });
         
         // Notifica TODOS na sala sobre o poder usado e atualizações (vidas, etc)
@@ -1150,6 +1175,15 @@ module.exports = function(io) {
         // Se for tirar vida ou vida extra, atualiza as vidas de todos
         if (resultadoPoder?.tipo === 'vidaExtra' || resultadoPoder?.tipo === 'tirarVida') {
           console.log(`📊 Vidas atualizadas: J1=${vidasAtualizadas[0]}, J2=${vidasAtualizadas[1]}`);
+        }
+        
+        // Se o poder deve manter o turno, não troca o turno
+        // O turno só é trocado se o poder não especificar manterTurno
+        if (!resultadoPoder?.manterTurno) {
+          // Para poderes que não mantêm o turno, troca normalmente
+          // (mas isso só acontece se não houver outra lógica que já trocou)
+          // A maioria dos poderes não precisa trocar o turno aqui, pois o turno já é controlado
+          // pelo fluxo normal de jogadas
         }
       }
       
@@ -1216,3 +1250,4 @@ module.exports = function(io) {
     });
   });
 };
+
