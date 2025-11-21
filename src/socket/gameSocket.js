@@ -5,17 +5,23 @@ const { models } = require('../models');
 const RECONNECT_GRACE_MS = 20000; // 20 segundos para reconectar
 const activeGames = new Map();
 
+// Sistema de logging condicional (desabilitado em produção)
+const DEBUG = process.env.NODE_ENV !== 'production';
+const log = DEBUG ? console.log.bind(console) : () => {};
+const logWarn = DEBUG ? console.warn.bind(console) : () => {};
+const logError = console.error.bind(console); // Erros sempre logados
+
 module.exports = function(io) {
   io.on('connection', socket => {
-    console.log('🎮 Conectado:', socket.id);
+    log('🎮 Conectado:', socket.id);
 
     socket.on('joinRoom', async ({ roomId, playerName, playerId, categoria }) => {
-      console.log(`🚪 joinRoom recebido: roomId=${roomId}, playerName=${playerName}, playerId=${playerId}, categoria=${categoria}, socket.id=${socket.id}`);
+      log(`🚪 joinRoom recebido: roomId=${roomId}, playerName=${playerName}, playerId=${playerId}, categoria=${categoria}, socket.id=${socket.id}`);
       
       socket.join(roomId);
       socket.data = { nome: playerName, playerId: playerId, sala: roomId };
       
-      console.log(`✅ Socket ${socket.id} entrou na sala ${roomId}`);
+      log(`✅ Socket ${socket.id} entrou na sala ${roomId}`);
       
       if (!activeGames.has(roomId)) {
         try {

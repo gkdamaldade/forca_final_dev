@@ -2,6 +2,38 @@
 
 import { conectarSocket, aoReceberEvento, enviarEvento, getMeuSocketId, getSocket } from './socket.js';
 
+// --- 0. OTIMIZAÇÕES DE PERFORMANCE ---
+// Sistema de logging condicional (desabilitado em produção)
+const DEBUG = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const log = DEBUG ? console.log.bind(console) : () => {};
+const logWarn = DEBUG ? console.warn.bind(console) : () => {};
+const logError = console.error.bind(console); // Erros sempre logados
+
+// Debounce para funções de atualização UI
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Throttle para funções que precisam ser executadas periodicamente
+function throttle(func, limit) {
+    let inThrottle;
+    return function(...args) {
+        if (!inThrottle) {
+            func.apply(this, args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+        }
+    };
+}
+
 // --- 1. SELETORES DO DOM ---
 const categoriaEl = document.querySelector('.categoria');
 const timerEl = document.querySelector('.tempo');
@@ -92,7 +124,7 @@ const MAPEAMENTO_PODERES = {
 
 // --- 3. INICIALIZAÇÃO ---
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🎮 DOMContentLoaded - Inicializando jogo...');
+    log('🎮 DOMContentLoaded - Inicializando jogo...');
     
     const urlParams = new URLSearchParams(window.location.search);
     sala = urlParams.get('sala');
@@ -120,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         nomeJogador = payload.nome || payload.name || '';
         meuPlayerId = payload.id || null; // Armazena o ID do jogador do token
-        console.log(`👤 Nome do jogador: ${nomeJogador}, ID: ${meuPlayerId}`);
+        log(`👤 Nome do jogador: ${nomeJogador}, ID: ${meuPlayerId}`);
         instanceId = `${nomeJogador}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     } catch (e) {
         console.error('❌ Erro ao decodificar token:', e);
@@ -138,19 +170,18 @@ document.addEventListener('DOMContentLoaded', () => {
     configurarListenersSocket();
     
     // Conecta ao socket
-    console.log(`🔌 Conectando ao socket: sala=${sala}, nome=${nomeJogador}, playerId=${meuPlayerId}, categoria=${categoria}`);
+    log(`🔌 Conectando ao socket: sala=${sala}, nome=${nomeJogador}, playerId=${meuPlayerId}, categoria=${categoria}`);
     conectarSocket(sala, nomeJogador, meuPlayerId, categoria);
     
     // Reconfigura listeners após conexão para garantir que estão ativos
     setTimeout(() => {
         configurarListenersSocket();
-        console.log(`✅ Listeners de socket reconfigurados após conexão`);
+        log(`✅ Listeners de socket reconfigurados após conexão`);
     }, 200);
     
     // Aguarda um pouco para garantir que o socket está conectado
     setTimeout(() => {
-        console.log('⏳ Aguardando evento de início do jogo...');
-        console.log(`📊 Estado atual: meuNumeroJogador=${meuNumeroJogador}, turnoAtual=${turnoAtual}, jogoEstaAtivo=${jogoEstaAtivo}`);
+        log('⏳ Aguardando evento de início do jogo...');
     }, 500);
     
     // Configura teclado virtual e físico
@@ -160,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Configura botão de chutar palavra completa
     configurarChutePalavra();
     
-    console.log('✅ Inicialização completa');
+    log('✅ Inicialização completa');
 });
 
 function configurarInterfacePreparacao() {
@@ -422,7 +453,13 @@ function renderizarPoderesNoJogo() {
         botaoPoder.className = 'poder';
         botaoPoder.setAttribute('data-poder', poderId);
         botaoPoder.setAttribute('title', poderInfo.descricao || poderInfo.nome);
-        botaoPoder.disabled = poderesUsados.has(poderId); // Desabilita se já foi usado
+        
+        // Desabilita apenas se já foi usado permanentemente OU se não é o turno do jogador OU se já usou um poder no turno
+        const jaFoiUsado = poderesUsados.has(poderId);
+        const eMeuTurno = turnoAtual === meuNumeroJogador && jogoEstaAtivo;
+        const jaUsouPoderNoTurno = poderUsadoNoTurno !== null && poderUsadoNoTurno !== poderId;
+        
+        botaoPoder.disabled = jaFoiUsado || !eMeuTurno || jaUsouPoderNoTurno;
         
         const imgPoder = document.createElement('img');
         imgPoder.src = poderInfo.imagem;
@@ -431,8 +468,17 @@ function renderizarPoderesNoJogo() {
         botaoPoder.appendChild(imgPoder);
         
         // Adiciona classe se já foi usado
-        if (poderesUsados.has(poderId)) {
+        if (jaFoiUsado) {
             botaoPoder.classList.add('usado');
+        }
+        
+        // Adiciona estilo visual se desabilitado por turno
+        if (!eMeuTurno || jaUsouPoderNoTurno) {
+            botaoPoder.style.opacity = '0.5';
+            botaoPoder.style.cursor = 'not-allowed';
+        } else {
+            botaoPoder.style.opacity = '1';
+            botaoPoder.style.cursor = 'pointer';
         }
         
         // Adiciona listener para usar o poder
@@ -477,30 +523,42 @@ function desabilitarTodosPoderesExceto(poderIdUsado) {
 }
 
 // Reabilita poderes quando o turno troca (exceto os já usados permanentemente)
+let ultimoTurnoReabilitado = null;
+
 function reabilitarPoderesNoTurno() {
-    poderUsadoNoTurno = null; // Reseta o poder usado no turno
-    
     const containerPoderes = document.getElementById('poderes-jogador-container');
     if (!containerPoderes) return;
     
+    const eMeuTurno = turnoAtual === meuNumeroJogador && jogoEstaAtivo;
+    
+    // Se o turno mudou para o meu turno, reseta o poder usado no turno
+    if (ultimoTurnoReabilitado !== turnoAtual && eMeuTurno) {
+        poderUsadoNoTurno = null;
+        ultimoTurnoReabilitado = turnoAtual;
+    }
+    
     const botoesPoderes = containerPoderes.querySelectorAll('.poder');
+    
     botoesPoderes.forEach(botao => {
         const poderId = botao.getAttribute('data-poder');
-        // Reabilita apenas se não foi usado permanentemente e é meu turno
-        if (!poderesUsados.has(poderId) && turnoAtual === meuNumeroJogador && jogoEstaAtivo) {
+        const jaFoiUsado = poderesUsados.has(poderId);
+        const jaUsouPoderNoTurno = poderUsadoNoTurno !== null && poderUsadoNoTurno !== poderId;
+        
+        // Habilita se: não foi usado permanentemente E é meu turno E não usou outro poder no turno
+        if (!jaFoiUsado && eMeuTurno && !jaUsouPoderNoTurno) {
             botao.disabled = false;
             botao.style.opacity = '1';
             botao.style.cursor = 'pointer';
-            botao.classList.remove('desabilitado-turno');
-        } else if (poderesUsados.has(poderId)) {
-            // Mantém desabilitado se foi usado permanentemente
+            botao.classList.remove('desabilitado-turno', 'usado');
+        } else {
+            // Desabilita em outros casos
             botao.disabled = true;
-            botao.classList.add('usado');
-        } else if (turnoAtual !== meuNumeroJogador) {
-            // Desabilita se não é meu turno
-            botao.disabled = true;
-            botao.style.opacity = '0.5';
-            botao.style.cursor = 'not-allowed';
+            if (jaFoiUsado) {
+                botao.classList.add('usado');
+            } else {
+                botao.style.opacity = '0.5';
+                botao.style.cursor = 'not-allowed';
+            }
         }
     });
 }
@@ -1234,6 +1292,8 @@ function iniciarJogo(dados) {
     // Carrega os poderes selecionados que foram enviados pelo servidor
     poderesDisponiveis = dados.poderes || [];
     poderesUsados.clear(); // Reseta poderes usados
+    poderUsadoNoTurno = null; // Reseta poder usado no turno
+    ultimoTurnoReabilitado = null; // Reseta último turno reabilitado
     console.log(`🎯 Poderes disponíveis para o jogo:`, poderesDisponiveis);
     console.log(`🎯 Tipo de poderes:`, typeof poderesDisponiveis, Array.isArray(poderesDisponiveis));
     console.log(`🎯 Número de poderes:`, poderesDisponiveis.length);
@@ -1244,6 +1304,8 @@ function iniciarJogo(dados) {
     // Renderiza os poderes na tela de jogo (com pequeno delay para garantir que o DOM está pronto)
     setTimeout(() => {
         renderizarPoderesNoJogo();
+        // Garante que os poderes sejam habilitados corretamente após renderizar
+        reabilitarPoderesNoTurno();
     }, 100);
     
     atualizarVidasUI();
@@ -1251,11 +1313,6 @@ function iniciarJogo(dados) {
     atualizarBonecosUI();
     atualizarTurnoUI();
     atualizarTecladoDesabilitado(); // Desabilita letras já chutadas E bloqueia se não for o turno
-    
-    // Reabilita poderes quando o jogo inicia
-    setTimeout(() => {
-        reabilitarPoderesNoTurno();
-    }, 150); // Pequeno delay para garantir que os poderes foram renderizados
     
     // Sempre inicia o timer se for o turno do jogador
     const turnoAtualNum = Number(turnoAtual) || 0;
@@ -1497,7 +1554,7 @@ function iniciarTimer(tempoInicial = null) {
     timerEl.style.color = 'white';
     timerEl.classList.remove('timer-urgente'); // Remove classe urgente ao resetar
     
-    console.log(`⏱️ Timer iniciado: ${segundos}s`);
+    log(`⏱️ Timer iniciado: ${segundos}s`);
     
     timerInterval = setInterval(() => {
         // Se o timer está pausado, não decrementa
@@ -1523,7 +1580,7 @@ function iniciarTimer(tempoInicial = null) {
         if (segundos <= 0) {
             clearInterval(timerInterval);
             // Tempo esgotado - passa o turno automaticamente
-            console.log('⏱️ Tempo esgotado! Passando turno automaticamente...');
+            log('⏱️ Tempo esgotado! Passando turno automaticamente...');
             if (timerEl) {
                 timerEl.textContent = 'Tempo esgotado!';
                 timerEl.style.color = '#ff5555';
@@ -1536,7 +1593,7 @@ function iniciarTimer(tempoInicial = null) {
                 
                 // Só passa o turno se for realmente o turno do jogador
                 if (turnoAtualNum === meuNumeroNum) {
-                    console.log(`⏱️ Enviando evento de tempo esgotado para passar o turno...`);
+                    log(`⏱️ Enviando evento de tempo esgotado para passar o turno...`);
                     enviarEvento({
                         tipo: 'tempoEsgotado'
                     });
@@ -1549,41 +1606,43 @@ function iniciarTimer(tempoInicial = null) {
 function pausarTimerRodada() {
     if (timerInterval && !timerRodadaPausado) {
         timerRodadaPausado = true;
-        console.log(`⏸️ Timer da rodada pausado. Tempo restante: ${segundosRestantesRodada}s`);
+        log(`⏸️ Timer da rodada pausado. Tempo restante: ${segundosRestantesRodada}s`);
     }
 }
 
 function retomarTimerRodada() {
     if (timerRodadaPausado && segundosRestantesRodada > 0) {
         timerRodadaPausado = false;
-        console.log(`▶️ Timer da rodada retomado. Tempo restante: ${segundosRestantesRodada}s`);
+        log(`▶️ Timer da rodada retomado. Tempo restante: ${segundosRestantesRodada}s`);
         // O timer já está rodando, só precisa retomar a contagem
     }
 }
 
+// Cache do último turno para evitar atualizações desnecessárias
+let ultimoTurnoUI = null;
+
 function atualizarTurnoUI() {
-    console.log(`Atualizando UI do turno: turnoAtual=${turnoAtual}, meuNumeroJogador=${meuNumeroJogador}`);
+    // Evita atualização se o turno não mudou
+    if (ultimoTurnoUI === turnoAtual) {
+        return;
+    }
+    ultimoTurnoUI = turnoAtual;
+    
+    log(`Atualizando UI do turno: turnoAtual=${turnoAtual}, meuNumeroJogador=${meuNumeroJogador}`);
     
     // Remove a classe de todos primeiro
-    h2Jogador1.classList.remove('active-turn');
-    h2Jogador2.classList.remove('active-turn');
+    if (h2Jogador1) h2Jogador1.classList.remove('active-turn');
+    if (h2Jogador2) h2Jogador2.classList.remove('active-turn');
     
     // Adiciona a classe no jogador do turno
-    if (turnoAtual === 1) {
+    if (turnoAtual === 1 && h2Jogador1) {
         h2Jogador1.classList.add('active-turn');
-        console.log('✓ Jogador 1 está no turno (adicionado active-turn)');
-    } else if (turnoAtual === 2) {
+        log('✓ Jogador 1 está no turno (adicionado active-turn)');
+    } else if (turnoAtual === 2 && h2Jogador2) {
         h2Jogador2.classList.add('active-turn');
-        console.log('✓ Jogador 2 está no turno (adicionado active-turn)');
-    } else {
-        console.warn('⚠ Turno inválido:', turnoAtual);
-    }
-    
-    // Atualiza visualmente qual jogador pode jogar
-    if (turnoAtual === meuNumeroJogador) {
-        console.log('✓ É meu turno - posso jogar!');
-    } else {
-        console.log('✗ Não é meu turno - aguardando...');
+        log('✓ Jogador 2 está no turno (adicionado active-turn)');
+    } else if (turnoAtual !== 1 && turnoAtual !== 2) {
+        logWarn('⚠ Turno inválido:', turnoAtual);
     }
 }
 
@@ -1640,8 +1699,7 @@ async function processarChute(letra) {
     }
     
     // Envia jogada para o servidor
-    console.log(`📤 Enviando jogada: ${letra} (turno: ${turnoAtual}, meu número: ${meuNumeroJogador})`);
-    console.log(`🔍 Validação antes de enviar: jogoAtivo=${jogoEstaAtivo}, turnoAtual=${turnoAtual}, meuNumero=${meuNumeroJogador}, letraChutada=${letrasChutadas.has(letra)}`);
+    log(`📤 Enviando jogada: ${letra} (turno: ${turnoAtual}, meu número: ${meuNumeroJogador})`);
     
     enviarEvento({
         tipo: 'jogada',
@@ -1653,8 +1711,9 @@ async function processarChute(letra) {
 // Armazena o estado anterior das vidas para detectar mudanças
 let vidasAnteriores = [3, 3];
 
+// Versão otimizada com debounce
 function atualizarVidasUI(animarVidaExtra = false, jogadorAnimacao = null) {
-    console.log(`💚 Atualizando vidas: J1=${vidas[0]}, J2=${vidas[1]}`);
+    log(`💚 Atualizando vidas: J1=${vidas[0]}, J2=${vidas[1]}`);
     
     // Determina o número máximo de vidas para exibir (até 4 para suportar vida extra)
     const maxVidasParaExibir = Math.max(3, vidas[0], vidas[1]);
@@ -1721,12 +1780,24 @@ function atualizarVidasUI(animarVidaExtra = false, jogadorAnimacao = null) {
     vidasAnteriores = [...vidas];
 }
 
+// Cache para evitar re-renderizações desnecessárias
+let ultimaPalavraExibida = '';
+let ultimaPalavraAdversarioExibida = '';
+
 function atualizarPalavraExibida() {
     // Determina qual palavra mostrar para cada jogador
     let minhaPalavra = palavraExibida || gerarPalavraOculta();
     let palavraAdv = palavraAdversarioExibida || '';
     
-    console.log(`📝 Atualizando palavras: Minha="${minhaPalavra}", Adversário="${palavraAdv}"`);
+    // Evita atualização se não mudou
+    if (minhaPalavra === ultimaPalavraExibida && palavraAdv === ultimaPalavraAdversarioExibida) {
+        return;
+    }
+    
+    ultimaPalavraExibida = minhaPalavra;
+    ultimaPalavraAdversarioExibida = palavraAdv;
+    
+    log(`📝 Atualizando palavras: Minha="${minhaPalavra}", Adversário="${palavraAdv}"`);
     
     // Se sou jogador 1, minha palavra vai na primeira posição
     if (meuNumeroJogador === 1) {
@@ -1757,19 +1828,26 @@ function gerarPalavraOculta() {
     return palavraSecreta.split('').map(l => l === ' ' ? '  ' : '_ ').join('').trim();
 }
 
+// Cache para evitar mudanças desnecessárias de imagem
+let ultimosErrosP1 = -1;
+let ultimosErrosP2 = -1;
+
 function atualizarBonecosUI() {
     // Cada jogador tem sua própria imagem baseada em seus próprios erros
     const indiceP1 = Math.min(errosJogador1 + 1, 7); // +1 porque as imagens começam em bob1.png
     const indiceP2 = Math.min(errosJogador2 + 1, 7); // +1 porque as imagens começam em patrick1.png
     
-    if (bonecoP1_El) {
+    // Só atualiza se os erros mudaram
+    if (errosJogador1 !== ultimosErrosP1 && bonecoP1_El) {
         bonecoP1_El.src = `/public/assets/images/bob${indiceP1}.png`;
+        ultimosErrosP1 = errosJogador1;
     }
-    if (bonecoP2_El) {
+    if (errosJogador2 !== ultimosErrosP2 && bonecoP2_El) {
         bonecoP2_El.src = `/public/assets/images/patrick${indiceP2}.png`;
+        ultimosErrosP2 = errosJogador2;
     }
     
-    console.log(`🖼️ Bonecos atualizados: J1 (${errosJogador1} erros) -> bob${indiceP1}.png, J2 (${errosJogador2} erros) -> patrick${indiceP2}.png`);
+    log(`🖼️ Bonecos atualizados: J1 (${errosJogador1} erros) -> bob${indiceP1}.png, J2 (${errosJogador2} erros) -> patrick${indiceP2}.png`);
 }
 
 function desabilitarTeclaVisual(letra) {
@@ -1792,10 +1870,14 @@ function habilitarTeclaVisual(letra) {
     }
 }
 
+// Cache de estado do teclado para evitar atualizações desnecessárias
+let ultimoEstadoTeclado = { turno: null, letrasChutadas: null, jogoAtivo: null };
+let teclasCache = null;
+
 function atualizarTecladoDesabilitado() {
     // Desabilita todas as letras já chutadas E quando não é o turno do jogador
     if (!tecladoContainer) {
-        console.warn('⚠️ tecladoContainer não encontrado!');
+        logWarn('⚠️ tecladoContainer não encontrado!');
         return;
     }
     
@@ -1805,13 +1887,26 @@ function atualizarTecladoDesabilitado() {
     
     const eMeuTurno = turnoAtualNum === meuNumeroNum && jogoEstaAtivo && meuNumeroNum > 0;
     
-    console.log(`🔒 Atualizando teclado: eMeuTurno=${eMeuTurno}, turnoAtual=${turnoAtualNum} (${typeof turnoAtual}), meuNumero=${meuNumeroNum} (${typeof meuNumeroJogador}), jogoAtivo=${jogoEstaAtivo}`);
+    // Cache de letras chutadas como string para comparação rápida
+    const letrasChutadasStr = Array.from(letrasChutadas).sort().join(',');
     
-    if (!eMeuTurno) {
-        console.log(`🔒 Bloqueando teclado: não é meu turno ou jogo não está ativo`);
+    // Evita atualização se o estado não mudou
+    if (ultimoEstadoTeclado.turno === eMeuTurno && 
+        ultimoEstadoTeclado.letrasChutadas === letrasChutadasStr &&
+        ultimoEstadoTeclado.jogoAtivo === jogoEstaAtivo) {
+        return;
     }
     
-    tecladoContainer.querySelectorAll('.tecla').forEach(btn => {
+    ultimoEstadoTeclado = { turno: eMeuTurno, letrasChutadas: letrasChutadasStr, jogoAtivo: jogoEstaAtivo };
+    
+    log(`🔒 Atualizando teclado: eMeuTurno=${eMeuTurno}, turnoAtual=${turnoAtualNum}, meuNumero=${meuNumeroNum}, jogoAtivo=${jogoEstaAtivo}`);
+    
+    // Cache das teclas para evitar query repetida
+    if (!teclasCache) {
+        teclasCache = Array.from(tecladoContainer.querySelectorAll('.tecla'));
+    }
+    
+    teclasCache.forEach(btn => {
         const letra = btn.textContent;
         const letraJaChutada = letrasChutadas.has(letra);
         
@@ -1820,14 +1915,13 @@ function atualizarTecladoDesabilitado() {
             btn.disabled = true;
             btn.style.opacity = '0.5';
             btn.style.cursor = 'not-allowed';
-            btn.style.pointerEvents = 'none'; // Impede completamente qualquer interação
-            // Remove event listeners se houver
+            btn.style.pointerEvents = 'none';
             btn.onclick = null;
         } else {
             btn.disabled = false;
             btn.style.opacity = '1';
             btn.style.cursor = 'pointer';
-            btn.style.pointerEvents = 'auto'; // Permite interação
+            btn.style.pointerEvents = 'auto';
         }
     });
 }

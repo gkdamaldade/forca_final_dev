@@ -72,6 +72,7 @@ async function getRandomWord({ categoria, excluirPalavras = [], dificuldade = nu
   }
 
   // Busca palavra aleatória com suas dicas (ordem 1, 2, 3)
+  // Otimização: usa subquery para melhor performance
   const palavra = await models.Word.findOne({
     where,
     include: [{
@@ -83,8 +84,10 @@ async function getRandomWord({ categoria, excluirPalavras = [], dificuldade = nu
         }
       },
       required: false, // LEFT JOIN - retorna palavra mesmo sem dicas
-      order: [['ordem', 'ASC']]
+      order: [['ordem', 'ASC']],
+      attributes: ['id', 'texto_dica', 'ordem'] // Seleciona apenas campos necessários
     }],
+    attributes: ['id', 'palavra', 'categoria', 'dificuldade', 'usada'], // Seleciona apenas campos necessários
     order: [sequelize.literal('RANDOM()')] // ORDER BY RANDOM() para PostgreSQL
   });
 
