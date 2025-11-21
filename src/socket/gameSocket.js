@@ -47,7 +47,7 @@ module.exports = function(io) {
                 });
                 
                 if (wordObj2) {
-                  palavra2 = (wordObj2?.palavra || 'FORCA').toUpperCase();
+            palavra2 = (wordObj2?.palavra || 'FORCA').toUpperCase();
                   // Se encontrou palavra diferente, sai do loop
                   if (palavra1 !== palavra2) {
                     break;
@@ -59,7 +59,7 @@ module.exports = function(io) {
                 wordObj2 = null;
                 break;
               }
-              tentativas++;
+            tentativas++;
             } while (palavra1 === palavra2 && tentativas < 5);
           }
           
@@ -125,6 +125,10 @@ module.exports = function(io) {
       // Garante que dicas existe (para jogos criados antes dessa atualização)
       if (!game.dicas) {
         game.dicas = [[], []];
+      }
+      // Garante que dicasPedidas existe (para jogos criados antes dessa atualização)
+      if (!game.dicasPedidas) {
+        game.dicasPedidas = [0, 0]; // Inicializa contador de dicas pedidas
       }
       
       // Verifica se o jogador já está na lista pelo socket.id (reconexão com mesmo socket)
@@ -192,12 +196,12 @@ module.exports = function(io) {
           }
         } else {
           // Jogo ainda não começou - envia evento de preparação
-          if (game.players.length === 2) {
-            const j1 = game.players.find(p => p.numero === 1);
-            const j2 = game.players.find(p => p.numero === 2);
-            if (j1 && j2) {
-              io.to(j1.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
-              io.to(j2.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
+        if (game.players.length === 2) {
+          const j1 = game.players.find(p => p.numero === 1);
+          const j2 = game.players.find(p => p.numero === 2);
+          if (j1 && j2) {
+            io.to(j1.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
+            io.to(j2.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
             }
           }
         }
@@ -311,12 +315,12 @@ module.exports = function(io) {
           }
         } else {
           // Jogo ainda não começou - envia evento de preparação
-          if (game.players.length === 2) {
-            const j1 = game.players.find(p => p.numero === 1);
-            const j2 = game.players.find(p => p.numero === 2);
-            if (j1 && j2) {
-              io.to(j1.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
-              io.to(j2.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
+        if (game.players.length === 2) {
+          const j1 = game.players.find(p => p.numero === 1);
+          const j2 = game.players.find(p => p.numero === 2);
+          if (j1 && j2) {
+            io.to(j1.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
+            io.to(j2.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
             }
           }
         }
@@ -886,24 +890,24 @@ module.exports = function(io) {
               
               // Tenta encontrar palavra com a mesma dificuldade
               if (dificuldadeNova) {
-                do {
+              do {
                   try {
-                    novaPalavraObj2 = await getRandomWord({ 
-                      categoria: game.categoria, 
+                novaPalavraObj2 = await getRandomWord({ 
+                  categoria: game.categoria, 
                       excluirPalavras: palavrasParaExcluir,
                       dificuldade: dificuldadeNova // Usa a mesma dificuldade da primeira palavra
-                    });
+                });
                     
                     if (novaPalavraObj2) {
-                      novaPalavra2 = (novaPalavraObj2?.palavra || 'FORCA').toUpperCase();
+                novaPalavra2 = (novaPalavraObj2?.palavra || 'FORCA').toUpperCase();
                       // Se encontrou palavra diferente, sai do loop
                       if (novaPalavra1 !== novaPalavra2) {
                         break;
                       }
                       // Se ainda assim for igual, adiciona à lista de exclusão e tenta novamente
-                      if (novaPalavra1 === novaPalavra2 && tentativas < 5) {
-                        palavrasParaExcluir.push(novaPalavra2);
-                      }
+                if (novaPalavra1 === novaPalavra2 && tentativas < 5) {
+                  palavrasParaExcluir.push(novaPalavra2);
+                }
                     }
                   } catch (error) {
                     // Se não encontrou palavra com essa dificuldade, tenta sem filtro
@@ -912,7 +916,7 @@ module.exports = function(io) {
                     break;
                   }
                   tentativas++;
-                } while (novaPalavra1 === novaPalavra2 && tentativas < 5);
+              } while (novaPalavra1 === novaPalavra2 && tentativas < 5);
               }
               
               // Se não encontrou palavra com a mesma dificuldade, tenta sem filtro de dificuldade (fallback)
@@ -946,6 +950,7 @@ module.exports = function(io) {
               game.gameInstances[0] = new Game(novaPalavra1, game.categoria);
               game.gameInstances[1] = new Game(novaPalavra2, game.categoria);
               game.dicas = [novasDicasJogador1, novasDicasJogador2]; // Atualiza dicas para nova rodada
+              game.dicasPedidas = [0, 0]; // Reseta contador de dicas pedidas para nova rodada
               
               console.log(`✅ Novas palavras escolhidas: J1=${novaPalavra1}, J2=${novaPalavra2}`);
               console.log(`📋 Total de palavras usadas: ${game.palavrasUsadas.length}`);
@@ -983,6 +988,10 @@ module.exports = function(io) {
               game.gameInstances[0] = new Game(palavraFallback1, game.categoria);
               game.gameInstances[1] = new Game(palavraFallback2, game.categoria);
               
+              // No fallback, não há dicas (palavras padrão)
+              game.dicas = [[], []];
+              game.dicasPedidas = [0, 0]; // Reseta contador de dicas pedidas
+              
               // Adiciona ao array de palavras usadas
               if (!game.palavrasUsadas) {
                 game.palavrasUsadas = [];
@@ -997,6 +1006,8 @@ module.exports = function(io) {
               const turnoAnterior = game.turnoInicialRodada || 1;
               game.turno = turnoAnterior === 1 ? 2 : 1;
               game.turnoInicialRodada = game.turno;
+              
+              console.log(`⚠️ Usando palavras fallback: J1=${palavraFallback1}, J2=${palavraFallback2}`);
             }
           }
         }
@@ -1014,7 +1025,7 @@ module.exports = function(io) {
         const estado1Final = game.gameInstances[0].getEstado();
         const estado2Final = game.gameInstances[1].getEstado();
         
-        io.to(roomId).emit('eventoJogo', {
+        const eventoJogada = {
           tipo: 'jogada',
           letra: msg.letra,
           resultado: resultado, // 'acerto', 'erro', 'vitoria', 'derrota', 'repetida'
@@ -1033,19 +1044,44 @@ module.exports = function(io) {
           motivoPerdaVida: motivoPerdaVida,
           jogadorQueJogou: numeroJogador,
           novaRodada: alguemPerdeuVida && game.vidas[0] > 0 && game.vidas[1] > 0,
-          dicas: alguemPerdeuVida && game.vidas[0] > 0 && game.vidas[1] > 0 
-            ? (meuNumeroJogador === 1 ? game.dicas[0] : game.dicas[1]) 
-            : undefined, // Envia novas dicas apenas se começou nova rodada
           palpiteTransferido: palpiteTransferido,
           palpiteBeneficiado: palpiteBeneficiado,
           palpiteAcerto: palpiteTransferido ? palpiteAcerto : null,
           palpiteLetra: palpiteTransferido ? letraProcessada : null
-        });
+        };
+        
+        // Se começou nova rodada, adiciona informações sobre as novas palavras e dicas
+        if (eventoJogada.novaRodada) {
+          if (game.words && game.words.length === 2) {
+            eventoJogada.novaPalavraJogador1 = game.words[0];
+            eventoJogada.novaPalavraJogador2 = game.words[1];
+            // Envia dicas para ambos os jogadores se começou nova rodada
+            eventoJogada.dicasJogador1 = game.dicas && game.dicas[0] ? game.dicas[0] : [];
+            eventoJogada.dicasJogador2 = game.dicas && game.dicas[1] ? game.dicas[1] : [];
+            console.log(`📤 Enviando nova rodada com palavras: J1=${game.words[0]}, J2=${game.words[1]}`);
+            console.log(`💡 Enviando dicas: J1=${eventoJogada.dicasJogador1.length} dicas, J2=${eventoJogada.dicasJogador2.length} dicas`);
+          } else {
+            console.error(`❌ ERRO: novaRodada=true mas game.words não está disponível ou inválido!`);
+            console.error(`   game.words:`, game.words);
+            console.error(`   game.words.length:`, game.words?.length);
+            // Tenta usar as palavras das instâncias como fallback
+            if (game.gameInstances && game.gameInstances.length === 2) {
+              eventoJogada.novaPalavraJogador1 = game.gameInstances[0].palavraSecreta || '';
+              eventoJogada.novaPalavraJogador2 = game.gameInstances[1].palavraSecreta || '';
+              eventoJogada.dicasJogador1 = [];
+              eventoJogada.dicasJogador2 = [];
+              console.log(`⚠️ Usando palavras das instâncias como fallback: J1=${eventoJogada.novaPalavraJogador1}, J2=${eventoJogada.novaPalavraJogador2}`);
+            }
+          }
+        }
+        
+        console.log(`📤 Enviando evento jogada: novaRodada=${eventoJogada.novaRodada}, alguemPerdeuVida=${eventoJogada.alguemPerdeuVida}, vidas=${JSON.stringify(eventoJogada.vidas)}`);
+        io.to(roomId).emit('eventoJogo', eventoJogada);
 
       }
 
       if (msg.tipo === 'pedirDica') {
-        // Verifica se é o turno do jogador
+        // Verifica se o jogador existe
         const jogadorAtual = game.players.find(p => p.id === socket.id);
         if (!jogadorAtual) {
           socket.emit('eventoJogo', {
@@ -1057,22 +1093,62 @@ module.exports = function(io) {
         
         const numeroJogador = jogadorAtual.numero;
         
-        if (numeroJogador !== game.turno) {
+        // Verifica se há dicas disponíveis para este jogador
+        if (!game.dicas || !game.dicas[numeroJogador - 1] || game.dicas[numeroJogador - 1].length === 0) {
           socket.emit('eventoJogo', {
             tipo: 'erro',
-            mensagem: 'Não é seu turno!'
+            mensagem: 'Não há dicas disponíveis!'
           });
+          return;
+        }
+        
+        // Determina qual dica será exibida (baseado em quantas já foram pedidas)
+        // Por enquanto, vamos usar um contador simples: primeira dica = ordem 1, segunda = ordem 2, terceira = ordem 3
+        // Mas precisamos rastrear quantas dicas cada jogador já pediu
+        if (!game.dicasPedidas) {
+          game.dicasPedidas = [0, 0]; // [contador J1, contador J2]
+        }
+        
+        const indiceJogador = numeroJogador - 1;
+        const dicasPedidasJogador = game.dicasPedidas[indiceJogador];
+        
+        // Verifica se já pediu todas as 3 dicas
+        if (dicasPedidasJogador >= 3) {
+          socket.emit('eventoJogo', {
+            tipo: 'erro',
+            mensagem: 'Você já pediu todas as dicas disponíveis!'
+          });
+          return;
+        }
+        
+        // Incrementa o contador de dicas pedidas para este jogador
+        game.dicasPedidas[indiceJogador]++;
+        const ordemDica = game.dicasPedidas[indiceJogador]; // 1, 2 ou 3
+        
+        // Encontra a dica com a ordem correspondente
+        const dicasJogador = game.dicas[indiceJogador];
+        const dica = dicasJogador.find(d => d.ordem === ordemDica);
+        
+        if (!dica) {
+          socket.emit('eventoJogo', {
+            tipo: 'erro',
+            mensagem: 'Dica não encontrada!'
+          });
+          // Reverte o contador
+          game.dicasPedidas[indiceJogador]--;
           return;
         }
         
         // Passa o turno
         game.turno = game.turno === 1 ? 2 : 1;
-        console.log(`💡 Jogador ${numeroJogador} pediu dica. Turno passou para: ${game.turno}`);
+        console.log(`💡 Jogador ${numeroJogador} pediu dica ${ordemDica}. Turno passou para: ${game.turno}`);
         
-        // Emite evento para ambos os jogadores
+        // Emite evento para ambos os jogadores com a dica
         io.to(roomId).emit('eventoJogo', {
           tipo: 'dicaPedida',
           jogadorQuePediu: numeroJogador,
+          ordemDica: ordemDica,
+          textoDica: dica.texto_dica,
           turno: game.turno
         });
         

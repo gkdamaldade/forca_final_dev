@@ -1358,6 +1358,28 @@ function configurarListenersSocket() {
             // Se o erro for "não é seu turno", não faz nada além de mostrar feedback
             // O turno será atualizado quando o servidor enviar o próximo evento 'jogada'
         } else if (evento.tipo === 'dicaPedida') {
+            // Se foi este jogador que pediu a dica, exibe a dica acima da palavra dele
+            if (evento.jogadorQuePediu === meuNumeroJogador) {
+                // Incrementa o contador de dicas exibidas
+                dicaAtualExibida = evento.ordemDica || dicaAtualExibida + 1;
+                
+                // Exibe a dica acima da palavra do jogador
+                const dicaPalavraEl = meuNumeroJogador === 1 
+                    ? document.getElementById('dica-palavra-jogador1')
+                    : document.getElementById('dica-palavra-jogador2');
+                
+                if (dicaPalavraEl && evento.textoDica) {
+                    dicaPalavraEl.textContent = evento.textoDica;
+                    dicaPalavraEl.classList.add('mostrar');
+                    console.log(`💡 Dica ${dicaAtualExibida} exibida: ${evento.textoDica}`);
+                }
+                
+                mostrarFeedback(`💡 Dica ${dicaAtualExibida} exibida! Você perdeu a vez.`, 'orange');
+            } else {
+                // Se foi o outro jogador que pediu dica, mostra feedback
+                mostrarFeedback('O adversário pediu uma dica!', 'orange');
+            }
+            
             // Atualiza o turno quando uma dica é pedida
             if (evento.turno) {
                 turnoAtual = evento.turno;
@@ -1369,11 +1391,22 @@ function configurarListenersSocket() {
                 
                 // Atualiza estado do botão de dica
                 atualizarEstadoBotaoDica();
-            }
-            
-            // Se foi o outro jogador que pediu dica, mostra feedback
-            if (evento.jogadorQuePediu !== meuNumeroJogador) {
-                mostrarFeedback('O adversário pediu uma dica!', 'orange');
+                
+                // Limpa o timer anterior e inicia novo se for meu turno
+                clearInterval(timerInterval);
+                const turnoAtualNum = Number(turnoAtual) || 0;
+                const meuNumeroNum = Number(meuNumeroJogador) || 0;
+                
+                if (turnoAtualNum === meuNumeroNum && meuNumeroNum > 0 && jogoEstaAtivo) {
+                    console.log(`✓ É meu turno agora (jogador ${meuNumeroNum}), iniciando timer`);
+                    iniciarTimer();
+                } else {
+                    console.log(`✗ Não é meu turno (jogador ${meuNumeroNum}, turno atual: ${turnoAtualNum})`);
+                    if (timerEl) {
+                        timerEl.textContent = 'Aguardando...';
+                        timerEl.style.color = '#888';
+                    }
+                }
             }
         } else {
             console.log('ℹ️ Evento não tratado:', evento.tipo);
@@ -1606,15 +1639,13 @@ function processarJogada(dados) {
         // Se começou nova rodada, reseta o estado
         if (dados.novaRodada) {
             console.log('🔄 Nova rodada iniciada! Resetando estado...');
-            // Reseta letras chutadas e erros para nova rodada
+            clearInterval(timerInterval);
+            
+            // Reseta letras chutadas e erros completamente
             letrasChutadas = new Set();
             errosJogador1 = 0;
             errosJogador2 = 0;
-            // Atualiza dicas se fornecidas (novas palavras = novas dicas)
-            if (dados.dicas) {
-                dicas = dados.dicas;
-                console.log(`💡 Novas dicas recebidas: ${dicas.length} dicas`);
-            }
+            
             // Reseta contador de dicas para nova rodada
             dicaAtualExibida = 0;
             ocultarDica();
@@ -1624,26 +1655,49 @@ function processarJogada(dados) {
             poderUsadoNoTurno = null;
             ultimoTurnoReabilitado = null;
             
-            // Atualiza palavras com as novas
-            if (meuNumeroJogador === 1) {
-                palavraExibida = dados.palavraJogador1 || palavraExibida;
-                palavraAdversarioExibida = dados.palavraJogador2 || palavraAdversarioExibida;
+            // Se há novas palavras secretas, usa elas para criar a palavra exibida inicial
+            if (dados.novaPalavraJogador1 && dados.novaPalavraJogador2) {
+                console.log(`📝 Novas palavras recebidas: J1=${dados.novaPalavraJogador1}, J2=${dados.novaPalavraJogador2}`);
+                // Atualiza palavra secreta local
+                if (meuNumeroJogador === 1) {
+                    palavraSecreta = dados.novaPalavraJogador1;
+                    palavraExibida = dados.palavraJogador1 || '';
+                    palavraAdversarioExibida = dados.palavraJogador2 || '';
+                    // Atualiza dicas se fornecidas
+                    if (dados.dicasJogador1) {
+                        dicas = dados.dicasJogador1;
+                        console.log(`💡 Novas dicas recebidas para J1: ${dicas.length} dicas`);
+                    }
+                } else {
+                    palavraSecreta = dados.novaPalavraJogador2;
+                    palavraExibida = dados.palavraJogador2 || '';
+                    palavraAdversarioExibida = dados.palavraJogador1 || '';
+                    // Atualiza dicas se fornecidas
+                    if (dados.dicasJogador2) {
+                        dicas = dados.dicasJogador2;
+                        console.log(`💡 Novas dicas recebidas para J2: ${dicas.length} dicas`);
+                    }
+                }
             } else {
-                palavraExibida = dados.palavraJogador2 || palavraExibida;
-                palavraAdversarioExibida = dados.palavraJogador1 || palavraAdversarioExibida;
+                // Usa as palavras exibidas do evento (fallback)
+                if (meuNumeroJogador === 1) {
+                    palavraExibida = dados.palavraJogador1 || palavraExibida;
+                    palavraAdversarioExibida = dados.palavraJogador2 || palavraAdversarioExibida;
+                } else {
+                    palavraExibida = dados.palavraJogador2 || palavraExibida;
+                    palavraAdversarioExibida = dados.palavraJogador1 || palavraAdversarioExibida;
+                }
             }
             
-            // Reseta letras chutadas com as novas do servidor
-            if (meuNumeroJogador === 1) {
-                letrasChutadas = new Set(dados.letrasChutadasJogador1 || []);
-            } else {
-                letrasChutadas = new Set(dados.letrasChutadasJogador2 || []);
-            }
+            // Reseta letras chutadas (deve estar vazio para nova rodada)
+            letrasChutadas = new Set();
             
             // Reabilita o botão de chutar para a nova rodada
             chutePalavraDisponivel = true;
             
-            // Reseta o teclado para nova rodada
+            // Atualiza UI imediatamente
+            atualizarPalavraExibida();
+            atualizarBonecosUI();
             atualizarTecladoDesabilitado();
             
             // Reabilita poderes quando começa nova rodada
@@ -2708,9 +2762,9 @@ function configurarBotaoDica() {
     }
     
     btnDica.addEventListener('click', () => {
-        // Verifica se é o turno do jogador
-        if (turnoAtual !== meuNumeroJogador || !jogoEstaAtivo) {
-            mostrarFeedback('Você só pode pedir dica no seu turno!', 'orange');
+        // Verifica se o jogo está ativo
+        if (!jogoEstaAtivo) {
+            mostrarFeedback('O jogo não está ativo!', 'orange');
             return;
         }
         
@@ -2720,11 +2774,13 @@ function configurarBotaoDica() {
             return;
         }
         
-        // Exibe a próxima dica e passa o turno
-        exibirProximaDica();
+        // Envia evento para pedir dica (o backend vai passar o turno)
+        enviarEvento({
+            tipo: 'pedirDica'
+        });
     });
     
-    // Atualiza disponibilidade do botão baseado no turno
+    // Atualiza disponibilidade do botão
     atualizarEstadoBotaoDica();
 }
 
@@ -2733,10 +2789,10 @@ function atualizarEstadoBotaoDica() {
     const btnDica = document.getElementById('btn-dica');
     if (!btnDica) return;
     
-    const eMeuTurno = turnoAtual === meuNumeroJogador && jogoEstaAtivo;
+    // Botão está sempre disponível se o jogo está ativo e ainda há dicas disponíveis
     const todasDicasExibidas = dicaAtualExibida >= 3;
     
-    if (eMeuTurno && !todasDicasExibidas) {
+    if (jogoEstaAtivo && !todasDicasExibidas) {
         btnDica.disabled = false;
         btnDica.style.opacity = '1';
         btnDica.style.cursor = 'pointer';
