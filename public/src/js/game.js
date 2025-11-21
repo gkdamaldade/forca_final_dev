@@ -474,12 +474,18 @@ function renderizarPoderesNoJogo() {
         // Adiciona classe se já foi usado
         if (jaFoiUsado) {
             botaoPoder.classList.add('usado');
-            botaoPoder.style.opacity = '0.5';
-            botaoPoder.style.cursor = 'not-allowed';
+            // Remove estilos inline para permitir que o CSS controle a aparência
+            botaoPoder.style.opacity = '';
+            botaoPoder.style.cursor = '';
+            botaoPoder.style.filter = '';
+            botaoPoder.style.transform = '';
         } else {
             // Inicialmente habilita visualmente (será ajustado por reabilitarPoderesNoTurno)
-            botaoPoder.style.opacity = '1';
-            botaoPoder.style.cursor = 'pointer';
+            // Remove estilos inline para permitir que o CSS controle a aparência
+            botaoPoder.style.opacity = '';
+            botaoPoder.style.cursor = '';
+            botaoPoder.style.filter = '';
+            botaoPoder.style.transform = '';
         }
         
         // Adiciona listener para usar o poder
@@ -516,15 +522,21 @@ function desabilitarTodosPoderesExceto(poderIdUsado) {
         // Se não é o poder usado e não foi usado permanentemente, desabilita apenas para este turno
         if (poderId !== poderIdUsado && !poderesUsados.has(poderId)) {
             botao.disabled = true;
-            botao.style.opacity = '0.5';
-            botao.style.cursor = 'not-allowed';
             botao.classList.add('desabilitado-turno');
+            // Remove estilos inline para permitir que o CSS controle a aparência
+            botao.style.opacity = '';
+            botao.style.cursor = '';
+            botao.style.filter = '';
+            botao.style.transform = '';
         } else if (poderId === poderIdUsado) {
             // O poder usado também é desabilitado (permanentemente se quantidade = 0, ou apenas neste turno)
             botao.disabled = true;
-            botao.style.opacity = '0.5';
-            botao.style.cursor = 'not-allowed';
             botao.classList.add('desabilitado-turno');
+            // Remove estilos inline para permitir que o CSS controle a aparência
+            botao.style.opacity = '';
+            botao.style.cursor = '';
+            botao.style.filter = '';
+            botao.style.transform = '';
             if (poderesUsados.has(poderId)) {
                 botao.classList.add('usado');
             }
@@ -580,41 +592,57 @@ function reabilitarPoderesNoTurno() {
         // (mesmo que tenha usado outro poder no turno anterior, agora é um novo turno)
         if (!jaFoiUsado && eMeuTurno) {
             // Remove classes de desabilitado do turno anterior
-            botao.classList.remove('desabilitado-turno');
+            botao.classList.remove('desabilitado-turno', 'usado');
             botao.disabled = false;
-            botao.style.opacity = '1';
-            botao.style.cursor = 'pointer';
-            botao.classList.remove('usado');
+            // Remove estilos inline para permitir que o CSS controle a aparência
+            botao.style.opacity = '';
+            botao.style.cursor = '';
+            botao.style.filter = '';
+            botao.style.transform = '';
             log(`✅ Poder ${poderId} HABILITADO (é meu turno e não foi usado permanentemente)`);
         } else if (jaFoiUsado) {
             // Poder foi usado permanentemente (quantidade = 0)
             botao.disabled = true;
-            botao.style.opacity = '0.5';
-            botao.style.cursor = 'not-allowed';
+            // Remove estilos inline para permitir que o CSS controle a aparência
+            botao.style.opacity = '';
+            botao.style.cursor = '';
+            botao.style.filter = '';
+            botao.style.transform = '';
             botao.classList.add('usado');
+            botao.classList.remove('desabilitado-turno');
             log(`❌ Poder ${poderId} DESABILITADO (já foi usado permanentemente - quantidade = 0)`);
         } else {
             // Não é meu turno ou poder foi usado neste turno
             if (poderId === poderUsadoNoTurno) {
                 // Este poder foi usado neste turno - desabilita
                 botao.disabled = true;
-                botao.style.opacity = '0.5';
-                botao.style.cursor = 'not-allowed';
                 botao.classList.add('desabilitado-turno');
+                // Remove estilos inline para permitir que o CSS controle a aparência
+                botao.style.opacity = '';
+                botao.style.cursor = '';
+                botao.style.filter = '';
+                botao.style.transform = '';
                 log(`❌ Poder ${poderId} DESABILITADO (foi usado neste turno)`);
             } else if (!eMeuTurno) {
                 // Não é meu turno
                 botao.disabled = true;
-                botao.style.opacity = '0.5';
-                botao.style.cursor = 'not-allowed';
+                botao.classList.add('desabilitado-turno');
+                // Remove estilos inline para permitir que o CSS controle a aparência
+                botao.style.opacity = '';
+                botao.style.cursor = '';
+                botao.style.filter = '';
+                botao.style.transform = '';
                 log(`❌ Poder ${poderId} DESABILITADO (não é meu turno)`);
             } else {
                 // Caso especial: se é meu turno mas poderUsadoNoTurno não é null e não é este poder
                 // Isso não deveria acontecer, mas por segurança desabilita
                 botao.disabled = true;
-                botao.style.opacity = '0.5';
-                botao.style.cursor = 'not-allowed';
                 botao.classList.add('desabilitado-turno');
+                // Remove estilos inline para permitir que o CSS controle a aparência
+                botao.style.opacity = '';
+                botao.style.cursor = '';
+                botao.style.filter = '';
+                botao.style.transform = '';
                 log(`❌ Poder ${poderId} DESABILITADO (outro poder foi usado neste turno)`);
             }
         }
@@ -763,7 +791,7 @@ async function usarPoder(poderId, botaoElemento) {
             
             // Se a quantidade restante é 0, marca como usado permanentemente
             if (data.quantidadeRestante === 0) {
-                poderesUsados.add(poderId);
+    poderesUsados.add(poderId);
             }
         } catch (error) {
             console.error(`[${instanceId}] ❌ Erro ao subtrair poder do inventário:`, error);
@@ -780,9 +808,17 @@ async function usarPoder(poderId, botaoElemento) {
     // Atualiza visualmente o botão (desabilita temporariamente para este turno)
     if (botaoElemento) {
         botaoElemento.disabled = true;
-        botaoElemento.style.opacity = '0.5';
-        botaoElemento.style.cursor = 'not-allowed';
+        // Remove estilos inline que possam estar sobrescrevendo o CSS
+        botaoElemento.style.opacity = '';
+        botaoElemento.style.cursor = '';
+        botaoElemento.style.filter = '';
+        botaoElemento.style.transform = '';
+        // Adiciona classes para estilização via CSS
         botaoElemento.classList.add('desabilitado-turno');
+        // Se foi usado permanentemente (quantidade = 0), adiciona classe 'usado'
+        if (poderesUsados.has(poderId)) {
+        botaoElemento.classList.add('usado');
+        }
     }
     
     // Atualiza contador de poderes
@@ -1602,9 +1638,9 @@ function iniciarJogo(dados) {
         console.log(`✅ Estado restaurado: erros J1=${errosJogador1}, erros J2=${errosJogador2}, letras chutadas=${Array.from(letrasChutadas).join(', ')}`);
     } else {
         // Nova partida - reseta tudo
-        errosJogador1 = 0;
-        errosJogador2 = 0;
-        letrasChutadas.clear();
+    errosJogador1 = 0;
+    errosJogador2 = 0;
+    letrasChutadas.clear();
     }
     
     categoriaEl.textContent = categoria;
@@ -1785,13 +1821,13 @@ function processarJogada(dados) {
                 }
             } else {
                 // Usa as palavras exibidas do evento (fallback)
-                if (meuNumeroJogador === 1) {
-                    palavraExibida = dados.palavraJogador1 || palavraExibida;
-                    palavraAdversarioExibida = dados.palavraJogador2 || palavraAdversarioExibida;
-                } else {
-                    palavraExibida = dados.palavraJogador2 || palavraExibida;
-                    palavraAdversarioExibida = dados.palavraJogador1 || palavraAdversarioExibida;
-                }
+            if (meuNumeroJogador === 1) {
+                palavraExibida = dados.palavraJogador1 || palavraExibida;
+                palavraAdversarioExibida = dados.palavraJogador2 || palavraAdversarioExibida;
+            } else {
+                palavraExibida = dados.palavraJogador2 || palavraExibida;
+                palavraAdversarioExibida = dados.palavraJogador1 || palavraAdversarioExibida;
+            }
             }
             
             // Reseta letras chutadas (deve estar vazio para nova rodada)

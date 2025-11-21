@@ -1336,6 +1336,99 @@ header {
   .area-inferior{ gap: 6px; margin-top: 0; }
   .poderes-jogador{ display:flex; justify-content:center; gap:6px; }
   .poderes-jogador .poder{ width: 50px; height: 50px; }
+}
+
+/* ===== Estilos para poderes na tela de jogo ===== */
+.poderes-jogador .poder {
+  width: clamp(50px, 8vw, 70px);
+  height: clamp(50px, 8vw, 70px);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,.15), rgba(255,255,255,.08));
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,.3);
+}
+
+.poderes-jogador .poder img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 8px;
+  transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+.poderes-jogador .poder:hover:not(:disabled):not(.usado) {
+  border-color: var(--aqua);
+  background: rgba(0, 229, 255, .2);
+  transform: scale(1.1);
+  box-shadow: 0 0 20px rgba(0, 229, 255, .5);
+}
+
+.poderes-jogador .poder:hover:not(:disabled):not(.usado) img {
+  transform: scale(1.1);
+}
+
+/* Poder desabilitado ou usado - visual claramente bloqueado */
+.poderes-jogador .poder:disabled,
+.poderes-jogador .poder.usado,
+.poderes-jogador .poder.desabilitado-turno {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(100%) brightness(0.5);
+  border-color: rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, rgba(0,0,0,.3), rgba(0,0,0,.2));
+  transform: scale(0.95);
+  box-shadow: 0 2px 6px rgba(0,0,0,.4);
+  pointer-events: none;
+}
+
+.poderes-jogador .poder:disabled img,
+.poderes-jogador .poder.usado img,
+.poderes-jogador .poder.desabilitado-turno img {
+  filter: grayscale(100%) brightness(0.4);
+  opacity: 0.6;
+}
+
+/* Indicador visual de "usado" - X vermelho */
+.poderes-jogador .poder.usado::after {
+  content: '✕';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 30px;
+  height: 30px;
+  background: rgba(255, 0, 0, 0.8);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: bold;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(255, 0, 0, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+}
+
+/* Indicador visual de "desabilitado no turno" - cadeado */
+.poderes-jogador .poder.desabilitado-turno:not(.usado)::after {
+  content: '🔒';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 20px;
+  z-index: 10;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.5));
+}
   .teclado{ gap: 4px; }
   .linha-teclado{ gap: 4px; }
   .tecla{ padding: clamp(6px, 1.2vw, 12px) clamp(8px, 1.5vw, 16px); font-size: clamp(0.9rem, 2vw, 1.2rem); min-width: 40px; }
