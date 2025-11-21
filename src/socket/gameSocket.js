@@ -2,6 +2,48 @@ const { getRandomWord } = require('../services/wordService');
 const { Game } = require('../game');
 const { models } = require('../models');
 
+// Função centralizada para finalizar o jogo e registrar vitória
+async function finalizarJogo(game, vencedorNum, motivo = 'normal') {
+  // Verifica se o jogo já foi finalizado (evita duplicação)
+  if (game.finalizado) {
+    console.log(`⚠️ Jogo já foi finalizado anteriormente. Ignorando tentativa de finalização.`);
+    return null;
+  }
+  
+  // Marca o jogo como finalizado
+  game.finalizado = true;
+  
+  console.log(`🏆 Finalizando jogo! Vencedor: Jogador ${vencedorNum}, Motivo: ${motivo}`);
+  
+  // Registra vitória APENAS para o vencedor no banco de dados
+  try {
+    const jogadorVencedor = game.players.find(p => p.numero === vencedorNum);
+    if (jogadorVencedor && jogadorVencedor.playerId) {
+      const player = await models.Player.findByPk(jogadorVencedor.playerId);
+      if (player) {
+        await player.increment('vitorias');
+        await player.reload();
+        console.log(`✅ Vitória registrada para ${jogadorVencedor.name} (ID: ${jogadorVencedor.playerId})! Total de vitórias: ${player.vitorias}`);
+      } else {
+        console.warn(`⚠️ Jogador com ID ${jogadorVencedor.playerId} não encontrado no banco de dados.`);
+      }
+    } else {
+      console.warn(`⚠️ Jogador vencedor não encontrado ou sem playerId no game.players`);
+    }
+  } catch (error) {
+    console.error(`❌ Erro ao registrar vitória:`, error);
+    // Não bloqueia o fim do jogo se houver erro ao registrar vitória
+  }
+  
+  // Retorna o evento de fim de jogo para ser enviado
+  return {
+    tipo: 'fim',
+    vencedor: vencedorNum,
+    motivo: motivo,
+    vidas: game.vidas
+  };
+}
+
 const RECONNECT_GRACE_MS = 20000; // 20 segundos para reconectar
 const activeGames = new Map();
 
@@ -88,6 +130,7 @@ module.exports = function(io) {
             turno: 1,
             turnoInicialRodada: 1, // Salva qual jogador começou a rodada atual
             categoria: categoriaUsada,
+            finalizado: false, // Flag para evitar finalização duplicada
             prontos: new Set(),
             gameInstances: [gameInstance1, gameInstance2], // Uma instância por jogador
             vidas: [3, 3], // Cada jogador começa com 3 vidas
@@ -774,39 +817,15 @@ module.exports = function(io) {
           // Verifica se o jogo acabou
           if (game.vidas[0] <= 0 || game.vidas[1] <= 0) {
             const vencedor = game.vidas[0] > 0 ? 1 : 2;
-            console.log(`🏆 Jogo finalizado! Vencedor: Jogador ${vencedor}`);
             
-            // Registra vitória no banco de dados
-            try {
-              const jogadorVencedor = game.players.find(p => p.numero === vencedor);
-              if (jogadorVencedor && jogadorVencedor.playerId) {
-                // Busca o jogador pelo ID no banco (mais preciso que buscar pelo nome)
-                const player = await models.Player.findByPk(jogadorVencedor.playerId);
-                if (player) {
-                  // Incrementa as vitórias
-                  await player.increment('vitorias');
-                  await player.reload(); // Recarrega para pegar o valor atualizado
-                  console.log(`✅ Vitória registrada para ${jogadorVencedor.name} (ID: ${jogadorVencedor.playerId})! Total de vitórias: ${player.vitorias}`);
-                } else {
-                  console.warn(`⚠️ Jogador com ID ${jogadorVencedor.playerId} não encontrado no banco de dados.`);
-                }
-              } else {
-                console.warn(`⚠️ Jogador vencedor não encontrado ou sem playerId no game.players`);
-              }
-            } catch (error) {
-              console.error(`❌ Erro ao registrar vitória:`, error);
-              // Não bloqueia o fim do jogo se houver erro ao registrar vitória
+            // Usa função centralizada para finalizar o jogo
+            const eventoFim = await finalizarJogo(game, vencedor, 'normal');
+            if (eventoFim) {
+              io.to(roomId).emit('eventoJogo', eventoFim);
+              setTimeout(() => {
+                activeGames.delete(roomId);
+              }, 5000);
             }
-            
-            // Envia evento de fim de jogo
-            io.to(roomId).emit('eventoJogo', {
-              tipo: 'fim',
-              vencedor: vencedor,
-              vidas: game.vidas
-            });
-            setTimeout(() => {
-              activeGames.delete(roomId);
-            }, 5000);
             return; // Não processa mais nada se o jogo acabou
           } else {
             // Reseta AMBAS as palavras para nova rodada (ainda há vidas)
@@ -1196,32 +1215,15 @@ module.exports = function(io) {
             console.log(`📊 Verificando fim de jogo após chute de palavra: J1=${game.vidas[0]}, J2=${game.vidas[1]}`);
             if (game.vidas[0] <= 0 || game.vidas[1] <= 0) {
               const vencedor = game.vidas[0] > 0 ? 1 : 2;
-              console.log(`🏆 Jogo finalizado! Vencedor: Jogador ${vencedor}`);
               
-              // Registra vitória no banco de dados
-              try {
-                const jogadorVencedor = game.players.find(p => p.numero === vencedor);
-                if (jogadorVencedor && jogadorVencedor.playerId) {
-                  const player = await models.Player.findByPk(jogadorVencedor.playerId);
-                  if (player) {
-                    await player.increment('vitorias');
-                    await player.reload();
-                    console.log(`✅ Vitória registrada para ${jogadorVencedor.name} (ID: ${jogadorVencedor.playerId})! Total de vitórias: ${player.vitorias}`);
-                  }
-                }
-              } catch (error) {
-                console.error(`❌ Erro ao registrar vitória:`, error);
+              // Usa função centralizada para finalizar o jogo
+              const eventoFim = await finalizarJogo(game, vencedor, 'normal');
+              if (eventoFim) {
+                io.to(roomId).emit('eventoJogo', eventoFim);
+                setTimeout(() => {
+                  activeGames.delete(roomId);
+                }, 5000);
               }
-              
-              // Envia evento de fim de jogo
-              io.to(roomId).emit('eventoJogo', {
-                tipo: 'fim',
-                vencedor: vencedor,
-                vidas: game.vidas
-              });
-              setTimeout(() => {
-                activeGames.delete(roomId);
-              }, 5000);
               return;
             }
             
@@ -1542,31 +1544,18 @@ module.exports = function(io) {
                 // Verifica se o jogo acabou
                 if (vidasAtualizadas[adversarioNum - 1] <= 0) {
                   const vencedor = numeroJogador;
-                  console.log(`🏆 Jogo finalizado! Vencedor: Jogador ${vencedor}`);
                   
-                  try {
-                    const jogadorVencedor = game.players.find(p => p.numero === vencedor);
-                    if (jogadorVencedor && jogadorVencedor.playerId) {
-                      const player = await models.Player.findByPk(jogadorVencedor.playerId);
-                      if (player) {
-                        await player.increment('vitorias');
-                        await player.reload();
-                        console.log(`✅ Vitória registrada para ${jogadorVencedor.name} (ID: ${jogadorVencedor.playerId})! Total de vitórias: ${player.vitorias}`);
-                      }
-                    }
-                  } catch (error) {
-                    console.error(`❌ Erro ao registrar vitória:`, error);
+                  // Atualiza vidas do game antes de finalizar
+                  game.vidas = vidasAtualizadas;
+                  
+                  // Usa função centralizada para finalizar o jogo
+                  const eventoFim = await finalizarJogo(game, vencedor, 'normal');
+                  if (eventoFim) {
+                    io.to(roomId).emit('eventoJogo', eventoFim);
+                    setTimeout(() => {
+                      activeGames.delete(roomId);
+                    }, 5000);
                   }
-                  
-                  io.to(roomId).emit('eventoJogo', {
-                    tipo: 'fim',
-                    vencedor: vencedor,
-                    vidas: vidasAtualizadas
-                  });
-                  
-                  setTimeout(() => {
-                    activeGames.delete(roomId);
-                  }, 5000);
                   
                   jogadorAtual.poderes = jogadorAtual.poderes.filter(p => p !== poderId);
                   return;
@@ -1971,7 +1960,7 @@ module.exports = function(io) {
           // O jogo só está ativo se ambos os jogadores clicaram em "pronto"
           const jogoEstaAtivo = game.jogoIniciado === true;
           
-          if (jogoEstaAtivo) {
+            if (jogoEstaAtivo) {
             // Jogo está ativo - declara vitória do outro jogador por W.O.
             const adversarioNum = numeroJogadorDesconectado === 1 ? 2 : 1;
             const adversario = game.players.find(p => p.numero === adversarioNum);
@@ -1979,35 +1968,12 @@ module.exports = function(io) {
             if (adversario) {
               console.log(`🏆 Jogador ${adversario.name} (${adversarioNum}) venceu por W.O. - adversário desconectou`);
               
-              // Registra vitória no banco de dados
-              try {
-                if (adversario.playerId) {
-                  const player = await models.Player.findByPk(adversario.playerId);
-                  if (player) {
-                    await player.increment('vitorias');
-                    await player.reload();
-                    console.log(`✅ Vitória por W.O. registrada para ${adversario.name} (ID: ${adversario.playerId})! Total de vitórias: ${player.vitorias}`);
-                  }
-                }
-              } catch (error) {
-                console.error(`❌ Erro ao registrar vitória por W.O.:`, error);
+              // Usa função centralizada para finalizar o jogo
+              const eventoFim = await finalizarJogo(game, adversarioNum, 'wo');
+              if (eventoFim) {
+                // Envia evento para ambos os jogadores
+                io.to(roomId).emit('eventoJogo', eventoFim);
               }
-              
-              // Envia evento de fim de jogo com vitória por W.O.
-              io.to(adversario.id).emit('eventoJogo', {
-                tipo: 'fim',
-                vencedor: adversarioNum,
-                motivo: 'wo', // Walkover
-                vidas: game.vidas
-              });
-              
-              // Envia evento para o jogador desconectado também (caso esteja tentando reconectar)
-              io.to(roomId).emit('eventoJogo', {
-                tipo: 'fim',
-                vencedor: adversarioNum,
-                motivo: 'wo',
-                vidas: game.vidas
-              });
             }
           }
           
