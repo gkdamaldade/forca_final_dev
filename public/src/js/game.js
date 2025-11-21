@@ -37,8 +37,8 @@ function throttle(func, limit) {
 // --- 1. SELETORES DO DOM ---
 const categoriaEl = document.querySelector('.categoria');
 const timerEl = document.querySelector('.tempo');
-const palavraP1_El = document.querySelector('.palavras .palavra:nth-child(1)');
-const palavraP2_El = document.querySelector('.palavras .palavra:nth-child(2)');
+const palavraP1_El = document.querySelector('.palavras .palavra-container:nth-child(1) .palavra');
+const palavraP2_El = document.querySelector('.palavras .palavra-container:nth-child(2) .palavra');
 const tecladoContainer = document.querySelector('.teclado');
 const vidasP1Container = document.querySelector('.jogador:nth-child(1) .vidas');
 const vidasP2Container = document.querySelector('.jogador:nth-child(2) .vidas');
@@ -1107,6 +1107,8 @@ function configurarListenersSocket() {
                 atualizarTecladoDesabilitado();
                 // Reabilita poderes quando o turno troca
                 reabilitarPoderesNoTurno();
+                // Atualiza estado do botão de dica quando o turno muda
+                atualizarEstadoBotaoDica();
             }
             
             // Feedback baseado no resultado
@@ -1155,10 +1157,20 @@ function configurarListenersSocket() {
                         palavraSecreta = evento.novaPalavraJogador1;
                         palavraExibida = evento.palavraJogador1 || '_ '.repeat(evento.novaPalavraJogador1.length).trim();
                         palavraAdversarioExibida = evento.palavraJogador2 || '_ '.repeat(evento.novaPalavraJogador2.length).trim();
+                        // Atualiza dicas se fornecidas
+                        if (evento.dicasJogador1) {
+                            dicas = evento.dicasJogador1;
+                            console.log(`💡 Novas dicas recebidas para J1: ${dicas.length} dicas`);
+                        }
                     } else {
                         palavraSecreta = evento.novaPalavraJogador2;
                         palavraExibida = evento.palavraJogador2 || '_ '.repeat(evento.novaPalavraJogador2.length).trim();
                         palavraAdversarioExibida = evento.palavraJogador1 || '_ '.repeat(evento.novaPalavraJogador1.length).trim();
+                        // Atualiza dicas se fornecidas
+                        if (evento.dicasJogador2) {
+                            dicas = evento.dicasJogador2;
+                            console.log(`💡 Novas dicas recebidas para J2: ${dicas.length} dicas`);
+                        }
                     }
                 } else {
                     // Usa as palavras exibidas do evento
@@ -1296,6 +1308,7 @@ function iniciarJogo(dados) {
     vidas = dados.vidas || [3, 3]; // Vidas de cada jogador [J1, J2]
     dicas = dados.dicas || []; // Dicas da palavra (ordem 1, 2, 3)
     dicaAtualExibida = 0; // Reseta contador de dicas
+    ocultarDica(); // Limpa dicas anteriores
     
     console.log(`📝 Palavras recebidas: Minha="${palavraExibida}", Adversário="${palavraAdversarioExibida}"`);
     console.log(`💚 Vidas iniciais: J1=${vidas[0]}, J2=${vidas[1]}`);
@@ -1350,6 +1363,7 @@ function iniciarJogo(dados) {
     atualizarBonecosUI();
     atualizarTurnoUI();
     atualizarTecladoDesabilitado(); // Desabilita letras já chutadas E bloqueia se não for o turno
+    atualizarEstadoBotaoDica(); // Atualiza estado do botão de dica
     
     // Sempre inicia o timer se for o turno do jogador
     const turnoAtualNum = Number(turnoAtual) || 0;
@@ -1447,10 +1461,6 @@ function processarJogada(dados) {
         
         // Se começou nova rodada, reseta o estado
         if (dados.novaRodada) {
-            // Reseta contador de dicas para nova rodada
-            dicaAtualExibida = 0;
-            ocultarDica();
-            atualizarEstadoBotaoDica();
             console.log('🔄 Nova rodada iniciada! Resetando estado...');
             // Reseta letras chutadas e erros para nova rodada
             letrasChutadas = new Set();
@@ -1464,6 +1474,7 @@ function processarJogada(dados) {
             // Reseta contador de dicas para nova rodada
             dicaAtualExibida = 0;
             ocultarDica();
+            atualizarEstadoBotaoDica();
             
             // Atualiza palavras com as novas
             if (meuNumeroJogador === 1) {
@@ -1828,33 +1839,42 @@ function atualizarPalavraExibida() {
     let minhaPalavra = palavraExibida || gerarPalavraOculta();
     let palavraAdv = palavraAdversarioExibida || '';
     
-    // Evita atualização se não mudou
-    if (minhaPalavra === ultimaPalavraExibida && palavraAdv === ultimaPalavraAdversarioExibida) {
-        return;
-    }
-    
-    ultimaPalavraExibida = minhaPalavra;
-    ultimaPalavraAdversarioExibida = palavraAdv;
-    
     log(`📝 Atualizando palavras: Minha="${minhaPalavra}", Adversário="${palavraAdv}"`);
+    log(`📝 Elementos encontrados: palavraP1_El=${!!palavraP1_El}, palavraP2_El=${!!palavraP2_El}`);
     
     // Se sou jogador 1, minha palavra vai na primeira posição
     if (meuNumeroJogador === 1) {
         if (palavraP1_El) {
             palavraP1_El.textContent = minhaPalavra;
+            log(`✅ Atualizada palavra J1: "${minhaPalavra}"`);
+        } else {
+            logWarn('⚠️ palavraP1_El não encontrado!');
         }
         if (palavraP2_El) {
             palavraP2_El.textContent = palavraAdv || gerarPalavraOcultaAdversario();
+            log(`✅ Atualizada palavra J2: "${palavraAdv || gerarPalavraOcultaAdversario()}"`);
+        } else {
+            logWarn('⚠️ palavraP2_El não encontrado!');
         }
     } else {
         // Se sou jogador 2, minha palavra vai na segunda posição
         if (palavraP1_El) {
             palavraP1_El.textContent = palavraAdv || gerarPalavraOcultaAdversario();
+            log(`✅ Atualizada palavra J1 (adversário): "${palavraAdv || gerarPalavraOcultaAdversario()}"`);
+        } else {
+            logWarn('⚠️ palavraP1_El não encontrado!');
         }
         if (palavraP2_El) {
             palavraP2_El.textContent = minhaPalavra;
+            log(`✅ Atualizada palavra J2: "${minhaPalavra}"`);
+        } else {
+            logWarn('⚠️ palavraP2_El não encontrado!');
         }
     }
+    
+    // Atualiza cache após atualizar a UI
+    ultimaPalavraExibida = minhaPalavra;
+    ultimaPalavraAdversarioExibida = palavraAdv;
 }
 
 function gerarPalavraOcultaAdversario() {

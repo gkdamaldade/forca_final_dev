@@ -1149,7 +1149,13 @@ module.exports = function(io) {
               game.gameInstances[0] = new Game(novaPalavra1, game.categoria);
               game.gameInstances[1] = new Game(novaPalavra2, game.categoria);
               
+              // Atualiza as dicas das novas palavras
+              const dicasJogador1 = novaPalavraObj1?.dicas?.filter(d => d.ordem >= 1 && d.ordem <= 3) || [];
+              const dicasJogador2 = novaPalavraObj2?.dicas?.filter(d => d.ordem >= 1 && d.ordem <= 3) || [];
+              game.dicas = [dicasJogador1, dicasJogador2];
+              
               console.log(`✅ Novas palavras escolhidas: J1=${novaPalavra1}, J2=${novaPalavra2}`);
+              console.log(`💡 Novas dicas: J1=${dicasJogador1.length} dicas, J2=${dicasJogador2.length} dicas`);
               
               // Alterna o turno: quem começou a rodada anterior, o outro começa a próxima
               const turnoAnterior = game.turnoInicialRodada || 1;
@@ -1237,11 +1243,15 @@ module.exports = function(io) {
           novaRodada: alguemPerdeuVida && game.vidas[0] > 0 && game.vidas[1] > 0
         };
         
-        // Se é nova rodada, adiciona informações sobre as novas palavras
+        // Se é nova rodada, adiciona informações sobre as novas palavras e dicas
         if (eventoChutePalavra.novaRodada) {
           eventoChutePalavra.novaPalavraJogador1 = game.words[0];
           eventoChutePalavra.novaPalavraJogador2 = game.words[1];
+          // Usa as dicas já armazenadas no game
+          eventoChutePalavra.dicasJogador1 = game.dicas[0] || [];
+          eventoChutePalavra.dicasJogador2 = game.dicas[1] || [];
           console.log(`📤 Enviando nova rodada com palavras: J1=${game.words[0]}, J2=${game.words[1]}`);
+          console.log(`💡 Enviando dicas: J1=${eventoChutePalavra.dicasJogador1.length} dicas, J2=${eventoChutePalavra.dicasJogador2.length} dicas`);
         }
         
         io.to(roomId).emit('eventoJogo', eventoChutePalavra);

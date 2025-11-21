@@ -844,6 +844,145 @@ header {
 }
 
 /* Botão de chutar palavra completa */
+/* Botão de Dica - Estilo bonito com gradiente amarelo/laranja e efeitos especiais */
+.btn-dica {
+  background:
+    radial-gradient(120% 180% at 30% 20%, rgba(255,255,255,.5), rgba(255,255,255,.2) 45%, rgba(255,255,255,0) 60%),
+    linear-gradient(180deg, #FFD700, #FF8C00);
+  color: #1a1a1a;
+  border: 2px solid rgba(255,255,255,.6);
+  padding: clamp(10px, 1.8vw, 14px) clamp(16px, 2.5vw, 24px);
+  border-radius: 50px;
+  font-size: clamp(0.9rem, 2.2vw, 1.2rem);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:
+    0 8px 18px rgba(255, 193, 7, .5),
+    0 4px 0 rgba(0,0,0,.3),
+    inset 0 1px 0 rgba(255,255,255,.4),
+    0 0 15px rgba(255, 215, 0, .2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: clamp(100px, 12vw, 140px);
+  height: auto;
+  min-height: clamp(45px, 8vw, 60px);
+  font-family: "Orbitron", sans-serif;
+  letter-spacing: 0.05em;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  text-shadow: 0 1px 2px rgba(0,0,0,.2);
+}
+
+/* Efeito de brilho animado no hover */
+.btn-dica::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,.4) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  animation: brilhoDica 3s ease-in-out infinite;
+}
+
+@keyframes brilhoDica {
+  0%, 100% {
+    opacity: 0;
+    transform: rotate(0deg);
+  }
+  50% {
+    opacity: 0.3;
+    transform: rotate(180deg);
+  }
+}
+
+.btn-dica:hover::before {
+  opacity: 0.6;
+  animation: none;
+}
+
+/* Efeito de partículas brilhantes */
+.btn-dica::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,.8) 0%, transparent 70%);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s ease, height 0.6s ease, opacity 0.6s ease;
+  opacity: 0;
+}
+
+.btn-dica:active::after {
+  width: 300px;
+  height: 300px;
+  opacity: 0.4;
+}
+
+.btn-dica-texto {
+  font-size: inherit;
+  font-weight: inherit;
+  position: relative;
+  z-index: 1;
+}
+
+.btn-dica:hover:not(:disabled) {
+  filter: brightness(1.25) saturate(1.2);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow:
+    0 12px 28px rgba(255, 193, 7, .6),
+    0 6px 0 rgba(0,0,0,.3),
+    inset 0 1px 0 rgba(255,255,255,.5),
+    0 0 25px rgba(255, 215, 0, .4),
+    0 0 40px rgba(255, 193, 7, .2);
+  border-color: rgba(255,255,255,.8);
+}
+
+.btn-dica:active:not(:disabled) {
+  transform: translateY(2px) scale(0.98);
+  box-shadow:
+    0 4px 12px rgba(255, 193, 7, .4),
+    0 2px 0 rgba(0,0,0,.3),
+    inset 0 1px 0 rgba(255,255,255,.3);
+}
+
+.btn-dica:disabled {
+  background: linear-gradient(180deg, #555, #444);
+  cursor: not-allowed;
+  filter: grayscale(0.7) opacity(0.6);
+  transform: none !important;
+  box-shadow: none;
+  border-color: rgba(255,255,255,.2);
+  text-shadow: none;
+}
+
+.btn-dica:disabled::before,
+.btn-dica:disabled::after {
+  display: none;
+}
+
+.btn-dica i {
+  font-size: 1.3em;
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.4));
+  transition: transform 0.3s ease;
+}
+
+.btn-dica:hover:not(:disabled) i {
+  transform: scale(1.1) rotate(5deg);
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,.5));
+}
+
 .btn-chutar-palavra {
   background:
     radial-gradient(120% 180% at 30% 20%, rgba(255,255,255,.35), rgba(255,255,255,.1) 45%, rgba(255,255,255,0) 60%),
