@@ -1400,7 +1400,7 @@ module.exports = function(io) {
                   letra: letraEscolhida,
                   palavraAtualizada: novoEstado.palavra,
                   sucesso: true,
-                  manterTurno: true // Mantém o turno para o jogador continuar chutando
+                  manterTurno: false // Passa o turno para o adversário
                 };
                 console.log(`🔓 Letra '${letraEscolhida}' revelada (todas as ${maxFrequencia} ocorrências) para jogador ${numeroJogador}`);
               } else {
@@ -1409,7 +1409,7 @@ module.exports = function(io) {
                   jogador: numeroJogador,
                   sucesso: false,
                   mensagem: 'Todas as letras já foram reveladas',
-                  manterTurno: true
+                  manterTurno: false // Passa o turno mesmo se falhar
                 };
               }
             }
@@ -1538,10 +1538,22 @@ module.exports = function(io) {
         // Se o poder deve manter o turno, não troca o turno
         // O turno só é trocado se o poder não especificar manterTurno
         if (!resultadoPoder?.manterTurno) {
-          // Para poderes que não mantêm o turno, troca normalmente
-          // (mas isso só acontece se não houver outra lógica que já trocou)
-          // A maioria dos poderes não precisa trocar o turno aqui, pois o turno já é controlado
-          // pelo fluxo normal de jogadas
+          // Para poderes que não mantêm o turno, troca o turno
+          game.turno = game.turno === 1 ? 2 : 1;
+          console.log(`🔄 Turno trocado após uso do poder ${poderId}. Novo turno: Jogador ${game.turno}`);
+          
+          // Emite evento de troca de turno para todos os jogadores
+          io.to(roomId).emit('eventoJogo', {
+            tipo: 'turnoTrocado',
+            turno: game.turno,
+            errosJogador1: game.gameInstances[0]?.erros || 0,
+            errosJogador2: game.gameInstances[1]?.erros || 0,
+            palavraJogador1: game.gameInstances[0]?.getPalavraParaExibir() || '',
+            palavraJogador2: game.gameInstances[1]?.getPalavraParaExibir() || '',
+            letrasChutadasJogador1: Array.from(game.gameInstances[0]?.letrasChutadas || []),
+            letrasChutadasJogador2: Array.from(game.gameInstances[1]?.letrasChutadas || []),
+            vidas: game.vidas
+          });
         }
       }
       

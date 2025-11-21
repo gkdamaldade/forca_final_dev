@@ -52,6 +52,7 @@ let poderesSelecionados = new Set(); // Set com os nomes dos poderes selecionado
 const MAX_PODERES = 3;
 let poderesDisponiveis = []; // Array com os poderes selecionados que podem ser usados no jogo
 let poderesUsados = new Set(); // Set com os poderes que já foram usados (não podem ser usados novamente)
+let poderUsadoNoTurno = null; // Rastreia qual poder foi usado no turno atual (null = nenhum usado)
 
 // Mapeamento de nomes de poderes para nomes de imagens e descrições
 const MAPEAMENTO_PODERES = {
@@ -455,6 +456,53 @@ function atualizarContadorPoderesDisplay() {
     }
 }
 
+// Desabilita todos os poderes exceto o que foi usado
+function desabilitarTodosPoderesExceto(poderIdUsado) {
+    const containerPoderes = document.getElementById('poderes-jogador-container');
+    if (!containerPoderes) return;
+    
+    const botoesPoderes = containerPoderes.querySelectorAll('.poder');
+    botoesPoderes.forEach(botao => {
+        const poderId = botao.getAttribute('data-poder');
+        // Se não é o poder usado e não foi usado permanentemente, desabilita
+        if (poderId !== poderIdUsado && !poderesUsados.has(poderId)) {
+            botao.disabled = true;
+            botao.style.opacity = '0.5';
+            botao.style.cursor = 'not-allowed';
+            botao.classList.add('desabilitado-turno');
+        }
+    });
+}
+
+// Reabilita poderes quando o turno troca (exceto os já usados permanentemente)
+function reabilitarPoderesNoTurno() {
+    poderUsadoNoTurno = null; // Reseta o poder usado no turno
+    
+    const containerPoderes = document.getElementById('poderes-jogador-container');
+    if (!containerPoderes) return;
+    
+    const botoesPoderes = containerPoderes.querySelectorAll('.poder');
+    botoesPoderes.forEach(botao => {
+        const poderId = botao.getAttribute('data-poder');
+        // Reabilita apenas se não foi usado permanentemente e é meu turno
+        if (!poderesUsados.has(poderId) && turnoAtual === meuNumeroJogador && jogoEstaAtivo) {
+            botao.disabled = false;
+            botao.style.opacity = '1';
+            botao.style.cursor = 'pointer';
+            botao.classList.remove('desabilitado-turno');
+        } else if (poderesUsados.has(poderId)) {
+            // Mantém desabilitado se foi usado permanentemente
+            botao.disabled = true;
+            botao.classList.add('usado');
+        } else if (turnoAtual !== meuNumeroJogador) {
+            // Desabilita se não é meu turno
+            botao.disabled = true;
+            botao.style.opacity = '0.5';
+            botao.style.cursor = 'not-allowed';
+        }
+    });
+}
+
 // Processa o resultado do uso de um poder
 function processarResultadoPoder(resultado, evento) {
     console.log(`🎯 Processando resultado do poder:`, resultado);
@@ -602,6 +650,10 @@ async function usarPoder(poderId, botaoElemento) {
     
     // Marca o poder como usado
     poderesUsados.add(poderId);
+    poderUsadoNoTurno = poderId; // Marca que um poder foi usado neste turno
+    
+    // Desabilita TODOS os poderes (exceto o que foi usado)
+    desabilitarTodosPoderesExceto(poderId);
     
     // Atualiza visualmente o botão (desabilita e marca como usado)
     if (botaoElemento) {
@@ -799,6 +851,9 @@ function configurarListenersSocket() {
             atualizarTurnoUI();
             atualizarTecladoDesabilitado();
             
+            // Reabilita poderes quando o turno troca
+            reabilitarPoderesNoTurno();
+            
             // Limpa o timer anterior e inicia novo se for meu turno
             clearInterval(timerInterval);
             const turnoAtualNum = Number(turnoAtual) || 0;
@@ -896,6 +951,10 @@ function configurarListenersSocket() {
                 console.log(`🔄 Poder mantém turno: turno atualizado para ${turnoAtual}`);
                 atualizarTurnoUI();
                 atualizarTecladoDesabilitado();
+                // Não reabilita poderes se o turno foi mantido
+            } else {
+                // Se o poder não mantém o turno, reabilita poderes quando o turno trocar
+                // (será feito quando o evento turnoTrocado chegar)
             }
             
             // Processa o resultado do poder
@@ -974,6 +1033,8 @@ function configurarListenersSocket() {
                 turnoAtual = evento.turno;
                 atualizarTurnoUI();
                 atualizarTecladoDesabilitado();
+                // Reabilita poderes quando o turno troca
+                reabilitarPoderesNoTurno();
             }
             
             // Feedback baseado no resultado
@@ -1064,6 +1125,8 @@ function configurarListenersSocket() {
                 if (evento.turno === meuNumeroJogador && jogoEstaAtivo) {
                     // Reabilita o botão de chute quando o turno volta para o jogador
                     chutePalavraDisponivel = true;
+                    // Reabilita poderes quando o turno volta para o jogador
+                    reabilitarPoderesNoTurno();
                     iniciarTimer();
                 } else {
                     clearInterval(timerInterval);
@@ -1071,6 +1134,8 @@ function configurarListenersSocket() {
                         timerEl.textContent = 'Aguardando...';
                         timerEl.style.color = '#888';
                     }
+                    // Desabilita poderes quando não é meu turno
+                    reabilitarPoderesNoTurno();
                 }
             }
         } else if (evento.tipo === 'erro') {
@@ -1182,6 +1247,11 @@ function iniciarJogo(dados) {
     atualizarBonecosUI();
     atualizarTurnoUI();
     atualizarTecladoDesabilitado(); // Desabilita letras já chutadas E bloqueia se não for o turno
+    
+    // Reabilita poderes quando o jogo inicia
+    setTimeout(() => {
+        reabilitarPoderesNoTurno();
+    }, 150); // Pequeno delay para garantir que os poderes foram renderizados
     
     // Sempre inicia o timer se for o turno do jogador
     const turnoAtualNum = Number(turnoAtual) || 0;
