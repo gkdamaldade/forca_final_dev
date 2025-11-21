@@ -1077,6 +1077,7 @@ module.exports = function(io) {
               activeGames.delete(roomId);
             }, 5000);
             return;
+            }
           } else {
             // Reseta AMBAS as palavras para nova rodada (ainda há vidas)
             console.log(`🔄 Alguém perdeu vida! Resetando ambas as palavras para nova rodada...`);
