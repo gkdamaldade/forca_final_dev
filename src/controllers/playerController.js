@@ -150,6 +150,73 @@ async function comprarPoder(userId, itemlojaId) {
     };
 }
 
+async function obterInventario(userId) {
+    if (!userId) throw new Error("ID do usuário necessário.");
+    
+    const inventario = await models.Inventario.findAll({
+        where: { usuario_id: userId },
+        include: [{
+            model: models.ItemLoja,
+            as: 'itemLoja',
+            attributes: ['id', 'nome', 'descricao', 'tipo_poder', 'imagem']
+        }],
+        attributes: ['id', 'quantidade', 'itemloja_id']
+    });
+    
+    return inventario.map(item => ({
+        id: item.id,
+        itemloja_id: item.itemloja_id,
+        quantidade: item.quantidade,
+        tipo_poder: item.itemLoja?.tipo_poder,
+        nome: item.itemLoja?.nome,
+        descricao: item.itemLoja?.descricao,
+        imagem: item.itemLoja?.imagem
+    }));
+}
+
+async function usarPoderInventario(userId, tipoPoder) {
+    if (!userId) throw new Error("ID do usuário necessário.");
+    if (!tipoPoder) throw new Error("Tipo de poder necessário.");
+    
+    // Busca o item na loja pelo tipo_poder
+    const itemLoja = await models.ItemLoja.findOne({
+        where: { tipo_poder: tipoPoder, ativo: true }
+    });
+    
+    if (!itemLoja) {
+        throw new Error("Poder não encontrado na loja.");
+    }
+    
+    // Busca o item no inventário do usuário
+    const inventarioItem = await models.Inventario.findOne({
+        where: {
+            usuario_id: userId,
+            itemloja_id: itemLoja.id
+        }
+    });
+    
+    if (!inventarioItem || inventarioItem.quantidade <= 0) {
+        throw new Error("Você não possui este poder no inventário.");
+    }
+    
+    // Subtrai 1 da quantidade
+    const novaQuantidade = inventarioItem.quantidade - 1;
+    
+    if (novaQuantidade <= 0) {
+        // Remove do inventário se a quantidade chegar a 0
+        await inventarioItem.destroy();
+    } else {
+        // Atualiza a quantidade
+        await inventarioItem.update({ quantidade: novaQuantidade });
+    }
+    
+    return {
+        mensagem: "Poder usado com sucesso!",
+        tipo_poder: tipoPoder,
+        quantidadeRestante: novaQuantidade
+    };
+}
+
 module.exports = { 
     lidarCadastro,
     lidarLogin,
@@ -158,5 +225,7 @@ module.exports = {
     obterMoedasUsuario,
     adicionarMoedas,
     listarItensLoja,
-    comprarPoder
+    comprarPoder,
+    obterInventario,
+    usarPoderInventario
 };

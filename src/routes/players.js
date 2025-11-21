@@ -92,4 +92,24 @@ router.post('/comprar-poder', verificarToken, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// Obter inventário do usuário (requer autenticação)
+router.get('/inventario', verificarToken, async (req, res, next) => {
+  try {
+    const inventario = await playerController.obterInventario(req.user.id);
+    res.json(inventario);
+  } catch (err) { next(err); }
+});
+
+// Usar poder do inventário (requer autenticação)
+router.post('/usar-poder', verificarToken, async (req, res, next) => {
+  try {
+    const { tipoPoder } = req.body;
+    if (!tipoPoder) {
+      return res.status(400).json({ message: 'Tipo de poder é obrigatório.' });
+    }
+    const resultado = await playerController.usarPoderInventario(req.user.id, tipoPoder);
+    res.json(resultado);
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

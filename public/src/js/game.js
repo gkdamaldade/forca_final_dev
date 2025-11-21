@@ -209,27 +209,121 @@ function atualizarNomeJogadorPreparacao() {
     }
 }
 
-function configurarSelecaoPoderes() {
-    const botoesPoder = document.querySelectorAll('#poderes-container-atual .poder');
+async function configurarSelecaoPoderes() {
+    const containerPoderes = document.getElementById('poderes-container-atual');
+    if (!containerPoderes) {
+        console.error(`[${instanceId}] ❌ Container de poderes não encontrado!`);
+        return;
+    }
     
-    botoesPoder.forEach(botao => {
-        // Remove listeners antigos
-        botao.removeEventListener('click', lidarComCliquePoder);
-        // Adiciona novo listener
-        botao.addEventListener('click', lidarComCliquePoder);
+    // Limpa o container
+    containerPoderes.innerHTML = '';
+    
+    // Carrega o inventário do usuário
+    const token = localStorage.getItem('token');
+    if (!token) {
+        console.error(`[${instanceId}] ❌ Token não encontrado!`);
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/players/inventario', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
         
-        // Remove estado selecionado
-        botao.classList.remove('selecionado');
-        botao.disabled = false;
-    });
+        if (!response.ok) {
+            throw new Error(`Erro ao carregar inventário: ${response.status}`);
+        }
+        
+        const inventario = await response.json();
+        
+        if (inventario.length === 0) {
+            containerPoderes.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Você não possui poderes. Compre na loja!</p>';
+            return;
+        }
+        
+        // Cria botões apenas para os poderes que o usuário tem no inventário
+        inventario.forEach(item => {
+            if (item.quantidade > 0 && item.tipo_poder) {
+                const poderInfo = MAPEAMENTO_PODERES[item.tipo_poder];
+                if (!poderInfo) {
+                    console.warn(`[${instanceId}] ⚠️ Poder desconhecido no inventário: ${item.tipo_poder}`);
+                    return;
+                }
+                
+                const botaoPoder = document.createElement('button');
+                botaoPoder.className = 'poder';
+                botaoPoder.setAttribute('data-poder', item.tipo_poder);
+                botaoPoder.setAttribute('data-quantidade', item.quantidade);
+                botaoPoder.setAttribute('aria-label', poderInfo.nome);
+                botaoPoder.disabled = false;
+                
+                // Container para imagem e contador
+                const containerImg = document.createElement('div');
+                containerImg.style.position = 'relative';
+                containerImg.style.display = 'inline-block';
+                
+                const imgPoder = document.createElement('img');
+                imgPoder.src = item.imagem || poderInfo.imagem;
+                imgPoder.alt = poderInfo.nome;
+                
+                // Badge com quantidade
+                const badgeQuantidade = document.createElement('span');
+                badgeQuantidade.className = 'badge-quantidade';
+                badgeQuantidade.textContent = item.quantidade;
+                badgeQuantidade.style.cssText = `
+                    position: absolute;
+                    top: -8px;
+                    right: -8px;
+                    background: #00e5ff;
+                    color: white;
+                    border-radius: 50%;
+                    width: 24px;
+                    height: 24px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 12px;
+                    font-weight: bold;
+                    border: 2px solid #fff;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                `;
+                
+                containerImg.appendChild(imgPoder);
+                containerImg.appendChild(badgeQuantidade);
+                botaoPoder.appendChild(containerImg);
+                
+                // Adiciona listener
+                botaoPoder.addEventListener('click', lidarComCliquePoder);
+                
+                containerPoderes.appendChild(botaoPoder);
+            }
+        });
+        
+        console.log(`[${instanceId}] ✅ ${inventario.length} poderes carregados do inventário`);
+    } catch (error) {
+        console.error(`[${instanceId}] ❌ Erro ao carregar inventário:`, error);
+        containerPoderes.innerHTML = '<p style="color: #ff6b6b; text-align: center; padding: 20px;">Erro ao carregar poderes. Recarregue a página.</p>';
+    }
 }
 
 function lidarComCliquePoder(e) {
     const botao = e.currentTarget;
     const poderId = botao.getAttribute('data-poder');
+    const quantidade = parseInt(botao.getAttribute('data-quantidade')) || 0;
     
     if (!poderId) {
         console.warn(`⚠️ Botão de poder sem data-poder:`, botao);
+        return;
+    }
+    
+    // Verifica se ainda tem quantidade disponível
+    if (quantidade <= 0) {
+        mostrarFeedback('Você não possui mais este poder!', 'orange');
         return;
     }
     
@@ -438,7 +532,7 @@ function processarResultadoPoder(resultado, evento) {
 }
 
 // Função para usar um poder durante o jogo
-function usarPoder(poderId, botaoElemento) {
+async function usarPoder(poderId, botaoElemento) {
     if (!jogoEstaAtivo) {
         console.warn(`[${instanceId}] ⚠️ Jogo não está ativo. Não é possível usar poderes.`);
         mostrarFeedback('O jogo não está ativo', 'orange');
@@ -467,6 +561,34 @@ function usarPoder(poderId, botaoElemento) {
     }
     
     console.log(`[${instanceId}] 🎯 Usando poder: ${poderId}`);
+    
+    // Subtrai do inventário no banco de dados
+    const token = localStorage.getItem('token');
+    if (token) {
+        try {
+            const response = await fetch('/api/players/usar-poder', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    tipoPoder: poderId
+                })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || 'Erro ao usar poder no inventário');
+            }
+            
+            const data = await response.json();
+            console.log(`[${instanceId}] ✅ Poder subtraído do inventário. Quantidade restante: ${data.quantidadeRestante}`);
+        } catch (error) {
+            console.error(`[${instanceId}] ❌ Erro ao subtrair poder do inventário:`, error);
+            // Continua mesmo se houver erro (não bloqueia o uso do poder)
+        }
+    }
     
     // Marca o poder como usado
     poderesUsados.add(poderId);

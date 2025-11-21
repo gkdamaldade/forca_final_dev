@@ -8,6 +8,7 @@
 let habilidades = [];
 let indiceAtual = 0;
 let moedasAtuais = 0; // Variável para rastrear o saldo atual.
+let atualizarCardRef = null; // Referência global para a função atualizarCard
 
 // Função auxiliar para formatar e exibir moedas
 function setSaldoMoedas(saldo) {
@@ -147,7 +148,9 @@ async function comprarHabilidade(item) {
         setSaldoMoedas(data.novoSaldo);
         
         // Re-atualiza o estado do botão 'Comprar' no card
-        atualizarCard();
+        if (atualizarCardRef) {
+            atualizarCardRef();
+        }
         
         alert(`Parabéns! Você comprou ${item.nome}. Novo saldo: ${data.novoSaldo.toLocaleString('pt-BR')} moedas.`);
     } catch (error) {
@@ -217,6 +220,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         atualizarIndicadores();
     }
+    
+    // Armazena a referência da função globalmente para uso em comprarHabilidade
+    atualizarCardRef = atualizarCard;
 
     // --- 3. Listeners de Evento do Carrossel ---
     
