@@ -637,7 +637,7 @@ module.exports = function(io) {
           console.log(`🎮 Iniciando jogo na sala ${roomId}`);
           console.log(`Jogador 1: ${j1.name} (${j1.id}, numero: ${j1.numero}), Jogador 2: ${j2.name} (${j2.id}, numero: ${j2.numero})`);
           console.log(`Turno inicial: ${game.turno}`);
-          console.log(`Palavra J1: ${game.words[0]}, Palavra J2: ${game.words[1]}`);
+          console.log(`✅ Palavras selecionadas para os jogadores`);
 
           // Verifica se os sockets ainda estão conectados
           const j1Socket = io.sockets.sockets.get(j1.id);
@@ -831,7 +831,7 @@ module.exports = function(io) {
             // Reseta AMBAS as palavras para nova rodada (ainda há vidas)
             console.log(`🔄 Alguém perdeu vida! Resetando ambas as palavras para nova rodada...`);
             console.log(`📊 Vidas após perda: J1=${game.vidas[0]}, J2=${game.vidas[1]} - Continuando jogo`);
-            console.log(`📋 Palavras já usadas no jogo: ${game.palavrasUsadas.join(', ')}`);
+            console.log(`📋 Total de palavras já usadas: ${game.palavrasUsadas.length}`);
             
             try {
               // Busca primeira nova palavra excluindo todas as palavras já usadas no jogo
@@ -912,7 +912,7 @@ module.exports = function(io) {
               game.dicas = [novasDicasJogador1, novasDicasJogador2]; // Atualiza dicas para nova rodada
               game.dicasPedidas = [0, 0]; // Reseta contador de dicas pedidas para nova rodada
               
-              console.log(`✅ Novas palavras escolhidas: J1=${novaPalavra1}, J2=${novaPalavra2}`);
+              console.log(`✅ Novas palavras escolhidas para nova rodada`);
               console.log(`📋 Total de palavras usadas: ${game.palavrasUsadas.length}`);
               console.log(`💡 Dicas atualizadas: J1=${novasDicasJogador1.length} dicas, J2=${novasDicasJogador2.length} dicas`);
               
@@ -922,7 +922,7 @@ module.exports = function(io) {
               game.turno = turnoAnterior === 1 ? 2 : 1;
               game.turnoInicialRodada = game.turno; // Salva o turno inicial da nova rodada
               
-              console.log(`✅ Nova rodada iniciada! Palavra J1: ${novaPalavra1}, Palavra J2: ${novaPalavra2}, Turno: Jogador ${game.turno} (rodada anterior começou com J${turnoAnterior})`);
+              console.log(`✅ Nova rodada iniciada! Turno: Jogador ${game.turno} (rodada anterior começou com J${turnoAnterior})`);
             } catch (error) {
               console.error('Erro ao buscar novas palavras:', error);
               // No fallback, tenta usar palavras diferentes das já usadas
@@ -967,7 +967,7 @@ module.exports = function(io) {
               game.turno = turnoAnterior === 1 ? 2 : 1;
               game.turnoInicialRodada = game.turno;
               
-              console.log(`⚠️ Usando palavras fallback: J1=${palavraFallback1}, J2=${palavraFallback2}`);
+              console.log(`⚠️ Usando palavras fallback`);
             }
           }
         }
@@ -1018,7 +1018,7 @@ module.exports = function(io) {
             // Envia dicas para ambos os jogadores se começou nova rodada
             eventoJogada.dicasJogador1 = game.dicas && game.dicas[0] ? game.dicas[0] : [];
             eventoJogada.dicasJogador2 = game.dicas && game.dicas[1] ? game.dicas[1] : [];
-            console.log(`📤 Enviando nova rodada com palavras: J1=${game.words[0]}, J2=${game.words[1]}`);
+            console.log(`📤 Enviando nova rodada`);
             console.log(`💡 Enviando dicas: J1=${eventoJogada.dicasJogador1.length} dicas, J2=${eventoJogada.dicasJogador2.length} dicas`);
           } else {
             console.error(`❌ ERRO: novaRodada=true mas game.words não está disponível ou inválido!`);
@@ -1030,7 +1030,7 @@ module.exports = function(io) {
               eventoJogada.novaPalavraJogador2 = game.gameInstances[1].palavraSecreta || '';
               eventoJogada.dicasJogador1 = [];
               eventoJogada.dicasJogador2 = [];
-              console.log(`⚠️ Usando palavras das instâncias como fallback: J1=${eventoJogada.novaPalavraJogador1}, J2=${eventoJogada.novaPalavraJogador2}`);
+              console.log(`⚠️ Usando palavras das instâncias como fallback`);
             }
           }
         }
@@ -1115,11 +1115,7 @@ module.exports = function(io) {
         // Emite evento para ambos os jogadores com a dica
         // Nota: as dicas vêm do wordService com a propriedade 'texto', não 'texto_dica'
         const textoDica = dica.texto || dica.texto_dica;
-        console.log(`💡 Enviando dica ${ordemDica} para jogador ${numeroJogador}:`, {
-          ordemDica: ordemDica,
-          textoDica: textoDica,
-          estruturaDica: dica
-        });
+        console.log(`💡 Enviando dica ${ordemDica} para jogador ${numeroJogador}`);
         
         io.to(roomId).emit('eventoJogo', {
           tipo: 'dicaPedida',
@@ -1170,7 +1166,7 @@ module.exports = function(io) {
             return;
           }
           
-          console.log(`✅ É o turno do jogador ${numeroJogador}. Processando chute de palavra: "${palavraChutada}"`);
+          console.log(`✅ É o turno do jogador ${numeroJogador}. Processando chute de palavra`);
           
           const gameInstanceJogador = game.gameInstances[numeroJogador - 1];
           const gameInstanceAdversario = game.gameInstances[(numeroJogador === 1 ? 2 : 1) - 1];
@@ -1188,7 +1184,7 @@ module.exports = function(io) {
           
           // Chuta a palavra completa
           const resultado = gameInstanceJogador.chutarPalavraCompleta(palavraChutada);
-          console.log(`📊 Chute de palavra processado: palavra="${palavraChutada}", resultado=${resultado}, status=${gameInstanceJogador.status}`);
+          console.log(`📊 Chute de palavra processado: resultado=${resultado}, status=${gameInstanceJogador.status}`);
           
           if (resultado === 'vitoria') {
             // Acertou! Adversário perde vida
@@ -1196,14 +1192,14 @@ module.exports = function(io) {
             alguemPerdeuVida = true;
             jogadorQuePerdeuVida = adversarioNum;
             motivoPerdaVida = 'vitoria';
-            console.log(`🎯 Jogador ${numeroJogador} acertou a palavra "${palavraChutada}"! Jogador ${adversarioNum} perde uma vida. Vidas restantes: J1=${game.vidas[0]}, J2=${game.vidas[1]}`);
+            console.log(`🎯 Jogador ${numeroJogador} acertou a palavra! Jogador ${adversarioNum} perde uma vida. Vidas restantes: J1=${game.vidas[0]}, J2=${game.vidas[1]}`);
           } else if (resultado === 'derrota') {
             // Errou! Jogador perde vida
             game.vidas[numeroJogador - 1]--;
             alguemPerdeuVida = true;
             jogadorQuePerdeuVida = numeroJogador;
             motivoPerdaVida = 'erro_palavra';
-            console.log(`❌ Jogador ${numeroJogador} errou a palavra "${palavraChutada}"! Ele perde uma vida. Vidas restantes: J1=${game.vidas[0]}, J2=${game.vidas[1]}`);
+            console.log(`❌ Jogador ${numeroJogador} errou a palavra! Ele perde uma vida. Vidas restantes: J1=${game.vidas[0]}, J2=${game.vidas[1]}`);
           }
           
           const estadoJogador = gameInstanceJogador.getEstado();
@@ -1230,7 +1226,7 @@ module.exports = function(io) {
             // Se chegou aqui, alguém perdeu vida mas o jogo continua - reseta AMBAS as palavras para nova rodada
             console.log(`🔄 Alguém perdeu vida! Resetando ambas as palavras para nova rodada...`);
             console.log(`📊 Vidas após perda: J1=${game.vidas[0]}, J2=${game.vidas[1]} - Continuando jogo`);
-            console.log(`📋 Palavras já usadas no jogo: ${game.palavrasUsadas.join(', ')}`);
+            console.log(`📋 Total de palavras já usadas: ${game.palavrasUsadas.length}`);
             
             try {
               // Busca primeira nova palavra excluindo todas as palavras já usadas no jogo
@@ -1308,7 +1304,7 @@ module.exports = function(io) {
               game.dicas = [dicasJogador1, dicasJogador2];
               game.dicasPedidas = [0, 0]; // Reseta contador de dicas pedidas para nova rodada
               
-              console.log(`✅ Novas palavras escolhidas: J1=${novaPalavra1}, J2=${novaPalavra2}`);
+              console.log(`✅ Novas palavras escolhidas para nova rodada`);
               console.log(`💡 Novas dicas: J1=${dicasJogador1.length} dicas, J2=${dicasJogador2.length} dicas`);
               
               // Alterna o turno: quem começou a rodada anterior, o outro começa a próxima
@@ -1316,7 +1312,7 @@ module.exports = function(io) {
               game.turno = turnoAnterior === 1 ? 2 : 1;
               game.turnoInicialRodada = game.turno;
               
-              console.log(`✅ Nova rodada iniciada após chute de palavra! Palavra J1: ${novaPalavra1}, Palavra J2: ${novaPalavra2}, Turno: Jogador ${game.turno}`);
+              console.log(`✅ Nova rodada iniciada após chute de palavra! Turno: Jogador ${game.turno}`);
             } catch (error) {
               console.error('❌ Erro ao buscar novas palavras para nova rodada:', error);
               console.error('Stack trace:', error.stack);
@@ -1404,7 +1400,7 @@ module.exports = function(io) {
             // Usa as dicas já armazenadas no game
             eventoChutePalavra.dicasJogador1 = game.dicas[0] || [];
             eventoChutePalavra.dicasJogador2 = game.dicas[1] || [];
-            console.log(`📤 Enviando nova rodada com palavras: J1=${game.words[0]}, J2=${game.words[1]}`);
+            console.log(`📤 Enviando nova rodada`);
             console.log(`💡 Enviando dicas: J1=${eventoChutePalavra.dicasJogador1.length} dicas, J2=${eventoChutePalavra.dicasJogador2.length} dicas`);
           }
           
@@ -1643,7 +1639,7 @@ module.exports = function(io) {
                     game.turno = turnoAnterior === 1 ? 2 : 1;
                     game.turnoInicialRodada = game.turno;
                     
-                    console.log(`✅ Nova rodada iniciada! Palavra J1: ${novaPalavra1}, Palavra J2: ${novaPalavra2}, Turno: Jogador ${game.turno}`);
+                    console.log(`✅ Nova rodada iniciada! Turno: Jogador ${game.turno}`);
                     
                     // Atualiza o resultado do poder para incluir informações da nova rodada
                     resultadoPoder.novaRodada = true;

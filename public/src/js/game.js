@@ -1247,9 +1247,8 @@ function configurarListenersSocket() {
             console.log('⚠️ Adversário usou um poder:', evento);
             mostrarFeedback('Adversário usou um poder!', 'orange');
         } else if (evento.tipo === 'chutePalavra') {
-            console.log('📥 Chute de palavra processado:', evento);
+            console.log('📥 Chute de palavra processado');
             console.log('📋 Detalhes do evento:', {
-                palavraChutada: evento.palavraChutada,
                 resultado: evento.resultado,
                 jogadorQueJogou: evento.jogadorQueJogou,
                 meuNumeroJogador: meuNumeroJogador,
@@ -1337,7 +1336,7 @@ function configurarListenersSocket() {
                 
                 // Se há novas palavras secretas, usa elas para criar a palavra exibida inicial
                 if (evento.novaPalavraJogador1 && evento.novaPalavraJogador2) {
-                    console.log(`📝 Novas palavras recebidas: J1=${evento.novaPalavraJogador1}, J2=${evento.novaPalavraJogador2}`);
+                    console.log(`📝 Novas palavras recebidas para nova rodada`);
                     // Atualiza palavra secreta local
                     if (meuNumeroJogador === 1) {
                         palavraSecreta = evento.novaPalavraJogador1;
@@ -1356,7 +1355,7 @@ function configurarListenersSocket() {
                         // Atualiza dicas se fornecidas
                         if (evento.dicasJogador1) {
                             dicas = evento.dicasJogador1;
-                            console.log(`💡 Novas dicas recebidas para J1: ${dicas.length} dicas`);
+                            console.log(`💡 Novas dicas recebidas para J1: ${dicas.length} dicas disponíveis`);
                         }
                     } else {
                         palavraSecreta = evento.novaPalavraJogador2;
@@ -1375,7 +1374,7 @@ function configurarListenersSocket() {
                         // Atualiza dicas se fornecidas
                         if (evento.dicasJogador2) {
                             dicas = evento.dicasJogador2;
-                            console.log(`💡 Novas dicas recebidas para J2: ${dicas.length} dicas`);
+                            console.log(`💡 Novas dicas recebidas para J2: ${dicas.length} dicas disponíveis`);
                         }
                     }
                 } else {
@@ -1456,7 +1455,7 @@ function configurarListenersSocket() {
             // Se o erro for "não é seu turno", não faz nada além de mostrar feedback
             // O turno será atualizado quando o servidor enviar o próximo evento 'jogada'
         } else if (evento.tipo === 'dicaPedida') {
-            console.log('💡 Evento dicaPedida recebido:', evento);
+            console.log('💡 Evento dicaPedida recebido');
             console.log('💡 meuNumeroJogador:', meuNumeroJogador, 'jogadorQuePediu:', evento.jogadorQuePediu);
             
             // Se foi este jogador que pediu a dica, exibe a dica acima da palavra dele
@@ -1481,7 +1480,6 @@ function configurarListenersSocket() {
                 console.log('💡 Tentando exibir dica:', {
                     dicaId: dicaId,
                     elementoEncontrado: !!dicaPalavraEl,
-                    textoDica: evento.textoDica,
                     ordemDica: evento.ordemDica
                 });
                 
@@ -1498,7 +1496,7 @@ function configurarListenersSocket() {
                     dicaPalavraEl.style.transform = 'translateY(0)';
                     dicaPalavraEl.classList.add('mostrar');
                     
-                    console.log(`💡 Dica ${dicaAtualExibida} exibida: ${evento.textoDica}`);
+                    console.log(`💡 Dica ${dicaAtualExibida} exibida`);
                     console.log('💡 Classes do elemento:', dicaPalavraEl.className);
                     console.log('💡 Estilo do elemento:', {
                         opacity: window.getComputedStyle(dicaPalavraEl).opacity,
@@ -1596,7 +1594,7 @@ function iniciarJogo(dados) {
     poderUsadoNoTurno = null;
     ultimoTurnoReabilitado = null;
     
-    console.log(`📝 Palavras recebidas: Minha="${palavraExibida}", Adversário="${palavraAdversarioExibida}"`);
+    console.log(`📝 Palavras recebidas para exibição`);
     console.log(`💚 Vidas iniciais: J1=${vidas[0]}, J2=${vidas[1]}`);
     
     console.log(`✅ Jogador ${meuNumeroJogador} (tipo: ${typeof meuNumeroJogador}) - Socket ID: ${meuSocketId}`);
@@ -1798,7 +1796,7 @@ function processarJogada(dados) {
             
             // Se há novas palavras secretas, usa elas para criar a palavra exibida inicial
             if (dados.novaPalavraJogador1 && dados.novaPalavraJogador2) {
-                console.log(`📝 Novas palavras recebidas: J1=${dados.novaPalavraJogador1}, J2=${dados.novaPalavraJogador2}`);
+                console.log(`📝 Novas palavras recebidas para nova rodada`);
                 // Atualiza palavra secreta local
                 if (meuNumeroJogador === 1) {
                     palavraSecreta = dados.novaPalavraJogador1;
@@ -1807,7 +1805,7 @@ function processarJogada(dados) {
                     // Atualiza dicas se fornecidas
                     if (dados.dicasJogador1) {
                         dicas = dados.dicasJogador1;
-                        console.log(`💡 Novas dicas recebidas para J1: ${dicas.length} dicas`);
+                        console.log(`💡 Novas dicas recebidas para J1: ${dicas.length} dicas disponíveis`);
                     }
                 } else {
                     palavraSecreta = dados.novaPalavraJogador2;
@@ -1816,7 +1814,7 @@ function processarJogada(dados) {
                     // Atualiza dicas se fornecidas
                     if (dados.dicasJogador2) {
                         dicas = dados.dicasJogador2;
-                        console.log(`💡 Novas dicas recebidas para J2: ${dicas.length} dicas`);
+                        console.log(`💡 Novas dicas recebidas para J2: ${dicas.length} dicas disponíveis`);
                     }
                 }
             } else {
@@ -2703,7 +2701,7 @@ function enviarChutePalavra(palavra) {
     // Não retoma o timer da rodada aqui porque o servidor vai processar o chute
     // e pode mudar o turno ou iniciar nova rodada, então o timer será gerenciado pelo servidor
     
-    console.log(`📤 Enviando chute de palavra: "${palavra}"`);
+    console.log(`📤 Enviando chute de palavra`);
     
     socket.emit('eventoJogo', {
         tipo: 'chutarPalavra',
