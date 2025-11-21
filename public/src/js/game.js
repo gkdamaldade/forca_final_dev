@@ -1445,9 +1445,29 @@ function iniciarJogo(dados) {
     }
     
     jogoEstaAtivo = true;
-    errosJogador1 = 0;
-    errosJogador2 = 0;
-    letrasChutadas.clear();
+    
+    // Se é uma reconexão, restaura o estado completo (erros e letras chutadas)
+    if (dados.reconexao) {
+        console.log(`🔄 Reconexão detectada! Restaurando estado completo do jogo...`);
+        errosJogador1 = dados.errosJogador1 || 0;
+        errosJogador2 = dados.errosJogador2 || 0;
+        
+        // Restaura letras chutadas
+        letrasChutadas.clear();
+        if (dados.letrasChutadasJogador1 && Array.isArray(dados.letrasChutadasJogador1)) {
+            dados.letrasChutadasJogador1.forEach(letra => letrasChutadas.add(letra));
+        }
+        if (dados.letrasChutadasJogador2 && Array.isArray(dados.letrasChutadasJogador2)) {
+            dados.letrasChutadasJogador2.forEach(letra => letrasChutadas.add(letra));
+        }
+        
+        console.log(`✅ Estado restaurado: erros J1=${errosJogador1}, erros J2=${errosJogador2}, letras chutadas=${Array.from(letrasChutadas).join(', ')}`);
+    } else {
+        // Nova partida - reseta tudo
+        errosJogador1 = 0;
+        errosJogador2 = 0;
+        letrasChutadas.clear();
+    }
     
     categoriaEl.textContent = categoria;
     

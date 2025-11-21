@@ -145,20 +145,75 @@ module.exports = function(io) {
           jogadorReconectado: jogadorExistentePorSocket.numero
         });
         
-        // Envia evento de preparação se necessário
-        if (game.players.length === 2) {
+        // Verifica se o jogo está ativo (já começou)
+        const jogoEstaAtivo = game.gameInstances && game.gameInstances.length === 2 && 
+                              game.gameInstances[0] && game.gameInstances[1] &&
+                              (game.gameInstances[0].status === 'jogando' || 
+                               game.gameInstances[1].status === 'jogando');
+        
+        if (jogoEstaAtivo) {
+          // Jogo está em andamento - envia estado COMPLETO do jogo para o jogador que reconectou
+          console.log(`🔄 Jogo está ativo. Enviando estado COMPLETO para jogador ${jogadorExistentePorSocket.numero}`);
           const j1 = game.players.find(p => p.numero === 1);
           const j2 = game.players.find(p => p.numero === 2);
-          if (j1 && j2) {
-            io.to(j1.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
-            io.to(j2.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
+          
+          if (j1 && j2 && game.gameInstances[0] && game.gameInstances[1]) {
+            const estado1 = game.gameInstances[0].getEstado();
+            const estado2 = game.gameInstances[1].getEstado();
+            
+            // Envia estado COMPLETO para o jogador que reconectou (incluindo letras chutadas e erros)
+            const eventoReconexao = {
+              tipo: 'inicio',
+              jogador: jogadorExistentePorSocket.numero,
+              adversario: jogadorExistentePorSocket.numero === 1 ? j2.name : j1.name,
+              palavra: jogadorExistentePorSocket.numero === 1 ? estado1.palavra : estado2.palavra,
+              palavraAdversario: jogadorExistentePorSocket.numero === 1 ? estado2.palavra : estado1.palavra,
+              palavraSecreta: game.words[jogadorExistentePorSocket.numero - 1],
+              turno: game.turno,
+              categoria: game.categoria,
+              meuSocketId: jogadorExistentePorSocket.id,
+              adversarioSocketId: jogadorExistentePorSocket.numero === 1 ? j2.id : j1.id,
+              vidas: game.vidas,
+              poderes: jogadorExistentePorSocket.poderes || [],
+              dicas: game.dicas ? game.dicas[jogadorExistentePorSocket.numero - 1] : [],
+              // Informações adicionais para restaurar estado completo
+              errosJogador1: estado1.erros,
+              errosJogador2: estado2.erros,
+              letrasChutadasJogador1: Array.from(estado1.letrasChutadas),
+              letrasChutadasJogador2: Array.from(estado2.letrasChutadas),
+              statusJogador1: estado1.status,
+              statusJogador2: estado2.status,
+              reconexao: true // Flag para indicar que é uma reconexão
+            };
+            
+            io.to(jogadorExistentePorSocket.id).emit('eventoJogo', eventoReconexao);
+            console.log(`✅ Estado COMPLETO do jogo enviado para jogador ${jogadorExistentePorSocket.numero} após reconexão`);
+            console.log(`📋 Estado enviado: vidas=${JSON.stringify(game.vidas)}, turno=${game.turno}, erros J1=${estado1.erros}, erros J2=${estado2.erros}`);
+          }
+        } else {
+          // Jogo ainda não começou - envia evento de preparação
+          if (game.players.length === 2) {
+            const j1 = game.players.find(p => p.numero === 1);
+            const j2 = game.players.find(p => p.numero === 2);
+            if (j1 && j2) {
+              io.to(j1.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
+              io.to(j2.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
+            }
           }
         }
         return;
       }
       
-      // Verifica se há um jogador com o mesmo nome (reconexão com novo socket.id)
-      const jogadorExistentePorNome = game.players.find(p => p.name === playerName);
+      // Verifica se há um jogador com o mesmo nome OU playerId (reconexão com novo socket.id)
+      // Prioriza playerId se fornecido, depois nome
+      let jogadorExistentePorNome = null;
+      if (playerId) {
+        jogadorExistentePorNome = game.players.find(p => p.playerId === playerId && p.playerId !== null);
+      }
+      if (!jogadorExistentePorNome) {
+        jogadorExistentePorNome = game.players.find(p => p.name === playerName);
+      }
+      
       if (jogadorExistentePorNome && jogadorExistentePorNome.id !== socket.id) {
         const socketIdAntigo = jogadorExistentePorNome.id;
         console.log(`🔄 Jogador ${jogadorExistentePorNome.numero} (${playerName}) reconectou com novo socket: ${socketIdAntigo} -> ${socket.id}`);
@@ -175,10 +230,20 @@ module.exports = function(io) {
           console.log(`🔌 Socket antigo ${socketIdAntigo} removido da sala`);
         }
 
-        // Atualiza o socket.id do jogador
+        // Atualiza o socket.id do jogador e preserva TODOS os dados
         jogadorExistentePorNome.id = socket.id;
         jogadorExistentePorNome.desconectado = false;
         jogadorExistentePorNome.wasReady = estavaProntoAntes;
+        // Atualiza playerId caso tenha mudado (mas mantém o mesmo jogador)
+        if (playerId && playerId !== jogadorExistentePorNome.playerId) {
+          console.log(`🔄 Atualizando playerId de ${jogadorExistentePorNome.playerId} para ${playerId}`);
+          jogadorExistentePorNome.playerId = playerId;
+        }
+        // Atualiza nome caso tenha mudado
+        if (playerName !== jogadorExistentePorNome.name) {
+          console.log(`🔄 Atualizando nome de "${jogadorExistentePorNome.name}" para "${playerName}"`);
+          jogadorExistentePorNome.name = playerName;
+        }
         if (jogadorExistentePorNome.remocaoTimeout) {
           clearTimeout(jogadorExistentePorNome.remocaoTimeout);
           jogadorExistentePorNome.remocaoTimeout = null;
@@ -199,13 +264,60 @@ module.exports = function(io) {
           console.log(`ℹ️ Jogador ${playerName} reconectou ainda não pronto.`);
         }
 
-        // Envia evento de preparação se necessário
-        if (game.players.length === 2) {
+        // Verifica se o jogo está ativo (já começou)
+        const jogoEstaAtivo = game.gameInstances && game.gameInstances.length === 2 && 
+                              game.gameInstances[0] && game.gameInstances[1] &&
+                              (game.gameInstances[0].status === 'jogando' || 
+                               game.gameInstances[1].status === 'jogando');
+        
+        if (jogoEstaAtivo) {
+          // Jogo está em andamento - envia estado COMPLETO do jogo para o jogador que reconectou
+          console.log(`🔄 Jogo está ativo. Enviando estado COMPLETO para jogador ${jogadorExistentePorNome.numero}`);
           const j1 = game.players.find(p => p.numero === 1);
           const j2 = game.players.find(p => p.numero === 2);
-          if (j1 && j2) {
-            io.to(j1.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
-            io.to(j2.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
+          
+          if (j1 && j2 && game.gameInstances[0] && game.gameInstances[1]) {
+            const estado1 = game.gameInstances[0].getEstado();
+            const estado2 = game.gameInstances[1].getEstado();
+            
+            // Envia estado COMPLETO para o jogador que reconectou (incluindo letras chutadas e erros)
+            const eventoReconexao = {
+              tipo: 'inicio',
+              jogador: jogadorExistentePorNome.numero,
+              adversario: jogadorExistentePorNome.numero === 1 ? j2.name : j1.name,
+              palavra: jogadorExistentePorNome.numero === 1 ? estado1.palavra : estado2.palavra,
+              palavraAdversario: jogadorExistentePorNome.numero === 1 ? estado2.palavra : estado1.palavra,
+              palavraSecreta: game.words[jogadorExistentePorNome.numero - 1],
+              turno: game.turno,
+              categoria: game.categoria,
+              meuSocketId: jogadorExistentePorNome.id,
+              adversarioSocketId: jogadorExistentePorNome.numero === 1 ? j2.id : j1.id,
+              vidas: game.vidas,
+              poderes: jogadorExistentePorNome.poderes || [],
+              dicas: game.dicas ? game.dicas[jogadorExistentePorNome.numero - 1] : [],
+              // Informações adicionais para restaurar estado completo
+              errosJogador1: estado1.erros,
+              errosJogador2: estado2.erros,
+              letrasChutadasJogador1: Array.from(estado1.letrasChutadas),
+              letrasChutadasJogador2: Array.from(estado2.letrasChutadas),
+              statusJogador1: estado1.status,
+              statusJogador2: estado2.status,
+              reconexao: true // Flag para indicar que é uma reconexão
+            };
+            
+            io.to(jogadorExistentePorNome.id).emit('eventoJogo', eventoReconexao);
+            console.log(`✅ Estado COMPLETO do jogo enviado para jogador ${jogadorExistentePorNome.numero} após reconexão`);
+            console.log(`📋 Estado enviado: vidas=${JSON.stringify(game.vidas)}, turno=${game.turno}, erros J1=${estado1.erros}, erros J2=${estado2.erros}`);
+          }
+        } else {
+          // Jogo ainda não começou - envia evento de preparação
+          if (game.players.length === 2) {
+            const j1 = game.players.find(p => p.numero === 1);
+            const j2 = game.players.find(p => p.numero === 2);
+            if (j1 && j2) {
+              io.to(j1.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
+              io.to(j2.id).emit('eventoJogo', { tipo: 'preparacao', categoria: game.categoria });
+            }
           }
         }
         return;

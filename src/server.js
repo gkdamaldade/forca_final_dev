@@ -64,7 +64,13 @@ app.use(errorHandler);
 
 
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
+const io = new Server(server, { 
+  cors: { origin: '*' },
+  pingTimeout: 60000, // 60 segundos - tempo para considerar desconexão após ping
+  pingInterval: 25000, // 25 segundos - intervalo entre pings
+  transports: ['websocket', 'polling'], // Permite fallback para polling se websocket falhar
+  allowEIO3: true // Compatibilidade com versões antigas
+});
 
 
 require('./socket/gameSocket')(io);
