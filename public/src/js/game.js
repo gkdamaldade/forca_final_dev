@@ -1,6 +1,6 @@
 // game.js - Versão Socket.io para Jogo Multiplayer
 
-import { conectarSocket, aoReceberEvento, enviarEvento, getMeuSocketId } from './socket.js';
+import { conectarSocket, aoReceberEvento, enviarEvento, getMeuSocketId, getSocket } from './socket.js';
 
 // --- 1. SELETORES DO DOM ---
 const categoriaEl = document.querySelector('.categoria');
@@ -873,6 +873,14 @@ function configurarListenersSocket() {
             mostrarFeedback('Adversário usou um poder!', 'orange');
         } else if (evento.tipo === 'chutePalavra') {
             console.log('📥 Chute de palavra processado:', evento);
+            console.log('📋 Detalhes do evento:', {
+                palavraChutada: evento.palavraChutada,
+                resultado: evento.resultado,
+                jogadorQueJogou: evento.jogadorQueJogou,
+                meuNumeroJogador: meuNumeroJogador,
+                vidas: evento.vidas,
+                turno: evento.turno
+            });
             
             // Atualiza o estado do jogo
             if (evento.palavraJogador1 && evento.palavraJogador2) {
@@ -911,12 +919,17 @@ function configurarListenersSocket() {
                     mostrarFeedback(`🎯 Você acertou a palavra "${evento.palavraChutada}"! Adversário perde uma vida!`, 'green');
                 } else if (evento.resultado === 'derrota') {
                     mostrarFeedback(`❌ Você errou a palavra "${evento.palavraChutada}"! Você perde uma vida!`, 'red');
+                } else {
+                    console.warn('⚠️ Resultado desconhecido:', evento.resultado);
+                    mostrarFeedback(`Chute processado: "${evento.palavraChutada}"`, 'orange');
                 }
             } else {
                 if (evento.resultado === 'vitoria') {
                     mostrarFeedback(`⚠️ Adversário acertou a palavra! Você perde uma vida!`, 'orange');
                 } else if (evento.resultado === 'derrota') {
                     mostrarFeedback(`✅ Adversário errou a palavra!`, 'green');
+                } else {
+                    console.warn('⚠️ Resultado desconhecido:', evento.resultado);
                 }
             }
             
@@ -1744,6 +1757,7 @@ function configurarChutePalavra() {
 
 // Envia o chute de palavra completa para o servidor
 function enviarChutePalavra(palavra) {
+    const socket = getSocket();
     if (!socket || !jogoEstaAtivo) {
         mostrarFeedback('Não foi possível enviar o chute', 'red');
         return;

@@ -886,6 +886,8 @@ module.exports = function(io) {
       }
 
       if (msg.tipo === 'chutarPalavra') {
+        console.log(`🎯 Recebido evento chutarPalavra:`, msg);
+        
         // Verifica se é o turno do jogador
         const jogadorAtual = game.players.find(p => p.id === socket.id);
         if (!jogadorAtual) {
@@ -912,6 +914,7 @@ module.exports = function(io) {
         
         const palavraChutada = (msg.palavra || '').trim();
         if (!palavraChutada) {
+          console.log(`❌ Palavra vazia recebida`);
           socket.emit('eventoJogo', {
             tipo: 'erro',
             mensagem: 'Palavra não pode estar vazia!'
@@ -925,13 +928,19 @@ module.exports = function(io) {
         const gameInstanceAdversario = game.gameInstances[(numeroJogador === 1 ? 2 : 1) - 1];
         const adversarioNum = numeroJogador === 1 ? 2 : 1;
         
+        console.log(`📋 Estado antes do chute:`, {
+          palavraSecreta: gameInstanceJogador.palavraSecreta,
+          status: gameInstanceJogador.status,
+          palavraChutada: palavraChutada
+        });
+        
         let alguemPerdeuVida = false;
         let jogadorQuePerdeuVida = null;
         let motivoPerdaVida = '';
         
         // Chuta a palavra completa
         const resultado = gameInstanceJogador.chutarPalavraCompleta(palavraChutada);
-        console.log(`Chute de palavra processado: palavra="${palavraChutada}", resultado=${resultado}`);
+        console.log(`📊 Chute de palavra processado: palavra="${palavraChutada}", resultado=${resultado}, status=${gameInstanceJogador.status}`);
         
         if (resultado === 'vitoria') {
           // Acertou! Adversário perde vida
