@@ -191,6 +191,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Configura botão de chutar palavra completa
     configurarChutePalavra();
     
+    // Configura botão de dica
+    configurarBotaoDica();
+    
     log('✅ Inicialização completa');
 });
 
@@ -531,8 +534,10 @@ function reabilitarPoderesNoTurno() {
     
     const eMeuTurno = turnoAtual === meuNumeroJogador && jogoEstaAtivo;
     
-    // Se o turno mudou para o meu turno, reseta o poder usado no turno
-    if (ultimoTurnoReabilitado !== turnoAtual && eMeuTurno) {
+    // Se o turno mudou, reseta o poder usado no turno
+    // Compara com o último turno registrado para detectar mudança
+    if (ultimoTurnoReabilitado !== turnoAtual) {
+        // Turno mudou - sempre reseta poder usado no turno
         poderUsadoNoTurno = null;
         ultimoTurnoReabilitado = turnoAtual;
     }
@@ -702,25 +707,29 @@ async function usarPoder(poderId, botaoElemento) {
             
             const data = await response.json();
             console.log(`[${instanceId}] ✅ Poder subtraído do inventário. Quantidade restante: ${data.quantidadeRestante}`);
+            
+            // Se a quantidade restante é 0, marca como usado permanentemente
+            if (data.quantidadeRestante === 0) {
+                poderesUsados.add(poderId);
+            }
         } catch (error) {
             console.error(`[${instanceId}] ❌ Erro ao subtrair poder do inventário:`, error);
             // Continua mesmo se houver erro (não bloqueia o uso do poder)
         }
     }
     
-    // Marca o poder como usado
-    poderesUsados.add(poderId);
-    poderUsadoNoTurno = poderId; // Marca que um poder foi usado neste turno
+    // Marca que um poder foi usado neste turno (NÃO marca como usado permanentemente, a menos que quantidade = 0)
+    poderUsadoNoTurno = poderId;
     
-    // Desabilita TODOS os poderes (exceto o que foi usado)
+    // Desabilita TODOS os poderes (exceto o que foi usado) apenas para este turno
     desabilitarTodosPoderesExceto(poderId);
     
-    // Atualiza visualmente o botão (desabilita e marca como usado)
+    // Atualiza visualmente o botão (desabilita temporariamente para este turno)
     if (botaoElemento) {
         botaoElemento.disabled = true;
-        botaoElemento.classList.add('usado');
         botaoElemento.style.opacity = '0.5';
         botaoElemento.style.cursor = 'not-allowed';
+        botaoElemento.classList.add('desabilitado-turno');
     }
     
     // Atualiza contador de poderes
@@ -913,6 +922,9 @@ function configurarListenersSocket() {
             
             // Reabilita poderes quando o turno troca
             reabilitarPoderesNoTurno();
+            
+            // Atualiza estado do botão de dica
+            atualizarEstadoBotaoDica();
             
             // Limpa o timer anterior e inicia novo se for meu turno
             clearInterval(timerInterval);
@@ -1127,6 +1139,11 @@ function configurarListenersSocket() {
                 errosJogador1 = 0;
                 errosJogador2 = 0;
                 
+                // Reseta contador de dicas para nova rodada
+                dicaAtualExibida = 0;
+                ocultarDica();
+                atualizarEstadoBotaoDica();
+                
                 // Reabilita o botão de chutar para a nova rodada
                 chutePalavraDisponivel = true;
                 
@@ -1206,18 +1223,38 @@ function configurarListenersSocket() {
                 const botoesPoder = document.querySelectorAll('#poderes-jogador-container .poder');
                 botoesPoder.forEach(botao => {
                     const poderId = botao.getAttribute('data-poder');
-                    if (poderesUsados.has(poderId)) {
-                        // Se o servidor rejeitou, remove do set de usados
-                        poderesUsados.delete(poderId);
-                        botao.classList.remove('usado');
+                    // Se o servidor rejeitou, reseta o poder usado no turno
+                    if (poderUsadoNoTurno === poderId) {
+                        poderUsadoNoTurno = null;
+                        botao.classList.remove('desabilitado-turno');
                         botao.disabled = false;
                         botao.style.opacity = '1';
                         botao.style.cursor = 'pointer';
+                        // Reabilita todos os poderes
+                        reabilitarPoderesNoTurno();
                     }
                 });
             }
             // Se o erro for "não é seu turno", não faz nada além de mostrar feedback
             // O turno será atualizado quando o servidor enviar o próximo evento 'jogada'
+        } else if (evento.tipo === 'dicaPedida') {
+            // Atualiza o turno quando uma dica é pedida
+            if (evento.turno) {
+                turnoAtual = evento.turno;
+                atualizarTurnoUI();
+                atualizarTecladoDesabilitado();
+                
+                // Reabilita poderes quando o turno troca
+                reabilitarPoderesNoTurno();
+                
+                // Atualiza estado do botão de dica
+                atualizarEstadoBotaoDica();
+            }
+            
+            // Se foi o outro jogador que pediu dica, mostra feedback
+            if (evento.jogadorQuePediu !== meuNumeroJogador) {
+                mostrarFeedback('O adversário pediu uma dica!', 'orange');
+            }
         } else {
             console.log('ℹ️ Evento não tratado:', evento.tipo);
         }
@@ -1410,6 +1447,10 @@ function processarJogada(dados) {
         
         // Se começou nova rodada, reseta o estado
         if (dados.novaRodada) {
+            // Reseta contador de dicas para nova rodada
+            dicaAtualExibida = 0;
+            ocultarDica();
+            atualizarEstadoBotaoDica();
             console.log('🔄 Nova rodada iniciada! Resetando estado...');
             // Reseta letras chutadas e erros para nova rodada
             letrasChutadas = new Set();
@@ -1495,8 +1536,6 @@ function processarJogada(dados) {
     } else if (dados.resultado === 'erro' && dados.jogadorQueJogou === meuNumeroJogador) {
         // Só mostra erro se foi o próprio jogador que errou
         mostrarFeedback('✗ Letra incorreta!', 'red');
-        // Exibe a próxima dica quando o jogador erra
-        exibirProximaDica();
     } else if (dados.resultado === 'vitoria' && !dados.alguemPerdeuVida) {
         mostrarFeedback('🎯 Você completou a palavra!', 'green');
     }
@@ -2427,10 +2466,11 @@ function lidarComChuteDeTecladoFisico(e) {
     processarChute(letra);
 }
 
-// Função para exibir a próxima dica quando o jogador erra
+// Função para exibir a próxima dica acima da palavra
 function exibirProximaDica() {
     // Verifica se há dicas disponíveis
     if (!dicas || dicas.length === 0) {
+        mostrarFeedback('Nenhuma dica disponível', 'orange');
         return;
     }
     
@@ -2439,60 +2479,96 @@ function exibirProximaDica() {
     
     // Verifica se há uma dica para exibir (máximo 3)
     if (dicaAtualExibida > 3 || dicaAtualExibida > dicas.length) {
-        return; // Já exibiu todas as dicas
+        mostrarFeedback('Todas as dicas já foram exibidas', 'orange');
+        return;
     }
     
     // Encontra a dica com a ordem correspondente
     const dica = dicas.find(d => d.ordem === dicaAtualExibida);
     if (!dica || !dica.texto) {
+        mostrarFeedback('Dica não encontrada', 'orange');
         return;
     }
     
-    // Cria um novo elemento de dica e adiciona ao container
-    const dicaContainer = document.getElementById('dica-container');
-    if (!dicaContainer) {
-        return;
+    // Exibe a dica acima da palavra do jogador
+    const dicaPalavraEl = meuNumeroJogador === 1 
+        ? document.getElementById('dica-palavra-jogador1')
+        : document.getElementById('dica-palavra-jogador2');
+    
+    if (dicaPalavraEl) {
+        dicaPalavraEl.textContent = dica.texto;
+        dicaPalavraEl.classList.add('mostrar');
+        log(`💡 Dica ${dicaAtualExibida} exibida: ${dica.texto}`);
     }
     
-    // Cria o elemento da dica
-    const dicaContent = document.createElement('div');
-    dicaContent.className = 'dica-content';
-    dicaContent.setAttribute('data-ordem', dicaAtualExibida);
+    // Atualiza estado do botão de dica
+    atualizarEstadoBotaoDica();
     
-    const dicaIcon = document.createElement('span');
-    dicaIcon.className = 'dica-icon';
-    dicaIcon.textContent = '💡';
-    
-    const dicaTexto = document.createElement('span');
-    dicaTexto.className = 'dica-texto';
-    dicaTexto.textContent = dica.texto;
-    
-    dicaContent.appendChild(dicaIcon);
-    dicaContent.appendChild(dicaTexto);
-    
-    // Adiciona a nova dica ao container
-    dicaContainer.appendChild(dicaContent);
-    
-    // Mostra o container se ainda não estiver visível
-    if (!dicaContainer.classList.contains('mostrar')) {
-        dicaContainer.classList.add('mostrar');
-    }
-    
-    // Animação de entrada para a nova dica
-    setTimeout(() => {
-        dicaContent.style.opacity = '1';
-        dicaContent.style.transform = 'translateY(0)';
-    }, 10);
-    
-    console.log(`💡 Dica ${dicaAtualExibida} exibida: ${dica.texto}`);
+    // Passa o turno automaticamente
+    enviarEvento({
+        tipo: 'pedirDica'
+    });
 }
 
-// Função para ocultar todas as dicas
+// Função para ocultar dicas acima das palavras
 function ocultarDica() {
-    const dicaContainer = document.getElementById('dica-container');
-    if (dicaContainer) {
-        // Remove todas as dicas do container
-        dicaContainer.innerHTML = '';
-        dicaContainer.classList.remove('mostrar');
+    const dicaPalavraJ1 = document.getElementById('dica-palavra-jogador1');
+    const dicaPalavraJ2 = document.getElementById('dica-palavra-jogador2');
+    
+    if (dicaPalavraJ1) {
+        dicaPalavraJ1.textContent = '';
+        dicaPalavraJ1.classList.remove('mostrar');
+    }
+    if (dicaPalavraJ2) {
+        dicaPalavraJ2.textContent = '';
+        dicaPalavraJ2.classList.remove('mostrar');
+    }
+}
+
+// Configura o botão de dica
+function configurarBotaoDica() {
+    const btnDica = document.getElementById('btn-dica');
+    if (!btnDica) {
+        logWarn('⚠️ Botão de dica não encontrado!');
+        return;
+    }
+    
+    btnDica.addEventListener('click', () => {
+        // Verifica se é o turno do jogador
+        if (turnoAtual !== meuNumeroJogador || !jogoEstaAtivo) {
+            mostrarFeedback('Você só pode pedir dica no seu turno!', 'orange');
+            return;
+        }
+        
+        // Verifica se já exibiu todas as dicas
+        if (dicaAtualExibida >= 3) {
+            mostrarFeedback('Todas as dicas já foram exibidas!', 'orange');
+            return;
+        }
+        
+        // Exibe a próxima dica e passa o turno
+        exibirProximaDica();
+    });
+    
+    // Atualiza disponibilidade do botão baseado no turno
+    atualizarEstadoBotaoDica();
+}
+
+// Atualiza o estado do botão de dica
+function atualizarEstadoBotaoDica() {
+    const btnDica = document.getElementById('btn-dica');
+    if (!btnDica) return;
+    
+    const eMeuTurno = turnoAtual === meuNumeroJogador && jogoEstaAtivo;
+    const todasDicasExibidas = dicaAtualExibida >= 3;
+    
+    if (eMeuTurno && !todasDicasExibidas) {
+        btnDica.disabled = false;
+        btnDica.style.opacity = '1';
+        btnDica.style.cursor = 'pointer';
+    } else {
+        btnDica.disabled = true;
+        btnDica.style.opacity = '0.5';
+        btnDica.style.cursor = 'not-allowed';
     }
 }

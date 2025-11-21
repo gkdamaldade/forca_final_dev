@@ -931,6 +931,41 @@ module.exports = function(io) {
 
       }
 
+      if (msg.tipo === 'pedirDica') {
+        // Verifica se é o turno do jogador
+        const jogadorAtual = game.players.find(p => p.id === socket.id);
+        if (!jogadorAtual) {
+          socket.emit('eventoJogo', {
+            tipo: 'erro',
+            mensagem: 'Jogador não encontrado na sala!'
+          });
+          return;
+        }
+        
+        const numeroJogador = jogadorAtual.numero;
+        
+        if (numeroJogador !== game.turno) {
+          socket.emit('eventoJogo', {
+            tipo: 'erro',
+            mensagem: 'Não é seu turno!'
+          });
+          return;
+        }
+        
+        // Passa o turno
+        game.turno = game.turno === 1 ? 2 : 1;
+        console.log(`💡 Jogador ${numeroJogador} pediu dica. Turno passou para: ${game.turno}`);
+        
+        // Emite evento para ambos os jogadores
+        io.to(roomId).emit('eventoJogo', {
+          tipo: 'dicaPedida',
+          jogadorQuePediu: numeroJogador,
+          turno: game.turno
+        });
+        
+        return;
+      }
+      
       if (msg.tipo === 'chutarPalavra') {
         console.log(`🎯 Recebido evento chutarPalavra:`, msg);
         

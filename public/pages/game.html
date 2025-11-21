@@ -105,8 +105,14 @@
 
         <!-- Palavras -->
         <div class="palavras">
-            <div class="palavra">_ _ _ _ _ _ _</div>
-            <div class="palavra">_ _ _ _ _ _ _</div>
+            <div class="palavra-container">
+                <div class="dica-palavra" id="dica-palavra-jogador1"></div>
+                <div class="palavra">_ _ _ _ _ _ _</div>
+            </div>
+            <div class="palavra-container">
+                <div class="dica-palavra" id="dica-palavra-jogador2"></div>
+                <div class="palavra">_ _ _ _ _ _ _</div>
+            </div>
         </div>
 
         <!-- Poderes + Teclado -->
@@ -163,6 +169,10 @@
                 <button class="btn-chutar-palavra" id="btn-chutar-palavra" title="Chutar palavra completa" aria-label="Chutar palavra completa">
                     <i class="fa fa-keyboard"></i>
                     <span class="btn-chutar-texto">Chutar</span>
+                </button>
+                <button class="btn-dica" id="btn-dica" title="Pedir dica (perde a vez)" aria-label="Pedir dica">
+                    <i class="fa fa-lightbulb"></i>
+                    <span class="btn-dica-texto">Dica</span>
                 </button>
             </div>
         </div>
