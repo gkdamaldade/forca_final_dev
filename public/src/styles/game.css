@@ -725,9 +725,9 @@ header {
     linear-gradient(180deg, var(--aqua), var(--aqua-dark));
   color: white;
   border: 2px solid rgba(255,255,255,.4);
-  padding: clamp(8px, 1.5vw, 12px) clamp(12px, 2vw, 18px);
+  padding: clamp(10px, 1.8vw, 14px) clamp(16px, 2.5vw, 24px);
   border-radius: 50px;
-  font-size: clamp(1rem, 2.5vw, 1.4rem);
+  font-size: clamp(0.9rem, 2.2vw, 1.2rem);
   font-weight: 700;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -737,12 +737,20 @@ header {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: clamp(45px, 8vw, 60px);
-  height: clamp(45px, 8vw, 60px);
+  gap: 8px;
+  min-width: clamp(100px, 12vw, 140px);
+  height: auto;
+  min-height: clamp(45px, 8vw, 60px);
   font-family: "Orbitron", sans-serif;
   letter-spacing: 0.05em;
   position: relative;
   overflow: hidden;
+  flex-shrink: 0;
+}
+
+.btn-chutar-texto {
+  font-size: inherit;
+  font-weight: inherit;
 }
 
 .btn-chutar-palavra:hover {
@@ -1038,10 +1046,14 @@ header {
   flex-shrink: 0;
 }
 
-.area-inferior:has(#poderes-jogador-container:not(:empty)) .teclado {
+.area-inferior:has(#poderes-jogador-container:not(:empty)) .teclado-container-wrapper {
   flex-grow: 1;
   max-width: calc(100% - 180px);
   margin: 0 auto;
+}
+
+.area-inferior:has(#poderes-jogador-container:not(:empty)) .teclado {
+  flex-grow: 1;
 }
 
 
@@ -1233,6 +1245,18 @@ header {
 /* ===========================
    TECLADO — COMPACTO E RESPONSIVO
    =========================== */
+.teclado-container-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  width: 100%;
+  max-width: min(980px, 100%);
+  margin: 0 auto;
+  padding: 0 8px;
+  box-sizing: border-box;
+}
+
 .teclado {
   display: flex;
   flex-direction: column;
@@ -1240,12 +1264,10 @@ header {
   justify-content: center;
   gap: 6px;                             /* espaçamento vertical reduzido */
   width: 100%;
-  max-width: min(980px, 100%);          /* bloco mais largo */
   flex-shrink: 1;
   flex-grow: 1;
   min-width: 0;
-  margin: 0 auto;
-  padding: 0 8px;
+  padding: 0;
   box-sizing: border-box;
 }
 
@@ -1394,5 +1416,19 @@ header {
   .poder {
     width: 56px;
     height: 56px;
+  }
+  .teclado-container-wrapper{ 
+    width: 100%;
+    max-width: 100%;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .teclado{ 
+    width: 100%;
+    max-width: 100%;
+  }
+  .btn-chutar-palavra {
+    width: 100%;
+    max-width: 200px;
   }
 }

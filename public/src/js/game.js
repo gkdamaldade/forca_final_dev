@@ -1685,16 +1685,33 @@ function configurarChutePalavra() {
         });
     }
     
+    // Previne que o input dispare eventos de chute de letra
+    inputChutePalavra.addEventListener('keydown', (e) => {
+        // Para todas as teclas exceto Enter e Escape, previne propagação
+        if (e.key !== 'Enter' && e.key !== 'Escape') {
+            e.stopPropagation(); // Impede que o evento chegue ao lidarComChuteDeTecladoFisico
+        }
+    });
+    
     // Confirma com Enter
     inputChutePalavra.addEventListener('keypress', (e) => {
+        e.stopPropagation(); // Previne que o Enter dispare outros eventos
         if (e.key === 'Enter') {
+            e.preventDefault();
             const palavraChutada = inputChutePalavra.value.trim();
             if (palavraChutada) {
                 enviarChutePalavra(palavraChutada);
                 modalChutePalavra.classList.remove('active');
                 inputChutePalavra.value = '';
             }
-        } else if (e.key === 'Escape') {
+        }
+    });
+    
+    // Fecha com Escape
+    inputChutePalavra.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            e.stopPropagation();
+            e.preventDefault();
             modalChutePalavra.classList.remove('active');
             inputChutePalavra.value = '';
         }
@@ -1796,6 +1813,12 @@ function configurarTecladoVirtual() {
 }
 
 function lidarComChuteDeTecladoFisico(e) {
+    // Ignora se o input do modal de chute de palavra está focado
+    const inputChutePalavra = document.getElementById('input-chute-palavra');
+    if (inputChutePalavra && document.activeElement === inputChutePalavra) {
+        // Permite digitar normalmente no input, só processa Enter/Escape
+        return;
+    }
     // Primeiro verifica se é uma letra (A-Z), hífen (-) ou cedilha (Ç) - se não for, não faz nada e permite o comportamento padrão
     let letra = e.key.toUpperCase();
     
