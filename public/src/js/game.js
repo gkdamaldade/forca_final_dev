@@ -1885,6 +1885,9 @@ function atualizarTurnoUI() {
     
     log(`Atualizando UI do turno: turnoAtual=${turnoAtual}, meuNumeroJogador=${meuNumeroJogador}`);
     
+    // Atualiza estado do botão de dica quando o turno muda
+    atualizarEstadoBotaoDica();
+    
     // Remove a classe de todos primeiro
     if (h2Jogador1) h2Jogador1.classList.remove('active-turn');
     if (h2Jogador2) h2Jogador2.classList.remove('active-turn');
@@ -2768,6 +2771,12 @@ function configurarBotaoDica() {
             return;
         }
         
+        // Verifica se é o turno do jogador
+        if (turnoAtual !== meuNumeroJogador) {
+            mostrarFeedback('Você só pode pedir dica no seu turno!', 'orange');
+            return;
+        }
+        
         // Verifica se já exibiu todas as dicas
         if (dicaAtualExibida >= 3) {
             mostrarFeedback('Todas as dicas já foram exibidas!', 'orange');
@@ -2789,10 +2798,14 @@ function atualizarEstadoBotaoDica() {
     const btnDica = document.getElementById('btn-dica');
     if (!btnDica) return;
     
-    // Botão está sempre disponível se o jogo está ativo e ainda há dicas disponíveis
+    // Botão só está disponível se:
+    // 1. O jogo está ativo
+    // 2. É o turno do jogador
+    // 3. Ainda há dicas disponíveis
+    const eMeuTurno = turnoAtual === meuNumeroJogador && jogoEstaAtivo;
     const todasDicasExibidas = dicaAtualExibida >= 3;
     
-    if (jogoEstaAtivo && !todasDicasExibidas) {
+    if (eMeuTurno && !todasDicasExibidas) {
         btnDica.disabled = false;
         btnDica.style.opacity = '1';
         btnDica.style.cursor = 'pointer';

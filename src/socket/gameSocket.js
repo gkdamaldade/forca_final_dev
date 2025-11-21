@@ -91,7 +91,8 @@ module.exports = function(io) {
             prontos: new Set(),
             gameInstances: [gameInstance1, gameInstance2], // Uma instância por jogador
             vidas: [3, 3], // Cada jogador começa com 3 vidas
-            palpiteAtivo: { 1: false, 2: false } // Rastreia se o poder de palpite está ativo para cada jogador
+            palpiteAtivo: { 1: false, 2: false }, // Rastreia se o poder de palpite está ativo para cada jogador
+            jogoIniciado: false // Flag para indicar se o jogo realmente começou (ambos clicaram em "pronto")
           });
         } catch (error) {
           console.error('Erro ao buscar palavras:', error);
@@ -109,7 +110,8 @@ module.exports = function(io) {
             prontos: new Set(),
             gameInstances: [gameInstance1, gameInstance2],
             vidas: [3, 3],
-            palpiteAtivo: { 1: false, 2: false }
+            palpiteAtivo: { 1: false, 2: false },
+            jogoIniciado: false // Flag para indicar se o jogo realmente começou (ambos clicaram em "pronto")
           });
         }
       }
@@ -129,6 +131,10 @@ module.exports = function(io) {
       // Garante que dicasPedidas existe (para jogos criados antes dessa atualização)
       if (!game.dicasPedidas) {
         game.dicasPedidas = [0, 0]; // Inicializa contador de dicas pedidas
+      }
+      // Garante que jogoIniciado existe (para jogos criados antes dessa atualização)
+      if (game.jogoIniciado === undefined) {
+        game.jogoIniciado = false; // Inicializa como false
       }
       
       // Verifica se o jogador já está na lista pelo socket.id (reconexão com mesmo socket)
@@ -150,10 +156,9 @@ module.exports = function(io) {
         });
         
         // Verifica se o jogo está ativo (já começou)
-        const jogoEstaAtivo = game.gameInstances && game.gameInstances.length === 2 && 
-                              game.gameInstances[0] && game.gameInstances[1] &&
-                              (game.gameInstances[0].status === 'jogando' || 
-                               game.gameInstances[1].status === 'jogando');
+        // O jogo só está ativo se ambos os jogadores clicaram em "pronto"
+        // Não podemos confiar no status das instâncias porque elas são criadas com status 'jogando' desde o início
+        const jogoEstaAtivo = game.jogoIniciado === true;
         
         if (jogoEstaAtivo) {
           // Jogo está em andamento - envia estado COMPLETO do jogo para o jogador que reconectou
@@ -269,10 +274,9 @@ module.exports = function(io) {
         }
 
         // Verifica se o jogo está ativo (já começou)
-        const jogoEstaAtivo = game.gameInstances && game.gameInstances.length === 2 && 
-                              game.gameInstances[0] && game.gameInstances[1] &&
-                              (game.gameInstances[0].status === 'jogando' || 
-                               game.gameInstances[1].status === 'jogando');
+        // O jogo só está ativo se ambos os jogadores clicaram em "pronto"
+        // Não podemos confiar no status das instâncias porque elas são criadas com status 'jogando' desde o início
+        const jogoEstaAtivo = game.jogoIniciado === true;
         
         if (jogoEstaAtivo) {
           // Jogo está em andamento - envia estado COMPLETO do jogo para o jogador que reconectou
@@ -541,6 +545,7 @@ module.exports = function(io) {
             const estado2 = game.gameInstances[1].getEstado();
             game.turno = 1;
             game.turnoInicialRodada = 1; // Primeira rodada sempre começa com jogador 1
+            game.jogoIniciado = true; // Marca que o jogo realmente começou
             
             console.log(`📤 Enviando evento 'inicio' para J1 (${j1Corrigido.id}): jogador=1, turno=${game.turno}`);
             io.to(j1Corrigido.id).emit('eventoJogo', {
@@ -584,6 +589,7 @@ module.exports = function(io) {
           // Garante que o turno inicial seja sempre 1 (jogador 1 começa)
           game.turno = 1;
           game.turnoInicialRodada = 1; // Primeira rodada sempre começa com jogador 1
+          game.jogoIniciado = true; // Marca que o jogo realmente começou
           
           console.log(`🎮 Iniciando jogo na sala ${roomId}`);
           console.log(`Jogador 1: ${j1.name} (${j1.id}, numero: ${j1.numero}), Jogador 2: ${j2.name} (${j2.id}, numero: ${j2.numero})`);
@@ -1016,6 +1022,15 @@ module.exports = function(io) {
         }
         
         const numeroJogador = jogadorAtual.numero;
+        
+        // Verifica se é o turno do jogador
+        if (numeroJogador !== game.turno) {
+          socket.emit('eventoJogo', {
+            tipo: 'erro',
+            mensagem: 'Você só pode pedir dica no seu turno!'
+          });
+          return;
+        }
         
         // Verifica se há dicas disponíveis para este jogador
         if (!game.dicas || !game.dicas[numeroJogador - 1] || game.dicas[numeroJogador - 1].length === 0) {
@@ -1933,9 +1948,8 @@ module.exports = function(io) {
           console.log(`⏱️ Tempo de reconexão esgotado para jogador ${jogador.name} (${numeroJogadorDesconectado}) na sala ${roomId}`);
           
           // Verifica se o jogo está ativo (já começou)
-          const jogoEstaAtivo = game.gameInstances && game.gameInstances.length === 2 && 
-                                (game.gameInstances[0].status === 'jogando' || 
-                                 game.gameInstances[1].status === 'jogando');
+          // O jogo só está ativo se ambos os jogadores clicaram em "pronto"
+          const jogoEstaAtivo = game.jogoIniciado === true;
           
           if (jogoEstaAtivo) {
             // Jogo está ativo - declara vitória do outro jogador por W.O.
