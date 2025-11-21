@@ -2354,22 +2354,51 @@ function exibirProximaDica() {
         return;
     }
     
-    // Exibe a dica
+    // Cria um novo elemento de dica e adiciona ao container
     const dicaContainer = document.getElementById('dica-container');
-    const dicaTexto = document.getElementById('dica-texto');
-    
-    if (dicaContainer && dicaTexto) {
-        dicaTexto.textContent = dica.texto;
-        dicaContainer.classList.add('mostrar');
-        
-        console.log(`💡 Dica ${dicaAtualExibida} exibida: ${dica.texto}`);
+    if (!dicaContainer) {
+        return;
     }
+    
+    // Cria o elemento da dica
+    const dicaContent = document.createElement('div');
+    dicaContent.className = 'dica-content';
+    dicaContent.setAttribute('data-ordem', dicaAtualExibida);
+    
+    const dicaIcon = document.createElement('span');
+    dicaIcon.className = 'dica-icon';
+    dicaIcon.textContent = '💡';
+    
+    const dicaTexto = document.createElement('span');
+    dicaTexto.className = 'dica-texto';
+    dicaTexto.textContent = dica.texto;
+    
+    dicaContent.appendChild(dicaIcon);
+    dicaContent.appendChild(dicaTexto);
+    
+    // Adiciona a nova dica ao container
+    dicaContainer.appendChild(dicaContent);
+    
+    // Mostra o container se ainda não estiver visível
+    if (!dicaContainer.classList.contains('mostrar')) {
+        dicaContainer.classList.add('mostrar');
+    }
+    
+    // Animação de entrada para a nova dica
+    setTimeout(() => {
+        dicaContent.style.opacity = '1';
+        dicaContent.style.transform = 'translateY(0)';
+    }, 10);
+    
+    console.log(`💡 Dica ${dicaAtualExibida} exibida: ${dica.texto}`);
 }
 
-// Função para ocultar a dica
+// Função para ocultar todas as dicas
 function ocultarDica() {
     const dicaContainer = document.getElementById('dica-container');
     if (dicaContainer) {
+        // Remove todas as dicas do container
+        dicaContainer.innerHTML = '';
         dicaContainer.classList.remove('mostrar');
     }
 }

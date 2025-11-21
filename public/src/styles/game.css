@@ -548,8 +548,36 @@ header {
   z-index: 1000;
   opacity: 0;
   visibility: hidden;
-  transition: all 0.5s ease;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
   pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 10px;
+  width: auto;
+  align-items: center;
+}
+
+/* Scrollbar personalizada para o container de dicas */
+.dica-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dica-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+}
+
+.dica-container::-webkit-scrollbar-thumb {
+  background: rgba(0, 229, 255, 0.5);
+  border-radius: 10px;
+}
+
+.dica-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 229, 255, 0.7);
 }
 
 .dica-container.mostrar {
@@ -573,7 +601,9 @@ header {
   gap: 12px;
   min-width: 300px;
   max-width: 600px;
-  animation: slideDownFadeIn 0.5s ease;
+  opacity: 0;
+  transform: translateY(-20px);
+  animation: slideDownFadeIn 0.5s ease forwards;
 }
 
 @keyframes slideDownFadeIn {
@@ -613,11 +643,16 @@ header {
 
 /* Responsividade para dicas */
 @media (max-width: 768px) {
+  .dica-container {
+    top: 10px;
+    max-height: calc(100vh - 20px);
+    gap: 10px;
+  }
+  
   .dica-content {
     min-width: 280px;
-    max-width: 90%;
+    max-width: 90vw;
     padding: 12px 20px;
-    font-size: 14px;
   }
   
   .dica-icon {
