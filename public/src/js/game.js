@@ -457,12 +457,13 @@ function renderizarPoderesNoJogo() {
         botaoPoder.setAttribute('data-poder', poderId);
         botaoPoder.setAttribute('title', poderInfo.descricao || poderInfo.nome);
         
-        // Desabilita apenas se já foi usado permanentemente OU se não é o turno do jogador OU se já usou um poder no turno
+        // Inicialmente habilita todos os poderes (será ajustado por reabilitarPoderesNoTurno)
+        // Desabilita apenas se já foi usado permanentemente
         const jaFoiUsado = poderesUsados.has(poderId);
-        const eMeuTurno = turnoAtual === meuNumeroJogador && jogoEstaAtivo;
-        const jaUsouPoderNoTurno = poderUsadoNoTurno !== null && poderUsadoNoTurno !== poderId;
         
-        botaoPoder.disabled = jaFoiUsado || !eMeuTurno || jaUsouPoderNoTurno;
+        // Inicialmente desabilita apenas se foi usado permanentemente
+        // A função reabilitarPoderesNoTurno() será chamada depois para ajustar baseado no turno
+        botaoPoder.disabled = jaFoiUsado;
         
         const imgPoder = document.createElement('img');
         imgPoder.src = poderInfo.imagem;
@@ -473,13 +474,10 @@ function renderizarPoderesNoJogo() {
         // Adiciona classe se já foi usado
         if (jaFoiUsado) {
             botaoPoder.classList.add('usado');
-        }
-        
-        // Adiciona estilo visual se desabilitado por turno
-        if (!eMeuTurno || jaUsouPoderNoTurno) {
             botaoPoder.style.opacity = '0.5';
             botaoPoder.style.cursor = 'not-allowed';
         } else {
+            // Inicialmente habilita visualmente (será ajustado por reabilitarPoderesNoTurno)
             botaoPoder.style.opacity = '1';
             botaoPoder.style.cursor = 'pointer';
         }
@@ -541,6 +539,13 @@ function reabilitarPoderesNoTurno() {
         poderUsadoNoTurno = null;
         ultimoTurnoReabilitado = turnoAtual;
         log(`🔄 Turno voltou para mim! Resetando poder usado no turno.`);
+    }
+    
+    // Se é o primeiro turno do jogo e ainda não foi reabilitado, reseta
+    if (ultimoTurnoReabilitado === null && eMeuTurno) {
+        poderUsadoNoTurno = null;
+        ultimoTurnoReabilitado = turnoAtual;
+        log(`🔄 Primeiro turno do jogo! Habilitando poderes.`);
     }
     
     const botoesPoderes = containerPoderes.querySelectorAll('.poder');
@@ -1360,7 +1365,11 @@ function iniciarJogo(dados) {
     setTimeout(() => {
         renderizarPoderesNoJogo();
         // Garante que os poderes sejam habilitados corretamente após renderizar
+        // Chama imediatamente e também após um pequeno delay para garantir que o turno está atualizado
         reabilitarPoderesNoTurno();
+        setTimeout(() => {
+            reabilitarPoderesNoTurno();
+        }, 200);
     }, 100);
     
     atualizarVidasUI();

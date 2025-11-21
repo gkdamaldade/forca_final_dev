@@ -968,85 +968,87 @@ module.exports = function(io) {
       }
       
       if (msg.tipo === 'chutarPalavra') {
-        console.log(`🎯 Recebido evento chutarPalavra:`, msg);
-        
-        // Verifica se é o turno do jogador
-        const jogadorAtual = game.players.find(p => p.id === socket.id);
-        if (!jogadorAtual) {
-          console.log(`❌ Jogador não encontrado: ${socket.id}`);
-          socket.emit('eventoJogo', {
-            tipo: 'erro',
-            mensagem: 'Jogador não encontrado na sala!'
+        try {
+          console.log(`🎯 Recebido evento chutarPalavra:`, msg);
+          
+          // Verifica se é o turno do jogador
+          const jogadorAtual = game.players.find(p => p.id === socket.id);
+          if (!jogadorAtual) {
+            console.log(`❌ Jogador não encontrado: ${socket.id}`);
+            socket.emit('eventoJogo', {
+              tipo: 'erro',
+              mensagem: 'Jogador não encontrado na sala!'
+            });
+            return;
+          }
+          
+          const numeroJogador = jogadorAtual.numero;
+          
+          console.log(`🎯 Verificando turno para chute de palavra: jogador=${numeroJogador}, turno atual=${game.turno}`);
+          
+          if (numeroJogador !== game.turno) {
+            console.log(`❌ Não é o turno do jogador ${numeroJogador}. Turno atual: ${game.turno}`);
+            socket.emit('eventoJogo', {
+              tipo: 'erro',
+              mensagem: 'Não é seu turno!'
+            });
+            return;
+          }
+          
+          const palavraChutada = (msg.palavra || '').trim();
+          if (!palavraChutada) {
+            console.log(`❌ Palavra vazia recebida`);
+            socket.emit('eventoJogo', {
+              tipo: 'erro',
+              mensagem: 'Palavra não pode estar vazia!'
+            });
+            return;
+          }
+          
+          console.log(`✅ É o turno do jogador ${numeroJogador}. Processando chute de palavra: "${palavraChutada}"`);
+          
+          const gameInstanceJogador = game.gameInstances[numeroJogador - 1];
+          const gameInstanceAdversario = game.gameInstances[(numeroJogador === 1 ? 2 : 1) - 1];
+          const adversarioNum = numeroJogador === 1 ? 2 : 1;
+          
+          console.log(`📋 Estado antes do chute:`, {
+            palavraSecreta: gameInstanceJogador.palavraSecreta,
+            status: gameInstanceJogador.status,
+            palavraChutada: palavraChutada
           });
-          return;
-        }
-        
-        const numeroJogador = jogadorAtual.numero;
-        
-        console.log(`🎯 Verificando turno para chute de palavra: jogador=${numeroJogador}, turno atual=${game.turno}`);
-        
-        if (numeroJogador !== game.turno) {
-          console.log(`❌ Não é o turno do jogador ${numeroJogador}. Turno atual: ${game.turno}`);
-          socket.emit('eventoJogo', {
-            tipo: 'erro',
-            mensagem: 'Não é seu turno!'
-          });
-          return;
-        }
-        
-        const palavraChutada = (msg.palavra || '').trim();
-        if (!palavraChutada) {
-          console.log(`❌ Palavra vazia recebida`);
-          socket.emit('eventoJogo', {
-            tipo: 'erro',
-            mensagem: 'Palavra não pode estar vazia!'
-          });
-          return;
-        }
-        
-        console.log(`✅ É o turno do jogador ${numeroJogador}. Processando chute de palavra: "${palavraChutada}"`);
-        
-        const gameInstanceJogador = game.gameInstances[numeroJogador - 1];
-        const gameInstanceAdversario = game.gameInstances[(numeroJogador === 1 ? 2 : 1) - 1];
-        const adversarioNum = numeroJogador === 1 ? 2 : 1;
-        
-        console.log(`📋 Estado antes do chute:`, {
-          palavraSecreta: gameInstanceJogador.palavraSecreta,
-          status: gameInstanceJogador.status,
-          palavraChutada: palavraChutada
-        });
-        
-        let alguemPerdeuVida = false;
-        let jogadorQuePerdeuVida = null;
-        let motivoPerdaVida = '';
-        
-        // Chuta a palavra completa
-        const resultado = gameInstanceJogador.chutarPalavraCompleta(palavraChutada);
-        console.log(`📊 Chute de palavra processado: palavra="${palavraChutada}", resultado=${resultado}, status=${gameInstanceJogador.status}`);
-        
-        if (resultado === 'vitoria') {
-          // Acertou! Adversário perde vida
-          game.vidas[adversarioNum - 1]--;
-          alguemPerdeuVida = true;
-          jogadorQuePerdeuVida = adversarioNum;
-          motivoPerdaVida = 'vitoria';
-          console.log(`🎯 Jogador ${numeroJogador} acertou a palavra "${palavraChutada}"! Jogador ${adversarioNum} perde uma vida. Vidas restantes: J1=${game.vidas[0]}, J2=${game.vidas[1]}`);
-        } else if (resultado === 'derrota') {
-          // Errou! Jogador perde vida
-          game.vidas[numeroJogador - 1]--;
-          alguemPerdeuVida = true;
-          jogadorQuePerdeuVida = numeroJogador;
-          motivoPerdaVida = 'erro_palavra';
-          console.log(`❌ Jogador ${numeroJogador} errou a palavra "${palavraChutada}"! Ele perde uma vida. Vidas restantes: J1=${game.vidas[0]}, J2=${game.vidas[1]}`);
-        }
-        
-        const estadoJogador = gameInstanceJogador.getEstado();
-        const estadoAdversario = gameInstanceAdversario.getEstado();
-        
-        // Se alguém perdeu vida, reseta AMBAS as palavras e começa nova rodada
-        if (alguemPerdeuVida) {
-          // Verifica se o jogo acabou
-          if (game.vidas[0] <= 0 || game.vidas[1] <= 0) {
+          
+          let alguemPerdeuVida = false;
+          let jogadorQuePerdeuVida = null;
+          let motivoPerdaVida = '';
+          
+          // Chuta a palavra completa
+          const resultado = gameInstanceJogador.chutarPalavraCompleta(palavraChutada);
+          console.log(`📊 Chute de palavra processado: palavra="${palavraChutada}", resultado=${resultado}, status=${gameInstanceJogador.status}`);
+          
+          if (resultado === 'vitoria') {
+            // Acertou! Adversário perde vida
+            game.vidas[adversarioNum - 1]--;
+            alguemPerdeuVida = true;
+            jogadorQuePerdeuVida = adversarioNum;
+            motivoPerdaVida = 'vitoria';
+            console.log(`🎯 Jogador ${numeroJogador} acertou a palavra "${palavraChutada}"! Jogador ${adversarioNum} perde uma vida. Vidas restantes: J1=${game.vidas[0]}, J2=${game.vidas[1]}`);
+          } else if (resultado === 'derrota') {
+            // Errou! Jogador perde vida
+            game.vidas[numeroJogador - 1]--;
+            alguemPerdeuVida = true;
+            jogadorQuePerdeuVida = numeroJogador;
+            motivoPerdaVida = 'erro_palavra';
+            console.log(`❌ Jogador ${numeroJogador} errou a palavra "${palavraChutada}"! Ele perde uma vida. Vidas restantes: J1=${game.vidas[0]}, J2=${game.vidas[1]}`);
+          }
+          
+          const estadoJogador = gameInstanceJogador.getEstado();
+          const estadoAdversario = gameInstanceAdversario.getEstado();
+          
+          // Se alguém perdeu vida, reseta AMBAS as palavras e começa nova rodada
+          if (alguemPerdeuVida) {
+            // Verifica se o jogo acabou
+            console.log(`📊 Verificando fim de jogo após chute de palavra: J1=${game.vidas[0]}, J2=${game.vidas[1]}`);
+            if (game.vidas[0] <= 0 || game.vidas[1] <= 0) {
             const vencedor = game.vidas[0] > 0 ? 1 : 2;
             console.log(`🏆 Jogo finalizado! Vencedor: Jogador ${vencedor}`);
             
@@ -1166,8 +1168,9 @@ module.exports = function(io) {
               
               console.log(`✅ Nova rodada iniciada! Palavra J1: ${novaPalavra1}, Palavra J2: ${novaPalavra2}, Turno: Jogador ${game.turno}`);
             } catch (error) {
-              console.error('Erro ao buscar novas palavras:', error);
-              // Fallback
+              console.error('❌ Erro ao buscar novas palavras para nova rodada:', error);
+              console.error('Stack trace:', error.stack);
+              // Fallback - usa palavras padrão para não quebrar o jogo
               const palavrasFallback = ['FORCA', 'JOGO', 'TESTE', 'LIVRO', 'CASA', 'GATO', 'CARRO', 'MESA'];
               let palavraFallback1 = 'FORCA';
               let palavraFallback2 = 'JOGO';
@@ -1211,52 +1214,61 @@ module.exports = function(io) {
               game.turnoInicialRodada = game.turno;
             }
           }
+          
+          // Controle de turno - se não perdeu vida, troca o turno normalmente
+          if (!alguemPerdeuVida && gameInstanceJogador.status === 'jogando') {
+            game.turno = game.turno === 1 ? 2 : 1;
+            console.log(`Turno trocado para: ${game.turno}`);
+          }
+          
+          // Envia o resultado para todos na sala
+          const estado1Final = game.gameInstances[0].getEstado();
+          const estado2Final = game.gameInstances[1].getEstado();
+          
+          // Se houve nova rodada, envia também as palavras secretas para resetar corretamente
+          const eventoChutePalavra = {
+            tipo: 'chutePalavra',
+            palavraChutada: palavraChutada,
+            resultado: resultado, // 'vitoria' ou 'derrota'
+            palavraJogador1: estado1Final.palavra,
+            palavraJogador2: estado2Final.palavra,
+            errosJogador1: estado1Final.erros,
+            errosJogador2: estado2Final.erros,
+            letrasChutadasJogador1: estado1Final.letrasChutadas,
+            letrasChutadasJogador2: estado2Final.letrasChutadas,
+            turno: game.turno,
+            statusJogador1: estado1Final.status,
+            statusJogador2: estado2Final.status,
+            vidas: game.vidas,
+            alguemPerdeuVida: alguemPerdeuVida,
+            jogadorQuePerdeuVida: jogadorQuePerdeuVida,
+            motivoPerdaVida: motivoPerdaVida,
+            jogadorQueJogou: numeroJogador,
+            novaRodada: alguemPerdeuVida && game.vidas[0] > 0 && game.vidas[1] > 0
+          };
+          
+          // Se é nova rodada, adiciona informações sobre as novas palavras e dicas
+          if (eventoChutePalavra.novaRodada) {
+            eventoChutePalavra.novaPalavraJogador1 = game.words[0];
+            eventoChutePalavra.novaPalavraJogador2 = game.words[1];
+            // Usa as dicas já armazenadas no game
+            eventoChutePalavra.dicasJogador1 = game.dicas[0] || [];
+            eventoChutePalavra.dicasJogador2 = game.dicas[1] || [];
+            console.log(`📤 Enviando nova rodada com palavras: J1=${game.words[0]}, J2=${game.words[1]}`);
+            console.log(`💡 Enviando dicas: J1=${eventoChutePalavra.dicasJogador1.length} dicas, J2=${eventoChutePalavra.dicasJogador2.length} dicas`);
+          }
+          
+          io.to(roomId).emit('eventoJogo', eventoChutePalavra);
+        } catch (error) {
+          console.error(`❌ Erro ao processar chute de palavra:`, error);
+          console.error(`Stack trace:`, error.stack);
+          // Envia erro para o jogador sem desconectar
+          socket.emit('eventoJogo', {
+            tipo: 'erro',
+            mensagem: 'Erro ao processar chute de palavra. Tente novamente.'
+          });
+          // Não desconecta o socket, apenas envia erro
         }
-        
-        // Controle de turno - se não perdeu vida, troca o turno normalmente
-        if (!alguemPerdeuVida && gameInstanceJogador.status === 'jogando') {
-          game.turno = game.turno === 1 ? 2 : 1;
-          console.log(`Turno trocado para: ${game.turno}`);
-        }
-        
-        // Envia o resultado para todos na sala
-        const estado1Final = game.gameInstances[0].getEstado();
-        const estado2Final = game.gameInstances[1].getEstado();
-        
-        // Se houve nova rodada, envia também as palavras secretas para resetar corretamente
-        const eventoChutePalavra = {
-          tipo: 'chutePalavra',
-          palavraChutada: palavraChutada,
-          resultado: resultado, // 'vitoria' ou 'derrota'
-          palavraJogador1: estado1Final.palavra,
-          palavraJogador2: estado2Final.palavra,
-          errosJogador1: estado1Final.erros,
-          errosJogador2: estado2Final.erros,
-          letrasChutadasJogador1: estado1Final.letrasChutadas,
-          letrasChutadasJogador2: estado2Final.letrasChutadas,
-          turno: game.turno,
-          statusJogador1: estado1Final.status,
-          statusJogador2: estado2Final.status,
-          vidas: game.vidas,
-          alguemPerdeuVida: alguemPerdeuVida,
-          jogadorQuePerdeuVida: jogadorQuePerdeuVida,
-          motivoPerdaVida: motivoPerdaVida,
-          jogadorQueJogou: numeroJogador,
-          novaRodada: alguemPerdeuVida && game.vidas[0] > 0 && game.vidas[1] > 0
-        };
-        
-        // Se é nova rodada, adiciona informações sobre as novas palavras e dicas
-        if (eventoChutePalavra.novaRodada) {
-          eventoChutePalavra.novaPalavraJogador1 = game.words[0];
-          eventoChutePalavra.novaPalavraJogador2 = game.words[1];
-          // Usa as dicas já armazenadas no game
-          eventoChutePalavra.dicasJogador1 = game.dicas[0] || [];
-          eventoChutePalavra.dicasJogador2 = game.dicas[1] || [];
-          console.log(`📤 Enviando nova rodada com palavras: J1=${game.words[0]}, J2=${game.words[1]}`);
-          console.log(`💡 Enviando dicas: J1=${eventoChutePalavra.dicasJogador1.length} dicas, J2=${eventoChutePalavra.dicasJogador2.length} dicas`);
-        }
-        
-        io.to(roomId).emit('eventoJogo', eventoChutePalavra);
       }
 
       if (msg.tipo === 'tempoEsgotado') {
