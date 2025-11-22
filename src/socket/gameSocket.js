@@ -21,10 +21,11 @@ async function finalizarJogo(game, vencedorNum, motivo = 'normal') {
     if (jogadorVencedor && jogadorVencedor.playerId) {
       const player = await models.Player.findByPk(jogadorVencedor.playerId);
       if (player) {
-        // Incrementa vitórias
-        await player.increment('vitorias');
-        // Incrementa 20 moedas pela vitória
-        await player.increment('moedas', { by: 20 });
+        // Incrementa vitórias e 20 moedas pela vitória
+        await player.increment({ 
+          vitorias: 1, 
+          moedas: 20 
+        });
         await player.reload();
         console.log(`✅ Vitória registrada para ${jogadorVencedor.name} (ID: ${jogadorVencedor.playerId})! Total de vitórias: ${player.vitorias}, Moedas recebidas: 20, Total de moedas: ${player.moedas}`);
       } else {
