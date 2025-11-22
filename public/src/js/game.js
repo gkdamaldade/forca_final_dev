@@ -531,14 +531,18 @@ function desabilitarTodosPoderesExceto(poderIdUsado) {
         } else if (poderId === poderIdUsado) {
             // O poder usado também é desabilitado (permanentemente se quantidade = 0, ou apenas neste turno)
             botao.disabled = true;
-            botao.classList.add('desabilitado-turno');
             // Remove estilos inline para permitir que o CSS controle a aparência
             botao.style.opacity = '';
             botao.style.cursor = '';
             botao.style.filter = '';
             botao.style.transform = '';
             if (poderesUsados.has(poderId)) {
+                // Se foi usado permanentemente, adiciona classe 'usado' e remove 'desabilitado-turno'
                 botao.classList.add('usado');
+                botao.classList.remove('desabilitado-turno');
+            } else {
+                // Se não foi usado permanentemente, apenas desabilita para este turno
+                botao.classList.add('desabilitado-turno');
             }
         }
     });
@@ -791,7 +795,18 @@ async function usarPoder(poderId, botaoElemento) {
             
             // Se a quantidade restante é 0, marca como usado permanentemente
             if (data.quantidadeRestante === 0) {
-    poderesUsados.add(poderId);
+                poderesUsados.add(poderId);
+                // Atualiza visualmente o botão imediatamente
+                if (botaoElemento) {
+                    botaoElemento.classList.add('usado');
+                    botaoElemento.classList.remove('desabilitado-turno'); // Remove classe temporária
+                    botaoElemento.disabled = true;
+                    // Remove estilos inline para permitir que o CSS controle a aparência
+                    botaoElemento.style.opacity = '';
+                    botaoElemento.style.cursor = '';
+                    botaoElemento.style.filter = '';
+                    botaoElemento.style.transform = '';
+                }
             }
         } catch (error) {
             console.error(`[${instanceId}] ❌ Erro ao subtrair poder do inventário:`, error);
@@ -814,10 +829,13 @@ async function usarPoder(poderId, botaoElemento) {
         botaoElemento.style.filter = '';
         botaoElemento.style.transform = '';
         // Adiciona classes para estilização via CSS
-        botaoElemento.classList.add('desabilitado-turno');
-        // Se foi usado permanentemente (quantidade = 0), adiciona classe 'usado'
+        // Se foi usado permanentemente (quantidade = 0), adiciona classe 'usado' e remove 'desabilitado-turno'
         if (poderesUsados.has(poderId)) {
-        botaoElemento.classList.add('usado');
+            botaoElemento.classList.add('usado');
+            botaoElemento.classList.remove('desabilitado-turno'); // Remove classe temporária, mantém apenas 'usado'
+        } else {
+            // Se não foi usado permanentemente, apenas desabilita para este turno
+            botaoElemento.classList.add('desabilitado-turno');
         }
     }
     
