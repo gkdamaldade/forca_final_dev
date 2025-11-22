@@ -568,6 +568,7 @@ function renderizarPoderesNoJogo() {
         // Adiciona classe se já foi usado
         if (jaFoiUsado) {
             botaoPoder.classList.add('usado');
+            botaoPoder.style.pointerEvents = 'none';
             // Remove estilos inline para permitir que o CSS controle a aparência
             botaoPoder.style.opacity = '';
             botaoPoder.style.cursor = '';
@@ -580,10 +581,10 @@ function renderizarPoderesNoJogo() {
             botaoPoder.style.cursor = '';
             botaoPoder.style.filter = '';
             botaoPoder.style.transform = '';
+            
+            // Adiciona listener para usar o poder apenas se não foi usado permanentemente
+            botaoPoder.addEventListener('click', () => usarPoder(poderId, botaoPoder));
         }
-        
-        // Adiciona listener para usar o poder
-        botaoPoder.addEventListener('click', () => usarPoder(poderId, botaoPoder));
         
         containerPoderes.appendChild(botaoPoder);
     });
