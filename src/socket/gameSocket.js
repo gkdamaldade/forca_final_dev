@@ -163,7 +163,8 @@ module.exports = function(io) {
             vidas: [3, 3], // Cada jogador começa com 3 vidas
             palpiteAtivo: { 1: false, 2: false }, // Rastreia se o poder de palpite está ativo para cada jogador
             jogoIniciado: false, // Flag para indicar se o jogo realmente começou (ambos clicaram em "pronto")
-            apostas: { 1: 0, 2: 0 } // Apostas de cada jogador (inicialmente 0)
+            apostas: { 1: 0, 2: 0 }, // Apostas de cada jogador (inicialmente 0)
+            dicaBloqueada: { 1: false, 2: false } // Rastreia se a próxima dica está bloqueada para cada jogador
           });
         } catch (error) {
           console.error('Erro ao buscar palavras:', error);
@@ -183,7 +184,8 @@ module.exports = function(io) {
             vidas: [3, 3],
             palpiteAtivo: { 1: false, 2: false },
             jogoIniciado: false, // Flag para indicar se o jogo realmente começou (ambos clicaram em "pronto")
-            apostas: { 1: 0, 2: 0 } // Apostas de cada jogador (inicialmente 0)
+            apostas: { 1: 0, 2: 0 }, // Apostas de cada jogador (inicialmente 0)
+            dicaBloqueada: { 1: false, 2: false } // Rastreia se a próxima dica está bloqueada para cada jogador
           });
         }
       }
@@ -207,6 +209,10 @@ module.exports = function(io) {
       // Garante que jogoIniciado existe (para jogos criados antes dessa atualização)
       if (game.jogoIniciado === undefined) {
         game.jogoIniciado = false; // Inicializa como false
+      }
+      // Garante que dicaBloqueada existe (para jogos criados antes dessa atualização)
+      if (!game.dicaBloqueada) {
+        game.dicaBloqueada = { 1: false, 2: false };
       }
       
       // Verifica se o jogador já está na lista pelo socket.id (reconexão com mesmo socket)
@@ -1185,6 +1191,9 @@ module.exports = function(io) {
           return;
         }
         
+        // Verifica se a dica está bloqueada para este jogador
+        const dicaEstaBloqueada = game.dicaBloqueada[numeroJogador] === true;
+        
         // Incrementa o contador de dicas pedidas para este jogador
         game.dicasPedidas[indiceJogador]++;
         const ordemDica = game.dicasPedidas[indiceJogador]; // 1, 2 ou 3
@@ -1207,16 +1216,27 @@ module.exports = function(io) {
         game.turno = game.turno === 1 ? 2 : 1;
         console.log(`💡 Jogador ${numeroJogador} pediu dica ${ordemDica}. Turno passou para: ${game.turno}`);
         
-        // Emite evento para ambos os jogadores com a dica
-        // Nota: as dicas vêm do wordService com a propriedade 'texto', não 'texto_dica'
-        const textoDica = dica.texto || dica.texto_dica;
-        console.log(`💡 Enviando dica ${ordemDica} para jogador ${numeroJogador}`);
+        // Se a dica está bloqueada, não mostra o texto (mas ainda passa o turno e consome a dica)
+        let textoDica = '';
+        if (dicaEstaBloqueada) {
+          // Dica foi bloqueada pelo poder "ocultar_dica"
+          // Remove o bloqueio (foi consumido)
+          game.dicaBloqueada[numeroJogador] = false;
+          console.log(`🚫 Dica ${ordemDica} do jogador ${numeroJogador} foi bloqueada pelo poder "ocultar_dica"`);
+        } else {
+          // Dica não está bloqueada, mostra normalmente
+          // Nota: as dicas vêm do wordService com a propriedade 'texto', não 'texto_dica'
+          textoDica = dica.texto || dica.texto_dica;
+          console.log(`💡 Enviando dica ${ordemDica} para jogador ${numeroJogador}`);
+        }
         
+        // Emite evento para ambos os jogadores com a dica (texto vazio se bloqueada)
         io.to(roomId).emit('eventoJogo', {
           tipo: 'dicaPedida',
           jogadorQuePediu: numeroJogador,
           ordemDica: ordemDica,
-          textoDica: textoDica,
+          textoDica: textoDica, // Vazio se bloqueada
+          bloqueada: dicaEstaBloqueada, // Indica se a dica foi bloqueada
           turno: game.turno
         });
         
@@ -1876,13 +1896,16 @@ module.exports = function(io) {
           }
             
           case 'ocultar_dica': {
-            // Por enquanto, apenas notifica que foi usado (não há sistema de dicas ainda)
+            // Bloqueia a próxima dica do adversário
+            const adversarioNum = numeroJogador === 1 ? 2 : 1;
+            game.dicaBloqueada[adversarioNum] = true;
             resultadoPoder = {
               tipo: 'ocultarDica',
               jogador: numeroJogador,
+              adversario: adversarioNum,
               sucesso: true
             };
-            console.log(`🚫 Dica ocultada (sistema de dicas ainda não implementado)`);
+            console.log(`🚫 Poder "Ocultar Dica" usado! Próxima dica do jogador ${adversarioNum} será bloqueada.`);
             break;
           }
             

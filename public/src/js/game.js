@@ -818,7 +818,9 @@ function processarResultadoPoder(resultado, evento) {
             
         case 'ocultarDica':
             if (resultado.jogador === meuNumeroJogador) {
-                mostrarFeedback('🚫 Dica ocultada!', 'green');
+                mostrarFeedback('🚫 Próxima dica do adversário será bloqueada!', 'green');
+            } else if (resultado.adversario === meuNumeroJogador) {
+                mostrarFeedback('🚫 Sua próxima dica foi bloqueada pelo poder "Ocultar Dica"!', 'orange');
             }
             break;
             
@@ -1599,36 +1601,43 @@ function configurarListenersSocket() {
             // O turno será atualizado quando o servidor enviar o próximo evento 'jogada'
         } else if (evento.tipo === 'dicaPedida') {
             console.log('💡 Evento dicaPedida recebido');
-            console.log('💡 meuNumeroJogador:', meuNumeroJogador, 'jogadorQuePediu:', evento.jogadorQuePediu);
+            console.log('💡 meuNumeroJogador:', meuNumeroJogador, 'jogadorQuePediu:', evento.jogadorQuePediu, 'bloqueada:', evento.bloqueada);
             
-            // Se foi este jogador que pediu a dica, exibe a dica acima da palavra dele
+            // Se foi este jogador que pediu a dica
             if (evento.jogadorQuePediu === meuNumeroJogador) {
                 // Incrementa o contador de dicas exibidas
                 dicaAtualExibida = evento.ordemDica || dicaAtualExibida + 1;
                 
-                // Exibe a dica acima da palavra do jogador
-                const dicaId = meuNumeroJogador === 1 ? 'dica-palavra-jogador1' : 'dica-palavra-jogador2';
-                let dicaPalavraEl = document.getElementById(dicaId);
-                
-                // Se não encontrou pelo ID, tenta pelo seletor de classe
-                if (!dicaPalavraEl) {
-                    const palavraContainer = meuNumeroJogador === 1 
-                        ? document.querySelector('.palavras .palavra-container:nth-child(1)')
-                        : document.querySelector('.palavras .palavra-container:nth-child(2)');
-                    if (palavraContainer) {
-                        dicaPalavraEl = palavraContainer.querySelector('.dica-palavra');
+                // Verifica se a dica foi bloqueada pelo poder "ocultar_dica"
+                if (evento.bloqueada || !evento.textoDica || evento.textoDica.trim() === '') {
+                    // Dica foi bloqueada - não exibe nada
+                    console.log('🚫 Dica foi bloqueada pelo poder "ocultar_dica". Não será exibida.');
+                    mostrarFeedback('🚫 Sua dica foi bloqueada pelo poder "Ocultar Dica"!', 'orange');
+                } else {
+                    // Dica não foi bloqueada - exibe normalmente
+                    // Exibe a dica acima da palavra do jogador
+                    const dicaId = meuNumeroJogador === 1 ? 'dica-palavra-jogador1' : 'dica-palavra-jogador2';
+                    let dicaPalavraEl = document.getElementById(dicaId);
+                    
+                    // Se não encontrou pelo ID, tenta pelo seletor de classe
+                    if (!dicaPalavraEl) {
+                        const palavraContainer = meuNumeroJogador === 1 
+                            ? document.querySelector('.palavras .palavra-container:nth-child(1)')
+                            : document.querySelector('.palavras .palavra-container:nth-child(2)');
+                        if (palavraContainer) {
+                            dicaPalavraEl = palavraContainer.querySelector('.dica-palavra');
+                        }
                     }
-                }
-                
-                console.log('💡 Tentando exibir dica:', {
-                    dicaId: dicaId,
-                    elementoEncontrado: !!dicaPalavraEl,
-                    ordemDica: evento.ordemDica
-                });
-                
-                if (dicaPalavraEl && evento.textoDica) {
-                    // Remove classe mostrar anterior se existir
-                    dicaPalavraEl.classList.remove('mostrar');
+                    
+                    console.log('💡 Tentando exibir dica:', {
+                        dicaId: dicaId,
+                        elementoEncontrado: !!dicaPalavraEl,
+                        ordemDica: evento.ordemDica
+                    });
+                    
+                    if (dicaPalavraEl && evento.textoDica) {
+                        // Remove classe mostrar anterior se existir
+                        dicaPalavraEl.classList.remove('mostrar');
                     
                     // Define o texto da dica
                     dicaPalavraEl.textContent = evento.textoDica;
@@ -1639,24 +1648,25 @@ function configurarListenersSocket() {
                     dicaPalavraEl.style.transform = 'translateY(0)';
                     dicaPalavraEl.classList.add('mostrar');
                     
-                    console.log(`💡 Dica ${dicaAtualExibida} exibida`);
-                    console.log('💡 Classes do elemento:', dicaPalavraEl.className);
-                    console.log('💡 Estilo do elemento:', {
-                        opacity: window.getComputedStyle(dicaPalavraEl).opacity,
-                        visibility: window.getComputedStyle(dicaPalavraEl).visibility,
-                        display: window.getComputedStyle(dicaPalavraEl).display,
-                        transform: window.getComputedStyle(dicaPalavraEl).transform
-                    });
-                } else {
-                    console.error('❌ Erro ao exibir dica:', {
-                        elementoEncontrado: !!dicaPalavraEl,
-                        temTextoDica: !!evento.textoDica,
-                        dicaId: dicaId,
-                        todosElementosDica: document.querySelectorAll('.dica-palavra').length
-                    });
+                        console.log(`💡 Dica ${dicaAtualExibida} exibida`);
+                        console.log('💡 Classes do elemento:', dicaPalavraEl.className);
+                        console.log('💡 Estilo do elemento:', {
+                            opacity: window.getComputedStyle(dicaPalavraEl).opacity,
+                            visibility: window.getComputedStyle(dicaPalavraEl).visibility,
+                            display: window.getComputedStyle(dicaPalavraEl).display,
+                            transform: window.getComputedStyle(dicaPalavraEl).transform
+                        });
+                        mostrarFeedback(`💡 Dica ${dicaAtualExibida} exibida! Você perdeu a vez.`, 'orange');
+                    } else {
+                        console.error('❌ Erro ao exibir dica:', {
+                            elementoEncontrado: !!dicaPalavraEl,
+                            temTextoDica: !!evento.textoDica,
+                            dicaId: dicaId,
+                            todosElementosDica: document.querySelectorAll('.dica-palavra').length
+                        });
+                        mostrarFeedback(`💡 Dica ${dicaAtualExibida} exibida! Você perdeu a vez.`, 'orange');
+                    }
                 }
-                
-                mostrarFeedback(`💡 Dica ${dicaAtualExibida} exibida! Você perdeu a vez.`, 'orange');
             } else {
                 // Se foi o outro jogador que pediu dica, mostra feedback
                 mostrarFeedback('O adversário pediu uma dica!', 'orange');
