@@ -1751,8 +1751,8 @@ function iniciarJogo(dados) {
     dicaAtualExibida = 0; // Reseta contador de dicas
     ocultarDica(); // Limpa dicas anteriores
     
-    // Reseta poder usado no turno quando inicia novo jogo
-    poderUsadoNoTurno = null;
+    // Reseta poderes usados no turno quando inicia novo jogo
+    poderesUsadosNoTurno.clear();
     ultimoTurnoReabilitado = null;
     
     console.log(`📝 Palavras recebidas para exibição`);
