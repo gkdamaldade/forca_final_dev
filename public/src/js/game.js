@@ -84,7 +84,7 @@ let poderesSelecionados = new Set(); // Set com os nomes dos poderes selecionado
 const MAX_PODERES = 3;
 let poderesDisponiveis = []; // Array com os poderes selecionados que podem ser usados no jogo
 let poderesUsados = new Set(); // Set com os poderes que já foram usados (não podem ser usados novamente)
-let poderUsadoNoTurno = null; // Rastreia qual poder foi usado no turno atual (null = nenhum usado)
+let poderesUsadosNoTurno = new Set(); // Rastreia quais poderes foram usados no turno atual
 let dicas = []; // Array com as dicas da palavra (ordem 1, 2, 3)
 let dicaAtualExibida = 0; // Contador de qual dica está sendo exibida (0 = nenhuma, 1-3 = dica 1-3)
 
@@ -606,49 +606,36 @@ function atualizarContadorPoderesDisplay() {
     }
 }
 
-// Desabilita todos os poderes exceto o que foi usado
-function desabilitarTodosPoderesExceto(poderIdUsado) {
+// Desabilita apenas o poder que foi usado (os outros continuam disponíveis)
+function desabilitarPoderUsado(poderIdUsado) {
     const containerPoderes = document.getElementById('poderes-jogador-container');
     if (!containerPoderes) return;
     
-    const botoesPoderes = containerPoderes.querySelectorAll('.poder');
-    botoesPoderes.forEach(botao => {
-        const poderId = botao.getAttribute('data-poder');
-        // Se não é o poder usado e não foi usado permanentemente, desabilita apenas para este turno
-        if (poderId !== poderIdUsado && !poderesUsados.has(poderId)) {
-            botao.disabled = true;
-            botao.classList.add('desabilitado-turno');
-            botao.style.pointerEvents = 'none';
-            // Remove estilos inline para permitir que o CSS controle a aparência
-            botao.style.opacity = '';
-            botao.style.cursor = '';
-            botao.style.filter = '';
-            botao.style.transform = '';
-            console.log(`[${instanceId}] 🟡 Poder ${poderId} DESABILITADO (outro poder foi usado)`);
-        } else if (poderId === poderIdUsado) {
-            // O poder usado também é desabilitado (permanentemente se quantidade = 0, ou apenas neste turno)
-            botao.disabled = true;
-            botao.style.pointerEvents = 'none'; // Impede cliques
-            // Remove estilos inline para permitir que o CSS controle a aparência
-            botao.style.opacity = '';
-            botao.style.cursor = '';
-            botao.style.filter = '';
-            botao.style.transform = '';
-            if (poderesUsados.has(poderId)) {
-                // Se foi usado permanentemente, adiciona classe 'usado' e remove 'desabilitado-turno'
-                botao.classList.add('usado');
-                botao.classList.remove('desabilitado-turno');
-                console.log(`[${instanceId}] 🔴 Poder ${poderId} USADO PERMANENTEMENTE (quantidade = 0)`);
-            } else {
-                // Se não foi usado permanentemente, apenas desabilita para este turno
-                botao.classList.add('desabilitado-turno');
-                botao.classList.remove('usado'); // Remove classe 'usado' se ainda pode ser usado depois
-                console.log(`[${instanceId}] 🟡 Poder ${poderId} DESABILITADO NO TURNO (foi usado)`);
-            }
-            // Força reflow para garantir que o CSS seja aplicado
-            botao.offsetHeight;
-        }
-    });
+    const botaoPoder = containerPoderes.querySelector(`.poder[data-poder="${poderIdUsado}"]`);
+    if (!botaoPoder) return;
+    
+    // O poder usado é desabilitado (permanentemente se quantidade = 0, ou apenas neste turno)
+    botaoPoder.disabled = true;
+    botaoPoder.style.pointerEvents = 'none'; // Impede cliques
+    // Remove estilos inline para permitir que o CSS controle a aparência
+    botaoPoder.style.opacity = '';
+    botaoPoder.style.cursor = '';
+    botaoPoder.style.filter = '';
+    botaoPoder.style.transform = '';
+    
+    if (poderesUsados.has(poderIdUsado)) {
+        // Se foi usado permanentemente, adiciona classe 'usado' e remove 'desabilitado-turno'
+        botaoPoder.classList.add('usado');
+        botaoPoder.classList.remove('desabilitado-turno');
+        console.log(`[${instanceId}] 🔴 Poder ${poderIdUsado} USADO PERMANENTEMENTE (quantidade = 0)`);
+    } else {
+        // Se não foi usado permanentemente, apenas desabilita para este turno
+        botaoPoder.classList.add('desabilitado-turno');
+        botaoPoder.classList.remove('usado'); // Remove classe 'usado' se ainda pode ser usado depois
+        console.log(`[${instanceId}] 🟡 Poder ${poderIdUsado} DESABILITADO NO TURNO (foi usado)`);
+    }
+    // Força reflow para garantir que o CSS seja aplicado
+    botaoPoder.offsetHeight;
 }
 
 // Reabilita poderes quando o turno troca (exceto os já usados permanentemente)
@@ -669,21 +656,21 @@ function reabilitarPoderesNoTurno() {
     
     const eMeuTurno = turnoAtual === meuNumeroJogador && jogoEstaAtivo;
     
-    log(`🔍 reabilitarPoderesNoTurno: turnoAtual=${turnoAtual}, meuNumeroJogador=${meuNumeroJogador}, jogoEstaAtivo=${jogoEstaAtivo}, eMeuTurno=${eMeuTurno}, ultimoTurnoReabilitado=${ultimoTurnoReabilitado}, poderUsadoNoTurno=${poderUsadoNoTurno}`);
+    log(`🔍 reabilitarPoderesNoTurno: turnoAtual=${turnoAtual}, meuNumeroJogador=${meuNumeroJogador}, jogoEstaAtivo=${jogoEstaAtivo}, eMeuTurno=${eMeuTurno}, ultimoTurnoReabilitado=${ultimoTurnoReabilitado}, poderesUsadosNoTurno=${Array.from(poderesUsadosNoTurno).join(', ')}`);
     
-    // Se o turno mudou para o meu turno, reseta o poder usado no turno
+    // Se o turno mudou para o meu turno, reseta os poderes usados no turno
     // Isso garante que quando o turno volta para o jogador, os poderes são liberados
     if (eMeuTurno && ultimoTurnoReabilitado !== turnoAtual) {
-        // Turno mudou para o meu turno - reseta poder usado no turno
-        // Isso libera os outros poderes que não foram usados
-        poderUsadoNoTurno = null;
+        // Turno mudou para o meu turno - reseta poderes usados no turno
+        // Isso libera os poderes que não foram usados permanentemente
+        poderesUsadosNoTurno.clear();
         ultimoTurnoReabilitado = turnoAtual;
-        log(`🔄 Turno voltou para mim! Resetando poder usado no turno. Liberando outros poderes.`);
+        log(`🔄 Turno voltou para mim! Resetando poderes usados no turno. Liberando poderes não usados.`);
     }
     
     // Se é o primeiro turno do jogo e ainda não foi reabilitado, reseta
     if (ultimoTurnoReabilitado === null && eMeuTurno) {
-        poderUsadoNoTurno = null;
+        poderesUsadosNoTurno.clear();
         ultimoTurnoReabilitado = turnoAtual;
         log(`🔄 Primeiro turno do jogo! Habilitando poderes.`);
     }
@@ -693,23 +680,25 @@ function reabilitarPoderesNoTurno() {
     
     botoesPoderes.forEach(botao => {
         const poderId = botao.getAttribute('data-poder');
-        const jaFoiUsado = poderesUsados.has(poderId);
+        const jaFoiUsadoPermanentemente = poderesUsados.has(poderId);
+        const foiUsadoNesteTurno = poderesUsadosNoTurno.has(poderId);
         
-        // Se é meu turno e o poder não foi usado permanentemente, habilita
-        // (mesmo que tenha usado outro poder no turno anterior, agora é um novo turno)
-        if (!jaFoiUsado && eMeuTurno) {
+        // Se é meu turno e o poder não foi usado permanentemente E não foi usado neste turno, habilita
+        if (!jaFoiUsadoPermanentemente && !foiUsadoNesteTurno && eMeuTurno) {
             // Remove classes de desabilitado do turno anterior
             botao.classList.remove('desabilitado-turno', 'usado');
             botao.disabled = false;
+            botao.style.pointerEvents = '';
             // Remove estilos inline para permitir que o CSS controle a aparência
             botao.style.opacity = '';
             botao.style.cursor = '';
             botao.style.filter = '';
             botao.style.transform = '';
-            log(`✅ Poder ${poderId} HABILITADO (é meu turno e não foi usado permanentemente)`);
-        } else if (jaFoiUsado) {
+            log(`✅ Poder ${poderId} HABILITADO (é meu turno, não foi usado permanentemente e não foi usado neste turno)`);
+        } else if (jaFoiUsadoPermanentemente) {
             // Poder foi usado permanentemente (quantidade = 0)
             botao.disabled = true;
+            botao.style.pointerEvents = 'none';
             // Remove estilos inline para permitir que o CSS controle a aparência
             botao.style.opacity = '';
             botao.style.cursor = '';
@@ -718,40 +707,29 @@ function reabilitarPoderesNoTurno() {
             botao.classList.add('usado');
             botao.classList.remove('desabilitado-turno');
             log(`❌ Poder ${poderId} DESABILITADO (já foi usado permanentemente - quantidade = 0)`);
-        } else {
-            // Não é meu turno ou poder foi usado neste turno
-            if (poderId === poderUsadoNoTurno) {
-                // Este poder foi usado neste turno - desabilita
-                botao.disabled = true;
-                botao.classList.add('desabilitado-turno');
-                // Remove estilos inline para permitir que o CSS controle a aparência
-                botao.style.opacity = '';
-                botao.style.cursor = '';
-                botao.style.filter = '';
-                botao.style.transform = '';
-                log(`❌ Poder ${poderId} DESABILITADO (foi usado neste turno)`);
-            } else if (!eMeuTurno) {
-                // Não é meu turno
-                botao.disabled = true;
-                botao.classList.add('desabilitado-turno');
-                // Remove estilos inline para permitir que o CSS controle a aparência
-                botao.style.opacity = '';
-                botao.style.cursor = '';
-                botao.style.filter = '';
-                botao.style.transform = '';
-                log(`❌ Poder ${poderId} DESABILITADO (não é meu turno)`);
-            } else {
-                // Caso especial: se é meu turno mas poderUsadoNoTurno não é null e não é este poder
-                // Isso não deveria acontecer, mas por segurança desabilita
-                botao.disabled = true;
-                botao.classList.add('desabilitado-turno');
-                // Remove estilos inline para permitir que o CSS controle a aparência
-                botao.style.opacity = '';
-                botao.style.cursor = '';
-                botao.style.filter = '';
-                botao.style.transform = '';
-                log(`❌ Poder ${poderId} DESABILITADO (outro poder foi usado neste turno)`);
-            }
+        } else if (foiUsadoNesteTurno && !jaFoiUsadoPermanentemente) {
+            // Este poder foi usado neste turno - desabilita apenas este
+            botao.disabled = true;
+            botao.style.pointerEvents = 'none';
+            botao.classList.add('desabilitado-turno');
+            botao.classList.remove('usado');
+            // Remove estilos inline para permitir que o CSS controle a aparência
+            botao.style.opacity = '';
+            botao.style.cursor = '';
+            botao.style.filter = '';
+            botao.style.transform = '';
+            log(`❌ Poder ${poderId} DESABILITADO (foi usado neste turno)`);
+        } else if (!eMeuTurno) {
+            // Não é meu turno
+            botao.disabled = true;
+            botao.style.pointerEvents = 'none';
+            botao.classList.add('desabilitado-turno');
+            // Remove estilos inline para permitir que o CSS controle a aparência
+            botao.style.opacity = '';
+            botao.style.cursor = '';
+            botao.style.filter = '';
+            botao.style.transform = '';
+            log(`❌ Poder ${poderId} DESABILITADO (não é meu turno)`);
         }
     });
 }
@@ -859,10 +837,10 @@ async function usarPoder(poderId, botaoElemento) {
         return;
     }
     
-    // Verifica se um poder já foi usado neste turno
-    if (poderUsadoNoTurno !== null) {
-        console.warn(`[${instanceId}] ⚠️ Já foi usado um poder neste turno! Poder usado: ${poderUsadoNoTurno}`);
-        mostrarFeedback('Você já usou um poder neste turno! Aguarde o próximo turno.', 'orange');
+    // Verifica se este poder específico já foi usado neste turno
+    if (poderesUsadosNoTurno.has(poderId)) {
+        console.warn(`[${instanceId}] ⚠️ Este poder ${poderId} já foi usado neste turno!`);
+        mostrarFeedback('Este poder já foi usado neste turno!', 'orange');
         return;
     }
     
@@ -926,11 +904,11 @@ async function usarPoder(poderId, botaoElemento) {
         }
     }
     
-    // Marca que um poder foi usado neste turno (NÃO marca como usado permanentemente, a menos que quantidade = 0)
-    poderUsadoNoTurno = poderId;
+    // Marca que este poder foi usado neste turno (NÃO marca como usado permanentemente, a menos que quantidade = 0)
+    poderesUsadosNoTurno.add(poderId);
     
-    // Desabilita TODOS os poderes (incluindo o que foi usado) apenas para este turno
-    desabilitarTodosPoderesExceto(poderId);
+    // Desabilita apenas o poder que foi usado (os outros continuam disponíveis)
+    desabilitarPoderUsado(poderId);
     
     // Atualiza visualmente o botão IMEDIATAMENTE (desabilita para este turno)
     if (botaoElemento) {
@@ -1277,7 +1255,7 @@ function configurarListenersSocket() {
                 
                 // Reseta poder usado no turno (nova rodada = novo turno)
                 // Isso permite que os poderes não usados sejam liberados
-                poderUsadoNoTurno = null;
+                poderesUsadosNoTurno.clear();
                 ultimoTurnoReabilitado = null; // Força reabilitação no próximo turno
                 
                 // Atualiza palavras secretas se fornecidas
@@ -1490,7 +1468,7 @@ function configurarListenersSocket() {
                 
                 // Reseta poder usado no turno (nova rodada = novo turno)
                 // Isso permite que os poderes não usados sejam liberados
-                poderUsadoNoTurno = null;
+                poderesUsadosNoTurno.clear();
                 ultimoTurnoReabilitado = null; // Força reabilitação no próximo turno
                 
                 // Se há novas palavras secretas, usa elas para criar a palavra exibida inicial
@@ -1615,12 +1593,13 @@ function configurarListenersSocket() {
                 botoesPoder.forEach(botao => {
                     const poderId = botao.getAttribute('data-poder');
                     // Se o servidor rejeitou, reseta o poder usado no turno
-                    if (poderUsadoNoTurno === poderId) {
-                        poderUsadoNoTurno = null;
+                    if (poderesUsadosNoTurno.has(poderId)) {
+                        poderesUsadosNoTurno.delete(poderId);
                         botao.classList.remove('desabilitado-turno');
                         botao.disabled = false;
-                        botao.style.opacity = '1';
-                        botao.style.cursor = 'pointer';
+                        botao.style.pointerEvents = '';
+                        botao.style.opacity = '';
+                        botao.style.cursor = '';
                         // Reabilita todos os poderes
                         reabilitarPoderesNoTurno();
                     }
@@ -1828,7 +1807,7 @@ function iniciarJogo(dados) {
     // Carrega os poderes selecionados que foram enviados pelo servidor
     poderesDisponiveis = dados.poderes || [];
     poderesUsados.clear(); // Reseta poderes usados
-    poderUsadoNoTurno = null; // Reseta poder usado no turno
+    poderesUsadosNoTurno.clear(); // Reseta poderes usados no turno
     ultimoTurnoReabilitado = null; // Reseta último turno reabilitado
     console.log(`🎯 Poderes disponíveis para o jogo:`, poderesDisponiveis);
     console.log(`🎯 Tipo de poderes:`, typeof poderesDisponiveis, Array.isArray(poderesDisponiveis));
