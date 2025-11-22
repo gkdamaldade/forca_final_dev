@@ -617,14 +617,17 @@ function desabilitarTodosPoderesExceto(poderIdUsado) {
         if (poderId !== poderIdUsado && !poderesUsados.has(poderId)) {
             botao.disabled = true;
             botao.classList.add('desabilitado-turno');
+            botao.style.pointerEvents = 'none';
             // Remove estilos inline para permitir que o CSS controle a aparência
             botao.style.opacity = '';
             botao.style.cursor = '';
             botao.style.filter = '';
             botao.style.transform = '';
+            console.log(`[${instanceId}] 🟡 Poder ${poderId} DESABILITADO (outro poder foi usado)`);
         } else if (poderId === poderIdUsado) {
             // O poder usado também é desabilitado (permanentemente se quantidade = 0, ou apenas neste turno)
             botao.disabled = true;
+            botao.style.pointerEvents = 'none'; // Impede cliques
             // Remove estilos inline para permitir que o CSS controle a aparência
             botao.style.opacity = '';
             botao.style.cursor = '';
@@ -634,10 +637,15 @@ function desabilitarTodosPoderesExceto(poderIdUsado) {
                 // Se foi usado permanentemente, adiciona classe 'usado' e remove 'desabilitado-turno'
                 botao.classList.add('usado');
                 botao.classList.remove('desabilitado-turno');
+                console.log(`[${instanceId}] 🔴 Poder ${poderId} USADO PERMANENTEMENTE (quantidade = 0)`);
             } else {
                 // Se não foi usado permanentemente, apenas desabilita para este turno
                 botao.classList.add('desabilitado-turno');
+                botao.classList.remove('usado'); // Remove classe 'usado' se ainda pode ser usado depois
+                console.log(`[${instanceId}] 🟡 Poder ${poderId} DESABILITADO NO TURNO (foi usado)`);
             }
+            // Força reflow para garantir que o CSS seja aplicado
+            botao.offsetHeight;
         }
     });
 }
@@ -843,10 +851,17 @@ async function usarPoder(poderId, botaoElemento) {
         return;
     }
     
-    // Verifica se o poder já foi usado
+    // Verifica se o poder já foi usado permanentemente
     if (poderesUsados.has(poderId)) {
-        console.warn(`[${instanceId}] ⚠️ Poder ${poderId} já foi usado!`);
+        console.warn(`[${instanceId}] ⚠️ Poder ${poderId} já foi usado permanentemente!`);
         mostrarFeedback('Este poder já foi usado!', 'orange');
+        return;
+    }
+    
+    // Verifica se um poder já foi usado neste turno
+    if (poderUsadoNoTurno !== null) {
+        console.warn(`[${instanceId}] ⚠️ Já foi usado um poder neste turno! Poder usado: ${poderUsadoNoTurno}`);
+        mostrarFeedback('Você já usou um poder neste turno! Aguarde o próximo turno.', 'orange');
         return;
     }
     
@@ -913,26 +928,39 @@ async function usarPoder(poderId, botaoElemento) {
     // Marca que um poder foi usado neste turno (NÃO marca como usado permanentemente, a menos que quantidade = 0)
     poderUsadoNoTurno = poderId;
     
-    // Desabilita TODOS os poderes (exceto o que foi usado) apenas para este turno
+    // Desabilita TODOS os poderes (incluindo o que foi usado) apenas para este turno
     desabilitarTodosPoderesExceto(poderId);
     
-    // Atualiza visualmente o botão (desabilita temporariamente para este turno)
+    // Atualiza visualmente o botão IMEDIATAMENTE (desabilita para este turno)
     if (botaoElemento) {
+        // Remove event listener para prevenir cliques múltiplos
+        botaoElemento.removeEventListener('click', renderizarPoderesNoJogo);
+        
+        // Desabilita o botão
         botaoElemento.disabled = true;
+        
         // Remove estilos inline que possam estar sobrescrevendo o CSS
         botaoElemento.style.opacity = '';
         botaoElemento.style.cursor = '';
         botaoElemento.style.filter = '';
         botaoElemento.style.transform = '';
+        botaoElemento.style.pointerEvents = 'none';
+        
         // Adiciona classes para estilização via CSS
         // Se foi usado permanentemente (quantidade = 0), adiciona classe 'usado' e remove 'desabilitado-turno'
         if (poderesUsados.has(poderId)) {
             botaoElemento.classList.add('usado');
             botaoElemento.classList.remove('desabilitado-turno'); // Remove classe temporária, mantém apenas 'usado'
+            console.log(`[${instanceId}] 🔴 Poder ${poderId} marcado como USADO PERMANENTEMENTE`);
         } else {
             // Se não foi usado permanentemente, apenas desabilita para este turno
             botaoElemento.classList.add('desabilitado-turno');
+            botaoElemento.classList.remove('usado'); // Garante que não tem classe 'usado' se ainda pode ser usado
+            console.log(`[${instanceId}] 🟡 Poder ${poderId} marcado como DESABILITADO NO TURNO`);
         }
+        
+        // Força reflow para garantir que o CSS seja aplicado
+        botaoElemento.offsetHeight;
     }
     
     // Atualiza contador de poderes
