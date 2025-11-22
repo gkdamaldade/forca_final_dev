@@ -21,10 +21,11 @@
 
 *{ box-sizing: border-box; }
 html, body{ 
-  height: 100%;
+  height: 100vh;
   min-height: 100vh;
+  max-height: 100vh;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: hidden;
 }
 
 /* ===== Fundo (mesma imagem do menu) ===== */
@@ -113,45 +114,45 @@ body::after{
 
 .pre-game-wrapper .pre-header {
   width: 100%;
-  padding: clamp(8px, 2vw, 16px) 0;
+  padding: clamp(4px, 1vw, 8px) 0;
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: clamp(10px, 2.5vw, 20px);
+  gap: clamp(6px, 1.5vw, 12px);
   flex-shrink: 0;
 }
 
 .pre-game-wrapper .titulo-sessao {
   font-family: "Orbitron", sans-serif;
   font-weight: 700;
-  font-size: clamp(2rem, 8vw, 5rem);
+  font-size: clamp(1.5rem, 6vw, 3.5rem);
   text-align: center;
   letter-spacing: .12em;
   color: #e9fbff;
   text-shadow:
     0 2px 0 rgba(0,0,0,.25),
     0 10px 30px rgba(0,0,0,.55);
+  line-height: 1.2;
 }
 
 .pre-game-wrapper .icon-img img {
-  width: clamp(60px, 10vw, 90px);
+  width: clamp(40px, 8vw, 70px);
   height: auto;
   filter: drop-shadow(0 4px 10px rgba(0,0,0,.35));
   flex-shrink: 0;
 }
 
 .pre-game-wrapper .sessao-container {
-  margin-top: clamp(8px, 2vw, 16px);
-  padding: clamp(16px, 3vw, 26px) clamp(12px, 2.5vw, 22px);
-  border-radius: clamp(12px, 2.5vw, 18px);
+  margin-top: clamp(4px, 1vw, 8px);
+  padding: clamp(10px, 2vw, 16px) clamp(10px, 2vw, 16px);
+  border-radius: clamp(10px, 2vw, 14px);
   width: 100%;
   max-width: 920px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: clamp(12px, 2.5vw, 20px);
+  gap: clamp(8px, 1.5vw, 12px);
   font-family: "Orbitron", sans-serif;
-  min-height: auto;
   background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,.06));
   border: 2px solid var(--glass-brd);
   box-shadow:
@@ -161,7 +162,10 @@ body::after{
   backdrop-filter: blur(4px) saturate(1.05);
   -webkit-backdrop-filter: blur(4px) saturate(1.05);
   box-sizing: border-box;
-  flex-shrink: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .pre-game-wrapper .jogadores-prep {
@@ -184,17 +188,18 @@ body::after{
 }
 
 .pre-game-wrapper .jogador-prep h2 {
-  font-size: clamp(1.2rem, 3vw, 1.6rem);
-  margin-bottom: clamp(8px, 1.5vw, 12px);
+  font-size: clamp(1rem, 2.5vw, 1.4rem);
+  margin-bottom: clamp(6px, 1.2vw, 10px);
   text-align: center;
+  line-height: 1.2;
 }
 
 .pre-game-wrapper .poderes-container {
   display: grid;
-  grid-template-columns: repeat(6, clamp(50px, 8vw, 72px));
-  gap: clamp(8px, 1.5vw, 14px);
-  padding: clamp(8px, 1.5vw, 12px);
-  border-radius: clamp(12px, 2vw, 16px);
+  grid-template-columns: repeat(6, clamp(45px, 7vw, 65px));
+  gap: clamp(6px, 1.2vw, 10px);
+  padding: clamp(6px, 1.2vw, 10px);
+  border-radius: clamp(10px, 1.5vw, 12px);
   background: rgba(255,255,255,.06);
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
   justify-content: center;
@@ -202,6 +207,7 @@ body::after{
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 /* Media queries para responsividade */
@@ -273,10 +279,10 @@ body::after{
 }
 
 .pre-game-wrapper .poder {
-  width: clamp(50px, 8vw, 72px);
-  height: clamp(50px, 8vw, 72px);
+  width: clamp(45px, 7vw, 65px);
+  height: clamp(45px, 7vw, 65px);
   border: 2px solid rgba(255,255,255,.35);
-  border-radius: clamp(8px, 1.5vw, 12px);
+  border-radius: clamp(6px, 1.2vw, 10px);
   background: rgba(255,255,255,.08);
   cursor: pointer;
   transition: all 0.3s ease;
@@ -352,9 +358,10 @@ body::after{
 /* ===== Sistema de Apostas na Preparação ===== */
 .aposta-container-prep {
   width: 100%;
-  margin: clamp(12px, 2.5vw, 20px) 0;
-  padding: clamp(12px, 2vw, 16px);
-  border-radius: clamp(10px, 1.5vw, 12px);
+  max-width: 100%;
+  margin: clamp(6px, 1.2vw, 10px) 0;
+  padding: clamp(8px, 1.5vw, 12px);
+  border-radius: clamp(8px, 1.2vw, 10px);
   background: linear-gradient(180deg, rgba(255,255,255,.15), rgba(255,255,255,.08));
   border: 2px solid rgba(255,255,255,.2);
   box-shadow: 0 4px 16px rgba(0,0,0,.2);
@@ -366,18 +373,19 @@ body::after{
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: clamp(8px, 1.5vw, 12px);
-  padding-bottom: clamp(6px, 1.2vw, 10px);
+  margin-bottom: clamp(6px, 1vw, 8px);
+  padding-bottom: clamp(4px, 0.8vw, 6px);
   border-bottom: 1px solid rgba(255,255,255,.15);
   flex-wrap: wrap;
-  gap: 8px;
+  gap: clamp(4px, 1vw, 6px);
 }
 
 .aposta-header-prep h3 {
-  font-size: clamp(1rem, 2.5vw, 1.2rem);
+  font-size: clamp(0.9rem, 2vw, 1.1rem);
   margin: 0;
   color: #FFD700;
   text-shadow: 0 2px 6px rgba(255,215,0,.4);
+  line-height: 1.2;
 }
 
 .saldo-moedas-prep {
@@ -405,7 +413,7 @@ body::after{
 .aposta-input-container-prep {
   display: flex;
   flex-direction: column;
-  gap: clamp(8px, 1.5vw, 10px);
+  gap: clamp(6px, 1.2vw, 8px);
 }
 
 .aposta-input-wrapper-prep {
@@ -416,13 +424,13 @@ body::after{
 
 .aposta-input-prep {
   width: 100%;
-  padding: clamp(10px, 2vw, 12px) clamp(40px, 6vw, 45px) clamp(10px, 2vw, 12px) clamp(12px, 2vw, 14px);
+  padding: clamp(8px, 1.5vw, 10px) clamp(35px, 5vw, 40px) clamp(8px, 1.5vw, 10px) clamp(10px, 1.5vw, 12px);
   border: 2px solid rgba(255,255,255,.25);
-  border-radius: clamp(8px, 1.5vw, 10px);
+  border-radius: clamp(6px, 1.2vw, 8px);
   background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
   color: white;
   font-family: "Orbitron", sans-serif;
-  font-size: clamp(1rem, 2.5vw, 1.2rem);
+  font-size: clamp(0.9rem, 2vw, 1.1rem);
   font-weight: bold;
   text-align: center;
   box-shadow: inset 0 2px 6px rgba(0,0,0,.2);
@@ -539,17 +547,19 @@ body::after{
 }
 
 .pre-game-wrapper .instrucao-poderes {
-  font-size: clamp(0.75rem, 2vw, 0.9rem);
+  font-size: clamp(0.7rem, 1.8vw, 0.85rem);
   color: rgba(255, 255, 255, 0.7);
-  margin-bottom: clamp(8px, 1.5vw, 12px);
+  margin: clamp(6px, 1.2vw, 10px) 0;
   text-align: center;
+  line-height: 1.2;
 }
 
 .pre-game-wrapper .contador-selecionados {
-  margin-top: clamp(8px, 1.5vw, 12px);
-  font-size: clamp(0.9rem, 2vw, 1.1rem);
+  margin-top: clamp(6px, 1.2vw, 8px);
+  font-size: clamp(0.8rem, 1.8vw, 1rem);
   color: #e9fbff;
   text-align: center;
+  line-height: 1.2;
 }
 
 .pre-game-wrapper .contador-selecionados span {
@@ -558,21 +568,24 @@ body::after{
 }
 
 .pre-game-wrapper .codigo-container {
-  font-size: clamp(1.2rem, 3vw, 1.8rem);
+  font-size: clamp(1rem, 2.5vw, 1.5rem);
   text-align: center;
   flex-shrink: 0;
+  margin: clamp(4px, 0.8vw, 6px) 0;
 }
 
 .pre-game-wrapper .codigo-container span {
   display: block;
-  font-size: clamp(1.6rem, 4vw, 2.5rem);
-  margin-top: clamp(4px, 1vw, 8px);
-  letter-spacing: clamp(2px, 0.5vw, 4px);
+  font-size: clamp(1.3rem, 3.5vw, 2rem);
+  margin-top: clamp(2px, 0.5vw, 4px);
+  letter-spacing: clamp(2px, 0.4vw, 3px);
+  line-height: 1.2;
 }
 
 .pre-game-wrapper .contador {
-  font-size: clamp(1.2rem, 3vw, 1.6rem);
+  font-size: clamp(1rem, 2.5vw, 1.4rem);
   flex-shrink: 0;
+  margin: clamp(2px, 0.5vw, 4px) 0;
 }
 
 .pre-game-wrapper .botao-pronto {
@@ -581,13 +594,13 @@ body::after{
     linear-gradient(180deg, var(--aqua), var(--aqua-dark));
   color: white;
   border: none;
-  padding: clamp(12px, 2.5vw, 18px) clamp(40px, 8vw, 60px);
+  padding: clamp(10px, 2vw, 14px) clamp(35px, 7vw, 50px);
   border-radius: 50px;
-  font-size: clamp(1.2rem, 3.5vw, 1.8rem);
+  font-size: clamp(1rem, 3vw, 1.5rem);
   font-weight: bold;
   cursor: pointer;
   flex-shrink: 0;
-  margin-top: auto;
+  margin-top: clamp(4px, 0.8vw, 6px);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow:
     0 10px 22px rgba(0,229,255,.28),
