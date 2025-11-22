@@ -1952,7 +1952,7 @@ function processarJogada(dados) {
             atualizarEstadoBotaoDica();
             
             // Reseta poder usado no turno quando começa nova rodada
-            poderUsadoNoTurno = null;
+            poderesUsadosNoTurno.clear();
             ultimoTurnoReabilitado = null;
             
             // Se há novas palavras secretas, usa elas para criar a palavra exibida inicial
