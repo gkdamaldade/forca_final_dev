@@ -87,6 +87,42 @@
         <!-- Contador -->
         <div class="contador">( 0 / 2 )</div>
 
+        <!-- Sistema de Apostas -->
+        <div class="aposta-container">
+            <div class="aposta-header">
+                <h3>💰 Sistema de Apostas</h3>
+                <div class="saldo-moedas">
+                    <span class="saldo-label">Seu saldo:</span>
+                    <span class="saldo-valor" id="saldo-moedas">-</span>
+                    <span class="moeda-icon">🪙</span>
+                </div>
+            </div>
+            <div class="aposta-input-container">
+                <label for="input-aposta">Valor da aposta:</label>
+                <div class="aposta-input-wrapper">
+                    <input 
+                        type="number" 
+                        id="input-aposta" 
+                        min="0" 
+                        value="0" 
+                        placeholder="0"
+                        class="aposta-input"
+                    >
+                    <span class="moeda-icon-input">🪙</span>
+                </div>
+                <div class="aposta-buttons">
+                    <button class="btn-aposta-quick" data-value="10">+10</button>
+                    <button class="btn-aposta-quick" data-value="25">+25</button>
+                    <button class="btn-aposta-quick" data-value="50">+50</button>
+                    <button class="btn-aposta-quick" data-value="100">+100</button>
+                </div>
+                <div class="aposta-info">
+                    <p class="aposta-mensagem" id="aposta-mensagem">Aposta: 0 moedas</p>
+                    <p class="aposta-adversario" id="aposta-adversario">Aguardando adversário...</p>
+                </div>
+            </div>
+        </div>
+
         <!-- Botão -->
         <button class="botao-pronto">Pronto</button>
     </div>

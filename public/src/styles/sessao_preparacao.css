@@ -278,11 +278,166 @@ header {
   filter: grayscale(0.3);
 }
 
+/* ===== Sistema de Apostas ===== */
+.aposta-container {
+  width: 100%;
+  max-width: 500px;
+  padding: 20px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,.15), rgba(255,255,255,.08));
+  border: 2px solid var(--glass-brd);
+  box-shadow: 0 8px 24px rgba(0,0,0,.3);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.aposta-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,.2);
+}
+
+.aposta-header h3 {
+  font-size: 1.4rem;
+  margin: 0;
+  color: #FFD700;
+  text-shadow: 0 2px 8px rgba(255,215,0,.5);
+}
+
+.saldo-moedas {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.1rem;
+}
+
+.saldo-label {
+  opacity: 0.8;
+}
+
+.saldo-valor {
+  font-weight: bold;
+  color: #FFD700;
+  text-shadow: 0 2px 4px rgba(255,215,0,.5);
+}
+
+.moeda-icon {
+  font-size: 1.3rem;
+}
+
+.aposta-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.aposta-input-container label {
+  font-size: 1rem;
+  opacity: 0.9;
+}
+
+.aposta-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.aposta-input {
+  width: 100%;
+  padding: 14px 50px 14px 16px;
+  border: 2px solid var(--glass-brd);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+  color: white;
+  font-family: "Orbitron", sans-serif;
+  font-size: 1.4rem;
+  font-weight: bold;
+  text-align: center;
+  box-shadow: inset 0 2px 8px rgba(0,0,0,.2);
+  transition: all 0.3s ease;
+}
+
+.aposta-input:focus {
+  outline: none;
+  border-color: var(--aqua);
+  box-shadow: 
+    inset 0 2px 8px rgba(0,0,0,.2),
+    0 0 20px rgba(0,229,255,.3);
+}
+
+.aposta-input::placeholder {
+  color: rgba(255,255,255,.4);
+}
+
+.moeda-icon-input {
+  position: absolute;
+  right: 16px;
+  font-size: 1.5rem;
+  pointer-events: none;
+}
+
+.aposta-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-aposta-quick {
+  padding: 10px 20px;
+  border: 2px solid var(--glass-brd);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255,255,255,.15), rgba(255,255,255,.08));
+  color: white;
+  font-family: "Orbitron", sans-serif;
+  font-size: 0.95rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,.2);
+}
+
+.btn-aposta-quick:hover {
+  background: linear-gradient(180deg, rgba(0,229,255,.25), rgba(0,188,212,.15));
+  border-color: var(--aqua);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,229,255,.3);
+}
+
+.btn-aposta-quick:active {
+  transform: translateY(0);
+}
+
+.aposta-info {
+  margin-top: 8px;
+}
+
+.aposta-mensagem {
+  font-size: 1rem;
+  text-align: center;
+  margin: 8px 0;
+  color: #e9fbff;
+}
+
+.aposta-adversario {
+  font-size: 0.9rem;
+  text-align: center;
+  margin: 4px 0;
+  opacity: 0.7;
+}
+
 /* ===== Responsividade ===== */
 @media (max-width: 860px){
   .sessao-container{ max-width: 94vw; padding: 28px 20px; min-height: 500px; }
   .jogadores{ justify-content: center; gap: 24px; }
+  .aposta-container { max-width: 100%; padding: 16px; }
 }
 @media (max-width: 620px){
   .jogadores{ flex-direction: column; align-items: center; }
+  .aposta-header { flex-direction: column; gap: 12px; align-items: flex-start; }
+  .aposta-buttons { gap: 6px; }
+  .btn-aposta-quick { padding: 8px 16px; font-size: 0.85rem; }
 }

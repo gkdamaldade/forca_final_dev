@@ -17,8 +17,94 @@ let jogadoresProntos = new Set();
 let usuarioPronto = false;
 const botaoPronto = document.querySelector('.botao-pronto');
 
+// Variáveis de aposta
+let saldoMoedas = 0;
+let minhaAposta = 0;
+let apostaAdversario = null;
+
 // Inicializa contador em 0/2
 document.querySelector('.contador').textContent = '( 0 / 2 )';
+
+// Carrega saldo de moedas
+async function carregarSaldoMoedas() {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch('/api/players/moedas', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      saldoMoedas = data.moedas || 0;
+      document.getElementById('saldo-moedas').textContent = saldoMoedas;
+    } else {
+      console.error('Erro ao carregar saldo de moedas');
+      saldoMoedas = 0;
+    }
+  } catch (error) {
+    console.error('Erro ao carregar saldo:', error);
+    saldoMoedas = 0;
+  }
+}
+
+// Configura interface de apostas
+function configurarApostas() {
+  const inputAposta = document.getElementById('input-aposta');
+  const mensagemAposta = document.getElementById('aposta-mensagem');
+  const apostaAdversarioEl = document.getElementById('aposta-adversario');
+  const botoesRapidos = document.querySelectorAll('.btn-aposta-quick');
+  
+  // Atualiza mensagem de aposta
+  function atualizarMensagemAposta() {
+    const valor = parseInt(inputAposta.value) || 0;
+    if (valor > saldoMoedas) {
+      mensagemAposta.textContent = `❌ Você não tem moedas suficientes!`;
+      mensagemAposta.style.color = '#ff6b6b';
+      inputAposta.value = saldoMoedas;
+      minhaAposta = saldoMoedas;
+    } else if (valor < 0) {
+      mensagemAposta.textContent = `❌ Valor inválido!`;
+      mensagemAposta.style.color = '#ff6b6b';
+      inputAposta.value = 0;
+      minhaAposta = 0;
+    } else {
+      minhaAposta = valor;
+      mensagemAposta.textContent = `Aposta: ${valor} moedas`;
+      mensagemAposta.style.color = '#e9fbff';
+    }
+    
+    // Envia aposta ao servidor
+    enviarEvento({
+      tipo: 'definirAposta',
+      valor: minhaAposta
+    });
+  }
+  
+  // Listener para input manual
+  inputAposta.addEventListener('input', atualizarMensagemAposta);
+  inputAposta.addEventListener('blur', atualizarMensagemAposta);
+  
+  // Botões rápidos
+  botoesRapidos.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const valorAdicionar = parseInt(btn.getAttribute('data-value'));
+      const valorAtual = parseInt(inputAposta.value) || 0;
+      const novoValor = Math.min(valorAtual + valorAdicionar, saldoMoedas);
+      inputAposta.value = novoValor;
+      atualizarMensagemAposta();
+    });
+  });
+  
+  // Inicializa mensagem
+  atualizarMensagemAposta();
+}
+
+// Carrega saldo e configura apostas ao iniciar
+carregarSaldoMoedas().then(() => {
+  configurarApostas();
+});
 
 // Conecta ao socket e entra na sala
 conectarSocket(sala, nome, playerId, categoria);
@@ -77,6 +163,24 @@ aoReceberEvento((evento) => {
     console.error(`[${instanceId}] ❌ Erro do servidor:`, evento.mensagem);
     alert(`Erro: ${evento.mensagem}`);
   }
+  
+  // Evento de aposta do adversário
+  if (evento.tipo === 'apostaAtualizada') {
+    console.log(`[${instanceId}] 💰 Aposta atualizada:`, evento);
+    if (evento.jogador !== nome) {
+      apostaAdversario = evento.valor;
+      const apostaAdversarioEl = document.getElementById('aposta-adversario');
+      if (apostaAdversarioEl) {
+        if (evento.valor > 0) {
+          apostaAdversarioEl.textContent = `Adversário apostou: ${evento.valor} moedas`;
+          apostaAdversarioEl.style.color = '#00e5ff';
+        } else {
+          apostaAdversarioEl.textContent = `Adversário não apostou`;
+          apostaAdversarioEl.style.color = '#888';
+        }
+      }
+    }
+  }
 });
 
 // Envia evento de "pronto" ao clicar no botão
@@ -96,6 +200,7 @@ botaoPronto.addEventListener('click', () => {
   console.log(`[${instanceId}] 📤 Enviando evento 'pronto' para o servidor...`);
   enviarEvento({
     tipo: 'pronto',
-    nome
+    nome,
+    aposta: minhaAposta // Inclui a aposta ao enviar "pronto"
   });
 });

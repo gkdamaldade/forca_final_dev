@@ -18,21 +18,43 @@ async function finalizarJogo(game, vencedorNum, motivo = 'normal') {
   // Registra vitória APENAS para o vencedor no banco de dados
   try {
     const jogadorVencedor = game.players.find(p => p.numero === vencedorNum);
+    const jogadorPerdedor = game.players.find(p => p.numero !== vencedorNum);
+    
     if (jogadorVencedor && jogadorVencedor.playerId) {
-      const player = await models.Player.findByPk(jogadorVencedor.playerId);
-      if (player) {
-        // Incrementa vitórias e 20 moedas pela vitória
-        await player.increment({ 
+      const playerVencedor = await models.Player.findByPk(jogadorVencedor.playerId);
+      if (playerVencedor) {
+        // Calcula recompensas: 20 moedas pela vitória + aposta do vencedor (que ele mantém) + aposta do perdedor (que ele ganha)
+        const apostaVencedor = game.apostas[vencedorNum] || 0;
+        const apostaPerdedor = jogadorPerdedor ? (game.apostas[jogadorPerdedor.numero] || 0) : 0;
+        const moedasGanhas = 20 + apostaVencedor + apostaPerdedor; // Vencedor mantém sua aposta e ganha a do perdedor
+        
+        // Incrementa vitórias e moedas
+        await playerVencedor.increment({ 
           vitorias: 1, 
-          moedas: 20 
+          moedas: moedasGanhas 
         });
-        await player.reload();
-        console.log(`✅ Vitória registrada para ${jogadorVencedor.name} (ID: ${jogadorVencedor.playerId})! Total de vitórias: ${player.vitorias}, Moedas recebidas: 20, Total de moedas: ${player.moedas}`);
+        await playerVencedor.reload();
+        console.log(`✅ Vitória registrada para ${jogadorVencedor.name} (ID: ${jogadorVencedor.playerId})! Total de vitórias: ${playerVencedor.vitorias}, Moedas ganhas: ${moedasGanhas} (20 vitória + ${apostaVencedor} aposta própria + ${apostaPerdedor} aposta adversário), Total de moedas: ${playerVencedor.moedas}`);
       } else {
         console.warn(`⚠️ Jogador com ID ${jogadorVencedor.playerId} não encontrado no banco de dados.`);
       }
     } else {
       console.warn(`⚠️ Jogador vencedor não encontrado ou sem playerId no game.players`);
+    }
+    
+    // Processa perda de moedas do perdedor
+    if (jogadorPerdedor && jogadorPerdedor.playerId) {
+      const playerPerdedor = await models.Player.findByPk(jogadorPerdedor.playerId);
+      if (playerPerdedor) {
+        const apostaPerdedor = game.apostas[jogadorPerdedor.numero] || 0;
+        if (apostaPerdedor > 0) {
+          // Decrementa as moedas apostadas
+          const moedasAtuais = playerPerdedor.moedas || 0;
+          const novasMoedas = Math.max(0, moedasAtuais - apostaPerdedor);
+          await playerPerdedor.update({ moedas: novasMoedas });
+          console.log(`💸 Perdedor ${jogadorPerdedor.name} perdeu ${apostaPerdedor} moedas da aposta. Moedas anteriores: ${moedasAtuais}, Moedas atuais: ${novasMoedas}`);
+        }
+      }
     }
   } catch (error) {
     console.error(`❌ Erro ao registrar vitória:`, error);
@@ -139,7 +161,8 @@ module.exports = function(io) {
             gameInstances: [gameInstance1, gameInstance2], // Uma instância por jogador
             vidas: [3, 3], // Cada jogador começa com 3 vidas
             palpiteAtivo: { 1: false, 2: false }, // Rastreia se o poder de palpite está ativo para cada jogador
-            jogoIniciado: false // Flag para indicar se o jogo realmente começou (ambos clicaram em "pronto")
+            jogoIniciado: false, // Flag para indicar se o jogo realmente começou (ambos clicaram em "pronto")
+            apostas: { 1: 0, 2: 0 } // Apostas de cada jogador (inicialmente 0)
           });
         } catch (error) {
           console.error('Erro ao buscar palavras:', error);
@@ -158,7 +181,8 @@ module.exports = function(io) {
             gameInstances: [gameInstance1, gameInstance2],
             vidas: [3, 3],
             palpiteAtivo: { 1: false, 2: false },
-            jogoIniciado: false // Flag para indicar se o jogo realmente começou (ambos clicaram em "pronto")
+            jogoIniciado: false, // Flag para indicar se o jogo realmente começou (ambos clicaram em "pronto")
+            apostas: { 1: 0, 2: 0 } // Apostas de cada jogador (inicialmente 0)
           });
         }
       }
@@ -497,9 +521,11 @@ module.exports = function(io) {
         // Usa o nome do socket.data (mais confiável que msg.nome do cliente)
         const nomeJogador = socket.data?.nome || msg.nome;
         const poderesSelecionados = msg.poderes || []; // Array de poderes selecionados
+        const aposta = parseInt(msg.aposta) || 0; // Valor da aposta (padrão 0)
         
         console.log(`📥 Evento 'pronto' recebido: socket.id=${socket.id}, nome=${nomeJogador}, roomId=${roomId}`);
         console.log(`🎯 Poderes selecionados:`, poderesSelecionados);
+        console.log(`💰 Aposta: ${aposta} moedas`);
         console.log(`📋 Jogadores na sala:`, game.players.map(p => `${p.name} (${p.id})`));
         console.log(`📋 IDs dos prontos atuais:`, Array.from(game.prontos));
         
@@ -530,6 +556,28 @@ module.exports = function(io) {
         jogadorAtual.poderes = poderesSelecionados;
         console.log(`💾 Poderes do jogador ${jogadorAtual.numero} armazenados:`, jogadorAtual.poderes);
         
+        // Valida e armazena a aposta
+        if (aposta >= 0 && jogadorAtual.playerId) {
+          try {
+            const player = await models.Player.findByPk(jogadorAtual.playerId);
+            if (player) {
+              const moedasAtuais = player.moedas || 0;
+              if (aposta > moedasAtuais) {
+                console.warn(`⚠️ Jogador ${jogadorAtual.numero} tentou apostar ${aposta} mas só tem ${moedasAtuais} moedas. Ajustando para ${moedasAtuais}.`);
+                game.apostas[jogadorAtual.numero] = moedasAtuais;
+              } else {
+                game.apostas[jogadorAtual.numero] = aposta;
+              }
+              console.log(`💰 Aposta do jogador ${jogadorAtual.numero} definida: ${game.apostas[jogadorAtual.numero]} moedas`);
+            }
+          } catch (error) {
+            console.error(`❌ Erro ao validar aposta:`, error);
+            game.apostas[jogadorAtual.numero] = 0; // Em caso de erro, define como 0
+          }
+        } else {
+          game.apostas[jogadorAtual.numero] = aposta >= 0 ? aposta : 0;
+        }
+        
         if (!game.prontos.has(socket.id)) {
           game.prontos.add(socket.id);
           jogadorAtual.wasReady = true;
@@ -550,7 +598,8 @@ module.exports = function(io) {
           tipo: 'pronto',
           nome: nomeJogador,
           socketId: socket.id, // Inclui o socket.id para identificação única
-          total: game.prontos.size
+          total: game.prontos.size,
+          aposta: game.apostas[jogadorAtual.numero] // Inclui a aposta do jogador
           // NÃO inclui poderes aqui - cada jogador só sabe seus próprios poderes
         };
         
@@ -1044,6 +1093,47 @@ module.exports = function(io) {
 
       }
 
+      if (msg.tipo === 'definirAposta') {
+        // Handler para atualizar aposta antes de clicar em "pronto"
+        const jogadorAtual = game.players.find(p => p.id === socket.id);
+        if (!jogadorAtual) return;
+        
+        const valorAposta = parseInt(msg.valor) || 0;
+        
+        // Valida aposta
+        if (valorAposta >= 0 && jogadorAtual.playerId) {
+          try {
+            const player = await models.Player.findByPk(jogadorAtual.playerId);
+            if (player) {
+              const moedasAtuais = player.moedas || 0;
+              if (valorAposta > moedasAtuais) {
+                socket.emit('eventoJogo', {
+                  tipo: 'erro',
+                  mensagem: `Você não tem moedas suficientes! Saldo: ${moedasAtuais}`
+                });
+                return;
+              }
+              game.apostas[jogadorAtual.numero] = valorAposta;
+              console.log(`💰 Aposta do jogador ${jogadorAtual.numero} atualizada: ${valorAposta} moedas`);
+              
+              // Emite evento de aposta atualizada para todos na sala
+              io.to(roomId).emit('eventoJogo', {
+                tipo: 'apostaAtualizada',
+                jogador: jogadorAtual.name,
+                valor: valorAposta
+              });
+            }
+          } catch (error) {
+            console.error(`❌ Erro ao validar aposta:`, error);
+            socket.emit('eventoJogo', {
+              tipo: 'erro',
+              mensagem: 'Erro ao validar aposta'
+            });
+          }
+        }
+        return;
+      }
+      
       if (msg.tipo === 'pedirDica') {
         // Verifica se o jogador existe
         const jogadorAtual = game.players.find(p => p.id === socket.id);
