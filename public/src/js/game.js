@@ -88,6 +88,11 @@ let poderUsadoNoTurno = null; // Rastreia qual poder foi usado no turno atual (n
 let dicas = []; // Array com as dicas da palavra (ordem 1, 2, 3)
 let dicaAtualExibida = 0; // Contador de qual dica está sendo exibida (0 = nenhuma, 1-3 = dica 1-3)
 
+// Variáveis de aposta
+let saldoMoedas = 0;
+let minhaAposta = 0;
+let apostaAdversario = null;
+
 // Mapeamento de nomes de poderes para nomes de imagens e descrições
 const MAPEAMENTO_PODERES = {
     'liberar_letra': {
@@ -224,6 +229,9 @@ function configurarInterfacePreparacao() {
 
     // Configura seleção de poderes
     configurarSelecaoPoderes();
+    
+    // Configura sistema de apostas
+    configurarApostas();
 
     // Inicializa contador em 0/2
     atualizarContadorProntos(0);
@@ -252,6 +260,92 @@ function atualizarNomeJogadorPreparacao() {
     if (nomeJogadorEl && nomeJogador) {
         nomeJogadorEl.textContent = nomeJogador;
     }
+}
+
+// Carrega saldo de moedas
+async function carregarSaldoMoedas() {
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/players/moedas', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            saldoMoedas = data.moedas || 0;
+            const saldoEl = document.getElementById('saldo-moedas-prep');
+            if (saldoEl) {
+                saldoEl.textContent = saldoMoedas;
+            }
+        } else {
+            console.error('Erro ao carregar saldo de moedas');
+            saldoMoedas = 0;
+        }
+    } catch (error) {
+        console.error('Erro ao carregar saldo:', error);
+        saldoMoedas = 0;
+    }
+}
+
+// Configura interface de apostas
+function configurarApostas() {
+    const inputAposta = document.getElementById('input-aposta-prep');
+    const mensagemAposta = document.getElementById('aposta-mensagem-prep');
+    const apostaAdversarioEl = document.getElementById('aposta-adversario-prep');
+    const botoesRapidos = document.querySelectorAll('.btn-aposta-quick-prep');
+    
+    if (!inputAposta || !mensagemAposta) {
+        console.warn('Elementos de aposta não encontrados');
+        return;
+    }
+    
+    // Atualiza mensagem de aposta
+    function atualizarMensagemAposta() {
+        const valor = parseInt(inputAposta.value) || 0;
+        if (valor > saldoMoedas) {
+            mensagemAposta.textContent = `❌ Você não tem moedas suficientes!`;
+            mensagemAposta.style.color = '#ff6b6b';
+            inputAposta.value = saldoMoedas;
+            minhaAposta = saldoMoedas;
+        } else if (valor < 0) {
+            mensagemAposta.textContent = `❌ Valor inválido!`;
+            mensagemAposta.style.color = '#ff6b6b';
+            inputAposta.value = 0;
+            minhaAposta = 0;
+        } else {
+            minhaAposta = valor;
+            mensagemAposta.textContent = `Aposta: ${valor} moedas`;
+            mensagemAposta.style.color = '#e9fbff';
+        }
+        
+        // Envia aposta ao servidor
+        enviarEvento({
+            tipo: 'definirAposta',
+            valor: minhaAposta
+        });
+    }
+    
+    // Listener para input manual
+    inputAposta.addEventListener('input', atualizarMensagemAposta);
+    inputAposta.addEventListener('blur', atualizarMensagemAposta);
+    
+    // Botões rápidos
+    botoesRapidos.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const valorAdicionar = parseInt(btn.getAttribute('data-value'));
+            const valorAtual = parseInt(inputAposta.value) || 0;
+            const novoValor = Math.min(valorAtual + valorAdicionar, saldoMoedas);
+            inputAposta.value = novoValor;
+            atualizarMensagemAposta();
+        });
+    });
+    
+    // Carrega saldo
+    carregarSaldoMoedas().then(() => {
+        atualizarMensagemAposta();
+    });
 }
 
 async function configurarSelecaoPoderes() {
@@ -873,7 +967,8 @@ function aoClicarBotaoPronto() {
     enviarEvento({
         tipo: 'pronto',
         nome: nomeJogador,
-        poderes: poderesArray // Envia array de poderes selecionados
+        poderes: poderesArray, // Envia array de poderes selecionados
+        aposta: minhaAposta // Inclui a aposta
     });
 }
 
@@ -1120,6 +1215,21 @@ function configurarListenersSocket() {
             ativarModoPreparacao(evento);
         } else if (evento.tipo === 'pronto') {
             console.log('✅ Evento PRONTO recebido na tela unificada:', evento);
+            
+            // Atualiza aposta do adversário se fornecida
+            if (evento.aposta !== undefined && evento.nome !== nomeJogador) {
+                apostaAdversario = evento.aposta;
+                const apostaAdversarioEl = document.getElementById('aposta-adversario-prep');
+                if (apostaAdversarioEl) {
+                    if (evento.aposta > 0) {
+                        apostaAdversarioEl.textContent = `Adversário apostou: ${evento.aposta} moedas`;
+                        apostaAdversarioEl.style.color = '#00e5ff';
+                    } else {
+                        apostaAdversarioEl.textContent = `Adversário não apostou`;
+                        apostaAdversarioEl.style.color = '#888';
+                    }
+                }
+            }
             registrarEventoPronto(evento);
         } else if (evento.tipo === 'poderUsado') {
             console.log('✅ Poder usado com sucesso:', evento);
@@ -1448,6 +1558,21 @@ function configurarListenersSocket() {
                     }
                     // Desabilita poderes quando não é meu turno
                     reabilitarPoderesNoTurno();
+                }
+            }
+        } else if (evento.tipo === 'apostaAtualizada') {
+            console.log('💰 Evento apostaAtualizada recebido:', evento);
+            if (evento.jogador !== nomeJogador) {
+                apostaAdversario = evento.valor;
+                const apostaAdversarioEl = document.getElementById('aposta-adversario-prep');
+                if (apostaAdversarioEl) {
+                    if (evento.valor > 0) {
+                        apostaAdversarioEl.textContent = `Adversário apostou: ${evento.valor} moedas`;
+                        apostaAdversarioEl.style.color = '#00e5ff';
+                    } else {
+                        apostaAdversarioEl.textContent = `Adversário não apostou`;
+                        apostaAdversarioEl.style.color = '#888';
+                    }
                 }
             }
         } else if (evento.tipo === 'erro') {

@@ -268,6 +268,150 @@ body::after{
   filter: grayscale(100%) brightness(0.5);
 }
 
+/* ===== Sistema de Apostas na Preparação ===== */
+.aposta-container-prep {
+  width: 100%;
+  margin: 20px 0;
+  padding: 16px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,.15), rgba(255,255,255,.08));
+  border: 2px solid rgba(255,255,255,.2);
+  box-shadow: 0 4px 16px rgba(0,0,0,.2);
+}
+
+.aposta-header-prep {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,.15);
+}
+
+.aposta-header-prep h3 {
+  font-size: 1.2rem;
+  margin: 0;
+  color: #FFD700;
+  text-shadow: 0 2px 6px rgba(255,215,0,.4);
+}
+
+.saldo-moedas-prep {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1rem;
+}
+
+.saldo-label-prep {
+  opacity: 0.8;
+}
+
+.saldo-valor-prep {
+  font-weight: bold;
+  color: #FFD700;
+  text-shadow: 0 2px 4px rgba(255,215,0,.4);
+}
+
+.moeda-icon-prep {
+  font-size: 1.1rem;
+}
+
+.aposta-input-container-prep {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.aposta-input-wrapper-prep {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.aposta-input-prep {
+  width: 100%;
+  padding: 12px 45px 12px 14px;
+  border: 2px solid rgba(255,255,255,.25);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+  color: white;
+  font-family: "Orbitron", sans-serif;
+  font-size: 1.2rem;
+  font-weight: bold;
+  text-align: center;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,.2);
+  transition: all 0.3s ease;
+}
+
+.aposta-input-prep:focus {
+  outline: none;
+  border-color: var(--aqua);
+  box-shadow: 
+    inset 0 2px 6px rgba(0,0,0,.2),
+    0 0 16px rgba(0,229,255,.25);
+}
+
+.aposta-input-prep::placeholder {
+  color: rgba(255,255,255,.4);
+}
+
+.moeda-icon-input-prep {
+  position: absolute;
+  right: 14px;
+  font-size: 1.3rem;
+  pointer-events: none;
+}
+
+.aposta-buttons-prep {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-aposta-quick-prep {
+  padding: 8px 16px;
+  border: 2px solid rgba(255,255,255,.25);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+  color: white;
+  font-family: "Orbitron", sans-serif;
+  font-size: 0.85rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 3px 8px rgba(0,0,0,.2);
+}
+
+.btn-aposta-quick-prep:hover {
+  background: linear-gradient(180deg, rgba(0,229,255,.2), rgba(0,188,212,.12));
+  border-color: var(--aqua);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px rgba(0,229,255,.25);
+}
+
+.btn-aposta-quick-prep:active {
+  transform: translateY(0);
+}
+
+.aposta-info-prep {
+  margin-top: 6px;
+}
+
+.aposta-mensagem-prep {
+  font-size: 0.9rem;
+  text-align: center;
+  margin: 6px 0;
+  color: #e9fbff;
+}
+
+.aposta-adversario-prep {
+  font-size: 0.85rem;
+  text-align: center;
+  margin: 4px 0;
+  opacity: 0.7;
+}
+
 /* Badge de quantidade melhorado */
 .pre-game-wrapper .badge-quantidade-poder {
   position: absolute;

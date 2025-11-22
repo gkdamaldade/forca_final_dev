@@ -27,6 +27,42 @@
                 <div class="jogador-prep" id="jogador-prep-atual">
                     <h2 id="nome-jogador-prep">Selecione seus poderes</h2>
                     <p class="instrucao-poderes">Escolha até 3 poderes (opcional)</p>
+                    
+                    <!-- Sistema de Apostas -->
+                    <div class="aposta-container-prep">
+                        <div class="aposta-header-prep">
+                            <h3>💰 Aposta</h3>
+                            <div class="saldo-moedas-prep">
+                                <span class="saldo-label-prep">Saldo:</span>
+                                <span class="saldo-valor-prep" id="saldo-moedas-prep">-</span>
+                                <span class="moeda-icon-prep">🪙</span>
+                            </div>
+                        </div>
+                        <div class="aposta-input-container-prep">
+                            <div class="aposta-input-wrapper-prep">
+                                <input 
+                                    type="number" 
+                                    id="input-aposta-prep" 
+                                    min="0" 
+                                    value="0" 
+                                    placeholder="0"
+                                    class="aposta-input-prep"
+                                >
+                                <span class="moeda-icon-input-prep">🪙</span>
+                            </div>
+                            <div class="aposta-buttons-prep">
+                                <button class="btn-aposta-quick-prep" data-value="10">+10</button>
+                                <button class="btn-aposta-quick-prep" data-value="25">+25</button>
+                                <button class="btn-aposta-quick-prep" data-value="50">+50</button>
+                                <button class="btn-aposta-quick-prep" data-value="100">+100</button>
+                            </div>
+                            <div class="aposta-info-prep">
+                                <p class="aposta-mensagem-prep" id="aposta-mensagem-prep">Aposta: 0 moedas</p>
+                                <p class="aposta-adversario-prep" id="aposta-adversario-prep">Aguardando adversário...</p>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="poderes-container" id="poderes-container-atual">
                         <button class="poder" type="button" data-poder="liberar_letra" aria-label="Liberar Letra">
                             <img src="/public/assets/images/liberar_letra.png" alt="Liberar Letra">
