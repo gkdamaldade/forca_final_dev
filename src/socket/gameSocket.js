@@ -23,10 +23,11 @@ async function finalizarJogo(game, vencedorNum, motivo = 'normal') {
     if (jogadorVencedor && jogadorVencedor.playerId) {
       const playerVencedor = await models.Player.findByPk(jogadorVencedor.playerId);
       if (playerVencedor) {
-        // Calcula recompensas: 20 moedas pela vitória + aposta do vencedor (que ele mantém) + aposta do perdedor (que ele ganha)
+        // Calcula recompensas: 20 moedas pela vitória + aposta do perdedor (que ele ganha)
+        // A aposta do vencedor não é adicionada porque ele já tem essas moedas (apenas não foram subtraídas ainda)
         const apostaVencedor = game.apostas[vencedorNum] || 0;
         const apostaPerdedor = jogadorPerdedor ? (game.apostas[jogadorPerdedor.numero] || 0) : 0;
-        const moedasGanhas = 20 + apostaVencedor + apostaPerdedor; // Vencedor mantém sua aposta e ganha a do perdedor
+        const moedasGanhas = 20 + apostaPerdedor; // Vencedor ganha apenas a aposta do perdedor (sua própria aposta já é dele)
         
         // Incrementa vitórias e moedas
         await playerVencedor.increment({ 
@@ -34,7 +35,7 @@ async function finalizarJogo(game, vencedorNum, motivo = 'normal') {
           moedas: moedasGanhas 
         });
         await playerVencedor.reload();
-        console.log(`✅ Vitória registrada para ${jogadorVencedor.name} (ID: ${jogadorVencedor.playerId})! Total de vitórias: ${playerVencedor.vitorias}, Moedas ganhas: ${moedasGanhas} (20 vitória + ${apostaVencedor} aposta própria + ${apostaPerdedor} aposta adversário), Total de moedas: ${playerVencedor.moedas}`);
+        console.log(`✅ Vitória registrada para ${jogadorVencedor.name} (ID: ${jogadorVencedor.playerId})! Total de vitórias: ${playerVencedor.vitorias}, Moedas ganhas: ${moedasGanhas} (20 vitória + ${apostaPerdedor} aposta adversário), Total de moedas: ${playerVencedor.moedas}`);
       } else {
         console.warn(`⚠️ Jogador com ID ${jogadorVencedor.playerId} não encontrado no banco de dados.`);
       }
