@@ -1,4 +1,4 @@
-ogo da forca - Eng de software 3
+Jogo da forca - Eng de software 3
 
 Esse jogo foi desenvolvido para propósitos educacionais, como parte da avaliação da matéria de Engenharia de software 3 da Fatec São Paulo.
 🚀 Membros do grupo
