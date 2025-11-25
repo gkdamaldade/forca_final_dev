@@ -1,44 +1,47 @@
-Jogo da forca - Eng de software 3
 
-Esse jogo foi desenvolvido para propósitos educacionais, como parte da avaliação da matéria de Engenharia de software 3 da Fatec São Paulo.
-🚀 Membros do grupo
+# Jogo da forca - Eng de software 3
 
-    Giovanna Freire
+Esse jogo foi desenvolvido para propósitos educacionais, como parte da avaliação da matéria de Engenharia de software 3 da Fatec São Paulo. 
 
-    Guilherme Hideki
+## 🚀 Membros do grupo
 
-    Isadora Campos
 
-    Luiz Fernando
+- [Giovanna Freire](https://github.com/GiFreire)
 
-    Matheus Assola
+- [Guilherme Hideki](https://github.com/gkdamaldade)
 
-    Thalles Velasques
+- [Isadora Campos](https://github.com/isadoravel)
 
-    Thiago Pereira Barbosa
+- [Luiz Fernando](https://github.com/LuizFefas)
 
-    Vinicius Iwamoto
+- [Matheus Assola](https://github.com/assolita)
 
-    Vinicius Hideki
+- [Thalles Velasques](https://github.com/ThallesVelasquess)
 
-🎉 Requisitos básicos
+- [Thiago Pereira Barbosa](https://github.com/ThiagoPereiraBarbosa0710)
 
-    Jogo monetizado
+- [Vinicius Iwamoto](https://github.com/ViniciusIwamoto)
 
-    Permitir dois jogadores online
+- [Vinicius Hideki](https://github.com/ViniciusIwamoto)
 
-    Características inovadoras
+## 🎉 Requisitos básicos
 
-    Jogo divertido
+- Jogo monetizado
 
-    Rodadas de 15 segundos
+- Permitir dois jogadores online
 
-    Jogo na web
+- Características inovadoras
 
-🌟 Stack utilizada
+- Jogo divertido
 
-Front-end: HTML, CSS
+- Rodadas de 15 segundos
 
-Back-end: Node.JS, Javascript
+- Jogo na web 
 
-Banco de dados: Postgres
+## 🌟 Stack utilizada
+
+**Front-end:** HTML, CSS
+
+**Back-end:** Node.JS, Javascript
+
+**Banco de dados:** Postgres
